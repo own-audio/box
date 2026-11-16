@@ -118,7 +118,7 @@ in_root apt-get clean
 rm -rf "$root"/var/lib/apt/lists/* "$root"/var/log/apt/* "$root"/tmp/* "$root"/var/tmp/*
 rm -f "$root/usr/sbin/policy-rc.d" "$root/etc/resolv.conf"
 cp -a "$resolv_backup" "$root/etc/resolv.conf" 2>/dev/null || true
-du -sh "$root" | sed 's/^/root file system: /'
+du -shx "$root" | sed 's/^/root file system: /'
 for m in boot/firmware dev/pts dev proc sys; do umount "$root/$m"; done
 umount "$root"
 e2fsck -pf "${loop}p2" || [ $? -le 1 ]
