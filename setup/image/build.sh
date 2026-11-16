@@ -68,13 +68,24 @@ in_root apt-get install -y -q --no-install-recommends \
 echo "== AirPlay 2 (built from source)"
 cp -r "$setup/airplay" "$root/var/tmp/ownbox-airplay"
 in_root bash /var/tmp/ownbox-airplay/build.sh
-# The build tools go again; what shairport-sync links to stays (apt keeps it as needed).
+# The build tools go again. The libraries the two programs link to came in as the -dev
+# packages' dependencies, so they are marked as wanted first, or autoremove takes them too.
+cat > "$root/var/tmp/keep-libs.sh" <<'KEEP'
+for lib in $(ldd /usr/local/bin/shairport-sync /usr/local/bin/nqptp | awk '/=> \//{print $3}' | sort -u); do
+  real=$(readlink -f "$lib")
+  dpkg -S "$real" 2>/dev/null || dpkg -S "/usr$real" 2>/dev/null || dpkg -S "${real#/usr}" 2>/dev/null
+done | cut -d: -f1 | sort -u | xargs apt-mark manual
+KEEP
+in_root sh /var/tmp/keep-libs.sh
 in_root apt-get purge -y -q build-essential git autoconf automake libtool pkg-config xxd \
   libpopt-dev libconfig-dev libasound2-dev libavahi-client-dev libssl-dev libsoxr-dev \
   libplist-dev libsodium-dev libgcrypt20-dev uuid-dev libavutil-dev libavcodec-dev \
   libavformat-dev libswresample-dev systemd-dev
 in_root apt-get autoremove -y -q --purge
 rm -rf "$root/var/tmp/ownbox-airplay" "$root/var/tmp/ownbox-airplay-build"
+if in_root ldd /usr/local/bin/shairport-sync /usr/local/bin/nqptp | grep 'not found'; then
+  echo "AirPlay lost a library with the build tools"; exit 1
+fi
 
 echo "== ownbox $version"
 in_root useradd --system --create-home --home-dir "/home/$BOX_USER" --shell /bin/bash \

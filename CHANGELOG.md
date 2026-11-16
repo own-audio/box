@@ -7,6 +7,16 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- An SD card image (`setup/image/build.sh`, built in GitHub Actions by `image.yml`):
+  Raspberry Pi OS Lite 64-bit with ownbox, mpv, the kiosk, AirPlay 2 and Squeezelite,
+  one card for the Zero 2 W, 3, 4 and 5. At every boot `ownbox-boot.service` looks at the
+  Pi: a screen means the kiosk, none a headless box run from a phone; the first boot
+  writes the board's `config.txt` block and restarts once. ownbox runs as its own user
+  `ownbox`. The kiosk only starts with a screen connected. Tried on the Pirate Radio:
+  up in 49 s, pHAT BEAT found, 163 MB of memory in use.
+
 ### Changed
 
 - 64-bit only, by decision: Raspberry Pi Zero 2 W, 3, 4 and 5 on 64-bit Raspberry Pi OS.
