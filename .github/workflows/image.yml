@@ -1,0 +1,51 @@
+# Builds the SD card image (setup/image/build.sh) around a released, signed ownbox: run by
+# release.yml after each release, which attaches the image to it, or by hand to try one
+# (attached to the run as an artifact for a few days).
+name: image
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Release tag whose ownbox goes in (e.g. v1.0.0-beta.1)"
+        required: true
+      attach:
+        description: "Attach the image to that release (otherwise only to this run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Released ownbox, signature checked
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OWNBOX_UPDATE_PUBKEY: ${{ vars.OWNBOX_UPDATE_PUBKEY }}
+        run: |
+          sudo apt-get install -y -q minisign zerofree parted
+          gh release download "${{ inputs.release }}" -p 'ownbox-aarch64*' -D bin
+          minisign -V -P "$OWNBOX_UPDATE_PUBKEY" -m bin/ownbox-aarch64
+      - name: Build
+        run: |
+          version="${{ inputs.release }}"; version="${version#v}"
+          echo "NAME=own-audio-box-$version-arm64.img.xz" >> "$GITHUB_ENV"
+          sudo setup/image/build.sh bin/ownbox-aarch64 "$version" "own-audio-box-$version-arm64.img.xz"
+      - name: Attach to the release
+        if: inputs.attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.release }}" "$NAME" "$NAME.sha256" --clobber
+      - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.attach }}
+        with:
+          name: ${{ env.NAME }}
+          path: |
+            ${{ env.NAME }}
+            ${{ env.NAME }}.sha256
+          compression-level: 0
+          retention-days: 5

@@ -5,6 +5,8 @@ Conflicts=getty@tty1.service
 After=getty@tty1.service ownbox.service
 
 [Service]
+# No screen connected (a box without one): no kiosk, instead of a restart every 3 s.
+ExecCondition=/bin/sh -c 'grep -qsx connected /sys/class/drm/card*-*/status'
 User=@USER@
 PAMName=login
 TTYPath=/dev/tty1

@@ -41,6 +41,11 @@ make -j"$(nproc)" >/dev/null
 sudo make install >/dev/null
 
 sudo install -D -m 644 "$HERE/shairport-restart.conf" /etc/systemd/system/shairport-sync.service.d/ownbox-restart.conf
-sudo systemctl daemon-reload
-sudo systemctl enable --now nqptp
+if [ -d /run/systemd/system ]; then
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now nqptp
+else
+  # Building the SD card image, in a chroot: enabled, it starts at the box's first boot.
+  sudo systemctl enable nqptp shairport-sync
+fi
 echo "built: $(shairport-sync -V)"

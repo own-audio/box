@@ -1,0 +1,8 @@
+# own.audio box, from the SD card image. Written once; the screen (or a phone, on a box
+# without one) changes the rest in Settings. `headless` is set at every boot by
+# ownbox-boot.sh: true when no screen is connected.
+device_name = "own.audio box"
+# Empty: the best output found (an I²S DAC, then USB, then HDMI, then the jack).
+audio_device = ""
+audio_options = ["--audio-buffer=1"]
+language = "en"

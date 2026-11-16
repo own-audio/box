@@ -1,0 +1,12 @@
+[Unit]
+Description=own.audio box: look at this Pi (screen, board, Wi-Fi) before ownbox starts
+After=systemd-udevd.service systemd-modules-load.service
+Before=ownbox.service ownbox-kiosk.service squeezelite.service shairport-sync.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/ownbox/ownbox-boot.sh
+
+[Install]
+WantedBy=multi-user.target
