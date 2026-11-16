@@ -63,6 +63,9 @@ What changed in the own.audio box, newest first. The format follows
 
 ### Added
 
+- README with the logo, screenshots from the own.audio demo library (the 7" screen and a
+  phone), the hardware it has been tested on, and how versions and releases work.
+
 - Settings → Tlačítka: action buttons (play, play all, to the queue, to a playlist, the
   equalizer, the queue, the sleep timer) show their text, as before, or only an icon.
   Chosen once for the box, like the appearance; the label stays as the hover tip and for

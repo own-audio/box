@@ -1,24 +1,51 @@
-# own.audio box
+<p align="center">
+  <img src="docs/readme/mark.svg" alt="own.audio" width="112" height="112">
+</p>
 
-A player for an own.audio library: a Raspberry Pi with a touch screen and an audio
-output, feeding a speaker. Signs in to an own.audio server with a code shown on its
-screen and plays music, audiobooks and podcasts from it, keeping listening positions in
-step with the phone apps.
+<h1 align="center">own.audio box</h1>
+
+<p align="center">A Raspberry Pi music, audiobook and podcast player for your own library.</p>
+
+<p align="center">
+  <a href="https://www.own.audio">Website</a> ·
+  <a href="https://github.com/own-audio/server">Server</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="docs/HARDWARE.md">Hardware</a> ·
+  <a href="https://github.com/own-audio/box/issues">Report a problem</a>
+</p>
+
+<p align="center">
+  <img src="docs/readme/screen-home.jpg" alt="Music home on the 7-inch screen" width="400">
+  <img src="docs/readme/screen-player.jpg" alt="Now playing on the 7-inch screen" width="400">
+</p>
+<p align="center">
+  <img src="docs/readme/screen-album.jpg" alt="An album" width="400">
+  <img src="docs/readme/screen-books.jpg" alt="Audiobooks, continue listening" width="400">
+</p>
+<p align="center">
+  <img src="docs/readme/phone-player.jpg" alt="The box controlled from a phone" width="200">
+  <img src="docs/readme/phone-playlists-light.jpg" alt="Playlists and smart playlists, light mode, on a phone" width="200">
+</p>
+
+A Raspberry Pi with a touch screen and a sound output, feeding a speaker. It signs in to
+an [own.audio](https://www.own.audio) server — the [open-source
+server](https://github.com/own-audio/server) at home or the hosted service — with a QR
+code on its screen, and plays music, audiobooks and podcasts from it, keeping listening
+positions in step with the phone apps. It also runs without a screen, on a small Pi
+with a DAC HAT and buttons, controlled from a phone. And it is an AirPlay 2 receiver
+and a Music Assistant player.
 
 The software is `ownbox`, one Rust program that drives mpv and serves the touch UI,
-shown full screen by Chromium in a kiosk (cage). It also runs without a screen, on a
-small Pi with a DAC HAT and buttons, controlled from a phone. It is a work in progress
-and has no release yet; every change is in [CHANGELOG.md](CHANGELOG.md).
-
-own.audio itself is the [open-source server](https://github.com/own-audio/server) or the hosted
-service at [own.audio](https://www.own.audio).
+shown full screen by Chromium in a kiosk (cage). Early days: it runs every day on the
+two boxes below, but there is no release, image or installer yet.
 
 ## What it does today
 
 - **Music:** recently added, favourites, albums (by date or A–Z, jump to a letter),
   artists, playlists, search with an on-screen keyboard; gapless play. Playlists are
   made and changed on the box too: hold a track, or add an album or what is playing.
-  Smart playlists from the apps play with a fresh draw. Play next, add to the queue,
+  Smart playlists, saved in the apps or from presets (a genre station among them), play
+  with a fresh draw. Home shows playlists, recently played and recently added albums. Play next, add to the queue,
   play all by an artist, and an iPod-like letter strip for fast scrolling in A–Z
   lists.
 - **Audiobooks:** continue listening, all books, authors; resume at the saved second,
@@ -28,10 +55,10 @@ service at [own.audio](https://www.own.audio).
 - **Box:** sign-in with a QR code, Czech and English, Wi-Fi from the screen, brightness
   and screen-off, volume, queue, a server-down notice; the queue and position survive a
   restart. A first-run wizard, and the same equalizer as the own.audio Music apps.
-  Dark or light, or as each device is set (Settings → Vzhled). Buttons with text or
-  icons only (Settings → Tlačítka).
+  Dark or light, or as each device is set (Settings → Appearance). Buttons with text or
+  icons only (Settings → Buttons).
 - **Phone control:** any phone on the same network opens `http://ownbox.local:8686/`
-  after pairing with a QR code from Settings → Ovládání z telefonu, and gets the library
+  after pairing with a QR code from Settings → Phone control, and gets the library
   and the player. Unpaired devices get nothing but the pairing page; the box's own
   settings stay on its screen.
 - **Other sources:** the box is an AirPlay 2 receiver ("own.audio box") and a
@@ -42,20 +69,31 @@ service at [own.audio](https://www.own.audio).
 - **Updates:** signed releases from GitHub, installed from Settings with an automatic
   way back; built and tested, off until the first release.
 
-## Hardware
+## Tested on
 
-What the software is meant to run on:
+| | The box with a screen | The radio, no screen |
+|---|---|---|
+| Board | Raspberry Pi 3 Model B+ (1 GB) | Raspberry Pi Zero 2 W (512 MB) |
+| Screen | Official 7" touch display, 800 × 480 | none; a phone is the screen |
+| Sound | Jabra SPEAK 410 (USB) | Pimoroni pHAT BEAT (I²S DAC), its five buttons as media keys — sold together with the Zero as the Pimoroni Pirate Radio |
+| System | Raspberry Pi OS Lite 64-bit (Debian 13 Trixie), mpv 0.40, Chromium 156 in cage | the same Lite image, no browser |
+| Also played to it | AirPlay 2 from an iPhone (shairport-sync 4.3.7), also to both boxes at once | AirPlay 2, and Music Assistant through Squeezelite |
 
-| | Supported |
+Known: Music Assistant playing to the boxes over AirPlay arrives garbled (its AirPlay 2
+and shairport-sync disagree); use its Squeezelite players, or set the player to AirPlay 1
+(RAOP) in Music Assistant.
+
+Phones: Safari on iPhone, as the remote control. Servers: the open-source own.audio
+server (1.0) and the hosted service. The Pi 3 runs the kiosk and the player in about
+420 MB with the CPU capped at 800 MHz.
+
+Meant to work, not yet tested on hardware:
+
+| | |
 |---|---|
-| Board | Raspberry Pi 3 B+, Raspberry Pi 4 (64-bit Raspberry Pi OS Lite) |
-| Screen | official 7" touch display (800 × 480); Touch Display 2, 7" and 5" (720 × 1280, turned to landscape). No others. |
-| Sound | Raspberry Pi DAC+, USB audio (tested with a Jabra SPEAK 410); other I²S audio HATs through their overlay, untested |
-| Without a screen | Pi Zero 2 W with a Pimoroni pHAT BEAT (sold together as the Pimoroni Pirate Radio) |
-
-Tested so far: a Pi 3 B+ with the official 7" display and the Jabra, and a Pirate
-Radio. A Pi 4 with Touch Display 2 and the DAC+ into an IKEA VAPPEBY's AUX input is
-being built: parts, prices, assembly and power notes in [docs/HARDWARE.md](docs/HARDWARE.md).
+| Board | Raspberry Pi 4 (a build with Touch Display 2 and the DAC+ is being put together: [docs/HARDWARE.md](docs/HARDWARE.md)) |
+| Screen | Touch Display 2, 7" and 5" (720 × 1280, turned to landscape). No other screens. |
+| Sound | Raspberry Pi DAC+; other I²S HATs through their overlay (`audio_hat` in `config.toml`) |
 
 ## Setting one up
 
@@ -112,7 +150,7 @@ shutdown) and reboots — about ten minutes on a Zero 2 W, logged in
 
 With `headless = true` in `config.toml` the first phone to open the box pairs without a
 code and runs the setup wizard; paired phones may change the box's settings, as the
-screen would. Further phones pair with a code from Settings → Ovládání z telefonu on a
+screen would. Further phones pair with a code from Settings → Phone control on a
 phone already paired. Media keys from any input device (the HAT's buttons, a USB
 keyboard, the Jabra's volume buttons) control playback on every box.
 
@@ -145,8 +183,25 @@ GPIO17 (pin 11) with wake kept on GPIO3 — see HARDWARE.md.
   `setup/radio/` — the radio's first-boot installer, config and cloud-init template
 - `scripts/` — `flash-sd.sh`, `prepare-sd.sh` (the radio's card), `deploy.sh`, `ui-check.cjs` (drives the UI headless
   through an SSH tunnel)
-- `docs/` — hardware, the power-button picture
+- `docs/` — hardware, the power-button picture, the README's pictures
+
+## Versions
+
+[Semantic versioning](https://semver.org), 0.x until the box is one people can buy the
+parts for and set up without a Mac. Each release is a tag `vX.Y.Z`: GitHub Actions
+builds ownbox for the Pi, signs it with minisign and publishes it as a GitHub Release
+([.github/workflows/release.yml](.github/workflows/release.yml)), with that version's
+section of the [changelog](CHANGELOG.md) as its notes. Boxes offer the update in
+Settings → Updates and put the previous version back if the new one does not start.
+Settings shows the running version.
+
+Where it is going: an install script for Raspberry Pi OS, then a ready SD card image
+for Raspberry Pi Imager.
 
 ## Licence
 
 [MPL-2.0](LICENSE), as the own.audio apps.
+
+The screenshots show the own.audio demo library: music by Kai Engel, Kevin MacLeod and
+others under Creative Commons (CC BY 3.0 and 4.0), LibriVox recordings in the public
+domain, and covers drawn for the demo.
