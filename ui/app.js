@@ -1759,7 +1759,9 @@ function startWizard() {
   $('nowplaying').hidden = true;
   $('app').hidden = false;
   currentTab = null;
-  stack = [wizLanguage()];
+  // Back where it was after a reload: signed in already means sound next; a language
+  // chosen (here or on the setup Wi-Fi) means the network next.
+  stack = setup.signed_in ? [wizSound()] : setup.language_set ? [wizNetwork()] : [wizLanguage()];
   render();
 }
 
@@ -1938,12 +1940,15 @@ function wizSignIn() {
       await post('/api/sign-in').catch((e) => { msg.textContent = t(e.message); });
       let shown = null;
       const view = stack[stack.length - 1];
-      wizPoll = setInterval(async () => {
-        if (stack[stack.length - 1] !== view) return clearInterval(wizPoll); // left the step
+      // Also at once when the tab is back: a phone that confirmed the code in another tab or
+      // app may have put this one to sleep, and its timers with it.
+      const tick = async () => {
+        if (stack[stack.length - 1] !== view) { clearInterval(wizPoll); window.removeEventListener('ownbox-wake', tick); return; } // left the step
         const s = await get('/api/session').catch(() => null);
         if (!s) return;
         if (s.state === 'signed_in') {
           clearInterval(wizPoll);
+          window.removeEventListener('ownbox-wake', tick);
           push(wizSound());
         } else if (s.state === 'pending') {
           if (shown !== s.user_code) {
@@ -1957,7 +1962,9 @@ function wizSignIn() {
         } else {
           msg.textContent = s.error ? t(s.error) : '';
         }
-      }, 1000);
+      };
+      window.addEventListener('ownbox-wake', tick);
+      wizPoll = setInterval(tick, 1000);
     },
   };
 }
@@ -2208,6 +2215,23 @@ async function outputSettings() {
   return group;
 }
 
+/** A sound card on the GPIO header (a HAT): one without an EEPROM is named here. */
+async function hatSettings() {
+  const h = await get('/api/audio/hats').catch(() => null);
+  if (!h) return el('div');
+  const group = el('div', { class: 'settings-group' }, el('div', { class: 'section-title', text: t('Sound card on the pins') }));
+  const select = el('select', {}, ...h.choices.map((c) => el('option', { value: c.id, text: t(c.label) })));
+  if (h.current != null) select.value = h.current;
+  else select.prepend(el('option', { value: '', text: t('Set in config.toml'), selected: true }));
+  select.addEventListener('change', async () => {
+    if (select.value === '') return;
+    const r = await post('/api/audio/hat', { id: Number(select.value) }).catch(() => null);
+    if (r) toast(t('Saved. The box restarts if the card changed.'));
+  });
+  group.append(select, el('p', { class: 'muted small', text: t('Only for a card on the pins that the box does not find itself. A new card restarts the box.') }));
+  return group;
+}
+
 // --- outside sources -------------------------------------------------------------------
 
 async function sourcesSettings() {
@@ -2328,6 +2352,7 @@ function settingsView() {
         el('div', { class: 'setting' }, el('span', { text: t('Sound') }),
           el('button', { class: 'secondary', text: t('Equalizer'), onclick: () => push(eqView()) }))));
       box.append(await outputSettings());
+      box.append(await hatSettings());
       box.append(await sourcesSettings());
       box.append(serverSettings());
       box.append(await networkSettings());
@@ -2772,9 +2797,74 @@ function pairingHelp(error) {
   $('signin-error').textContent = error || '';
 }
 
+// --- the setup Wi-Fi ------------------------------------------------------------------
+// A box without a screen or a network opens a Wi-Fi of its own; a phone that joins gets this
+// page by itself. One form: language, name, the home Wi-Fi, the sound card. The box then
+// joins the home network, so the page cannot show what happens next: it says where to go.
+
+async function setupWifiPage() {
+  $('signin').hidden = true;
+  $('app').hidden = true;
+  const page = el('section', { id: 'setup', class: 'setup' });
+  document.body.append(page);
+  const st = await get('/api/hotspot');
+  if (st.language === 'cs' || st.language === 'en') LANG = st.language;
+  let chosen = null;
+  const draw = () => {
+    const name = el('input', { type: 'text', value: st.box_name, maxlength: 60, autocomplete: 'off' });
+    const password = el('input', { type: 'password', autocomplete: 'off', placeholder: t('Wi-Fi password') });
+    const hat = el('select', {}, ...st.hats.choices.map((c) => el('option', { value: c.id, text: t(c.label) })));
+    if (st.hats.current != null) hat.value = st.hats.current;
+    const msg = el('p', { class: st.error ? 'bad' : 'muted', role: 'alert', text: st.error ? t('Joining failed: {e}', { e: t(st.error) }) : '' });
+    const nets = el('div', { class: 'rows' }, ...st.networks.map((n) => el('div', {
+      class: n.ssid === chosen ? 'row current' : 'row',
+      onclick: () => { chosen = n.ssid; draw(); },
+    }, el('div', { class: 'main' }, el('div', { class: 'ellipsis', text: n.ssid }),
+      el('div', { class: 'sub muted', text: `${n.signal} %${n.secure ? '' : ` · ${t('open')}`}` })))));
+    const net = st.networks.find((n) => n.ssid === chosen);
+    const lang = (code, label) => el('button', { class: LANG === code ? 'on' : 'secondary', text: label, onclick: () => { LANG = code; draw(); } });
+    const go = el('button', {
+      class: 'primary', text: t('Connect the box'), disabled: !chosen,
+      onclick: async () => {
+        go.disabled = true;
+        try {
+          const r = await post('/api/hotspot/apply', {
+            ssid: chosen, password: password.value || null, name: name.value, language: LANG, hat: Number(hat.value),
+          });
+          page.replaceChildren(brand(56),
+            el('h2', { text: t('The box is joining {s}', { s: r.ssid }) }),
+            el('p', { text: t('This Wi-Fi closes now. Connect this phone back to {s}, then open:', { s: r.ssid }) }),
+            el('p', { class: 'code' }, el('a', { href: `http://${r.address}/`, text: `http://${r.address}` })),
+            el('p', { class: 'muted', text: t('There the box asks for your own.audio library. If the box cannot join, its own Wi-Fi comes back in a minute, with the reason.') }));
+        } catch (e) {
+          msg.className = 'bad';
+          msg.textContent = t(e.message);
+          go.disabled = false;
+        }
+      },
+    });
+    // The DOM's own replaceChildren writes null out as text; leave the missing parts out.
+    page.replaceChildren(...[brand(56),
+      el('h2', { text: t('Set up the box') }),
+      el('div', { class: 'buttons' }, lang('cs', 'Čeština'), lang('en', 'English')),
+      el('label', { text: t('Name') }), name,
+      el('label', { text: t('Your Wi-Fi') }),
+      st.networks.length ? nets : el('p', { class: 'muted', text: t('No networks in reach.') }),
+      net && net.secure ? password : null,
+      el('label', { text: t('Sound card on the pins') }), hat,
+      msg,
+      el('div', { class: 'wiz-next' }, go)].filter(Boolean));
+  };
+  draw();
+}
+
 async function start() {
   document.querySelector('#signin header.brand').replaceChildren(brand(56));
   const rs = await get('/api/remote/status').catch(() => ({ screen: true, paired: false }));
+  if (rs.setup_wifi) {
+    document.body.classList.add('phone');
+    return setupWifiPage();
+  }
   REMOTE = !rs.screen;
   HEADLESS = !!rs.headless;
   document.body.classList.toggle('kiosk', !REMOTE && !HEADLESS);
@@ -2807,6 +2897,13 @@ async function start() {
   if (!setup.done) startWizard();
   else refreshSession();
   setInterval(refreshSession, 2000);
+  // A phone puts a tab in the background to sleep; back in front, it asks at once.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    refreshSession();
+    pollNow();
+    window.dispatchEvent(new Event('ownbox-wake'));
+  });
   setInterval(pollNow, 1000);
   setInterval(refreshStatus, 5000);
   // A theme or button style chosen on another device (a phone) reaches this one too.

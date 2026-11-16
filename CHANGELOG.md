@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.2] — 2026-11-16
+
+An SD card image: write it with Raspberry Pi Imager, put it in, switch on. A box with a
+screen sets itself up on it; a box without one opens its own Wi-Fi, and a phone that
+joins gets the setup page by itself. Tried from a fresh card on the Pirate Radio.
+
 ### Fixed
 
 - ownbox listened on IPv4 only, while the box announces `ownbox.local` with its IPv6
@@ -15,6 +21,11 @@ that version's section below as a GitHub Release.
   as `::ffff:127.0.0.1`); `deploy.sh` moves boxes set up before.
 - The image left AirPlay without two libraries (`libplist`, `libconfig`): removing the
   build tools took them along. They are now kept, and the build fails if one goes.
+- Signing in from a phone in the wizard waited until the next poll after the code was
+  confirmed in another tab or app, and a phone puts the box's tab to sleep meanwhile:
+  the page now asks at once when it is back in front. After a reload the wizard goes on
+  at its step (sound when signed in, network when the language is chosen) instead of
+  starting again.
 
 ### Added
 
@@ -25,12 +36,38 @@ that version's section below as a GitHub Release.
   writes the board's `config.txt` block and restarts once. ownbox runs as its own user
   `ownbox`. The kiosk only starts with a screen connected. Tried on the Pirate Radio:
   up in 49 s, pHAT BEAT found, 163 MB of memory in use.
+- **Setup Wi-Fi** (`src/hotspot.rs`): a box without a screen that has no network for a
+  minute opens an open Wi-Fi named after itself. Every name answers with the box
+  (`setup/dnsmasq-ownbox-setup.conf`) and ownbox sends a phone's sign-in-page check there,
+  so the setup page opens by itself: language, name, the home Wi-Fi (listed before the
+  box's own goes up — one radio) and its password, the sound card. The box then joins the
+  home network, looking for it first and trying three times; if it cannot, its own Wi-Fi
+  comes back with the reason on the page. With a known network around, it closes its own
+  every five minutes, unless someone is on the page, to try again. Only on the setup
+  Wi-Fi, and only that page.
+- **Sound card on the pins** in Settings and on the setup page: pHAT BEAT, pHAT DAC /
+  HiFiBerry DAC, Raspberry Pi DAC+, HiFiBerry DAC+, JustBoom, Allo Boss — the cards the
+  firmware does not find itself. Kept in prefs (`audio_hat`, `hat_buttons`);
+  `apply-sources.sh` has `boot-config.sh` put it into config.txt and restarts the box
+  when it changed.
+- **The name is the address** on a box from the image: "own.audio pirate radio box"
+  becomes `pirate-radio-box.local` (`apply-sources.sh`, hostnamectl, Avahi).
+- **No port needed:** ownbox also serves port 80 (`listen_http`, CAP_NET_BIND_SERVICE in
+  `ownbox.service`), so `http://ownbox.local` works, and a browser that tries https on
+  its own falls back at once.
+- The image is built for every release and attached to it (`release.yml` starts
+  `image.yml`).
 
 ### Changed
 
 - 64-bit only, by decision: Raspberry Pi Zero 2 W, 3, 4 and 5 on 64-bit Raspberry Pi OS.
   32-bit boards (Pi Zero/Zero W, Pi 1, Pi 2) and 32-bit Raspberry Pi OS are not
   supported (README, Tested on).
+- Fewer writes to the SD card: the place in the queue goes to the card every 2 minutes
+  while playing (pause, skip and stop save at once; books still go to the server every
+  30 s); `boot-config.sh` writes its files only when they change; the image masks the
+  daily apt, man-db and dpkg-backup timers and zram's write-back, and switches cloud-init
+  off once it has run.
 
 ## [1.0.0-beta.1] — 2026-11-16
 

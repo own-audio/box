@@ -12,12 +12,12 @@ use anyhow::{Context, bail};
 use serde::Serialize;
 use tokio::process::Command;
 
-const QUICK: Duration = Duration::from_secs(10);
+pub const QUICK: Duration = Duration::from_secs(10);
 const SCAN: Duration = Duration::from_secs(20);
-const CONNECT: Duration = Duration::from_secs(45);
-const IFACE: &str = "wlan0";
+pub const CONNECT: Duration = Duration::from_secs(45);
+pub const IFACE: &str = "wlan0";
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Network {
     pub ssid: String,
     pub signal: u8,
@@ -38,7 +38,7 @@ pub struct Status {
     pub saved: Vec<String>,
 }
 
-async fn nmcli(args: &[&str], timeout: Duration) -> anyhow::Result<String> {
+pub async fn nmcli(args: &[&str], timeout: Duration) -> anyhow::Result<String> {
     let out = tokio::time::timeout(timeout, Command::new("nmcli").args(args).output())
         .await
         .context("NetworkManager took too long")?

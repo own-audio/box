@@ -1,5 +1,6 @@
 # A tag v* builds ownbox for the Pi, signs it with the release key and publishes it as a
-# GitHub Release; boxes with `update_feed` set offer it in Settings.
+# GitHub Release; boxes offer it in Settings. Then image.yml builds the SD card image
+# around it and attaches it to the same release.
 # Needs: the repository variable OWNBOX_UPDATE_PUBKEY (the base64 line of the minisign
 # .pub file, built into ownbox) and the secrets MINISIGN_KEY (the secret key file) and
 # MINISIGN_PASSWORD.
@@ -11,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   release:
@@ -51,3 +53,8 @@ jobs:
           test -s notes.md
           gh release create "$GITHUB_REF_NAME" ownbox-aarch64 ownbox-aarch64.minisig ownbox-aarch64.sha256 \
             --title "ownbox ${GITHUB_REF_NAME#v}" --notes-file notes.md $pre
+      - name: SD card image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Its own workflow (half an hour on its own runner); it attaches the image here.
+        run: gh workflow run image.yml -f release="$GITHUB_REF_NAME" -f attach=true

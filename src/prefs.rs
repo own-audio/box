@@ -22,6 +22,11 @@ pub struct Prefs {
     pub language: Option<String>,
     /// `dark` (missing), `light`, or `auto` (each device follows its own system setting).
     pub theme: Option<String>,
+    /// The sound card on the GPIO header, by its overlay ("" for none), chosen on the box;
+    /// `boot-config.sh` puts it into config.txt. Missing: config.toml's `audio_hat`.
+    pub audio_hat: Option<String>,
+    /// The HAT's own buttons (`phat-beat`), set with the card.
+    pub hat_buttons: Option<String>,
     /// How the action buttons (play, queue, playlist…) look: `text` (missing) or `icons`.
     pub buttons: Option<String>,
     /// The own.audio server, as chosen in the wizard (otherwise `config.toml`'s).

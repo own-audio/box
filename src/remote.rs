@@ -123,7 +123,7 @@ fn box_only(path: &str) -> bool {
 /// Paths a phone may never use: they run the box itself (sign-in, server, network, screen,
 /// pairing) or are hooks for programs on the box.
 fn screen_only(path: &str) -> bool {
-    const PREFIXES: [&str; 14] = [
+    const PREFIXES: [&str; 16] = [
         "/api/setup",
         "/api/sign-in",
         "/api/sign-out",
@@ -137,6 +137,8 @@ fn screen_only(path: &str) -> bool {
         "/api/outside/music-assistant",
         "/api/outside/sources",
         "/api/audio/output",
+        "/api/audio/hat",
+        "/api/hotspot",
         "/api/update",
     ];
     PREFIXES.iter().any(|p| path.starts_with(p)) || path == "/api/player/release"
@@ -154,9 +156,14 @@ pub fn is_box(peer: IpAddr) -> bool {
 }
 
 /// `headless`: the box has no screen, so a paired phone stands in for it and may run the box.
-pub fn access(peer: IpAddr, path: &str, token: Option<&str>, paired: &[Paired], headless: bool) -> Access {
+/// `setup`: the request comes over the box's own setup Wi-Fi, where whoever joined may set
+/// the box up (the network exists only while the box has no other) and nothing else.
+pub fn access(peer: IpAddr, path: &str, token: Option<&str>, paired: &[Paired], headless: bool, setup: bool) -> Access {
     if is_box(peer) {
         return Access::Allowed;
+    }
+    if setup {
+        return if public(path) || path.starts_with("/api/hotspot") { Access::Allowed } else { Access::NeedsPairing };
     }
     let is_paired = token.is_some_and(|t| paired.iter().any(|p| p.token_hash == hash(t)));
     if box_only(path) || (screen_only(path) && !(headless && is_paired)) {
@@ -188,41 +195,52 @@ mod tests {
 
     #[test]
     fn the_box_itself_needs_nothing() {
-        assert_eq!(access("127.0.0.1".parse().unwrap(), "/api/wifi", None, &[], false), Access::Allowed);
-        assert_eq!(access("::1".parse().unwrap(), "/api/wifi", None, &[], false), Access::Allowed);
-        assert_eq!(access("::ffff:127.0.0.1".parse().unwrap(), "/api/wifi", None, &[], false), Access::Allowed);
+        assert_eq!(access("127.0.0.1".parse().unwrap(), "/api/wifi", None, &[], false, false), Access::Allowed);
+        assert_eq!(access("::1".parse().unwrap(), "/api/wifi", None, &[], false, false), Access::Allowed);
+        assert_eq!(access("::ffff:127.0.0.1".parse().unwrap(), "/api/wifi", None, &[], false, false), Access::Allowed);
         // A phone over IPv4 on the dual-stack socket is still a phone.
-        assert_eq!(access("::ffff:192.168.1.20".parse().unwrap(), "/api/wifi", None, &[], false), Access::ScreenOnly);
+        assert_eq!(access("::ffff:192.168.1.20".parse().unwrap(), "/api/wifi", None, &[], false, false), Access::ScreenOnly);
+    }
+
+    #[test]
+    fn the_setup_wifi_sets_up_and_nothing_else() {
+        let phone: IpAddr = "10.42.0.23".parse().unwrap();
+        assert_eq!(access(phone, "/", None, &[], true, true), Access::Allowed);
+        assert_eq!(access(phone, "/api/hotspot/apply", None, &[], true, true), Access::Allowed);
+        assert_eq!(access(phone, "/api/player", None, &[], true, true), Access::NeedsPairing);
+        assert_eq!(access(phone, "/api/wifi", None, &[], true, true), Access::NeedsPairing);
+        // Not on the setup Wi-Fi: its page is the box's alone.
+        assert_eq!(access(lan(), "/api/hotspot", None, &[], true, false), Access::ScreenOnly);
     }
 
     #[test]
     fn a_phone_without_a_token_gets_the_page_and_nothing_else() {
-        assert_eq!(access(lan(), "/", None, &[], false), Access::Allowed);
-        assert_eq!(access(lan(), "/api/remote/pair", None, &[], false), Access::Allowed);
-        assert_eq!(access(lan(), "/api/player", None, &[], false), Access::NeedsPairing);
-        assert_eq!(access(lan(), "/api/player", Some("wrong"), &one("right"), false), Access::NeedsPairing);
+        assert_eq!(access(lan(), "/", None, &[], false, false), Access::Allowed);
+        assert_eq!(access(lan(), "/api/remote/pair", None, &[], false, false), Access::Allowed);
+        assert_eq!(access(lan(), "/api/player", None, &[], false, false), Access::NeedsPairing);
+        assert_eq!(access(lan(), "/api/player", Some("wrong"), &one("right"), false, false), Access::NeedsPairing);
     }
 
     #[test]
     fn a_paired_phone_controls_playback_but_not_the_box() {
         let paired = one("secret");
-        assert_eq!(access(lan(), "/api/player/play", Some("secret"), &paired, false), Access::Allowed);
-        assert_eq!(access(lan(), "/api/eq", Some("secret"), &paired, false), Access::Allowed);
-        assert_eq!(access(lan(), "/api/sign-out", Some("secret"), &paired, false), Access::ScreenOnly);
-        assert_eq!(access(lan(), "/api/setup/server", Some("secret"), &paired, false), Access::ScreenOnly);
-        assert_eq!(access(lan(), "/api/outside/airplay/start", Some("secret"), &paired, false), Access::ScreenOnly);
-        assert_eq!(access(lan(), "/api/player/release", Some("secret"), &paired, false), Access::ScreenOnly);
+        assert_eq!(access(lan(), "/api/player/play", Some("secret"), &paired, false, false), Access::Allowed);
+        assert_eq!(access(lan(), "/api/eq", Some("secret"), &paired, false, false), Access::Allowed);
+        assert_eq!(access(lan(), "/api/sign-out", Some("secret"), &paired, false, false), Access::ScreenOnly);
+        assert_eq!(access(lan(), "/api/setup/server", Some("secret"), &paired, false, false), Access::ScreenOnly);
+        assert_eq!(access(lan(), "/api/outside/airplay/start", Some("secret"), &paired, false, false), Access::ScreenOnly);
+        assert_eq!(access(lan(), "/api/player/release", Some("secret"), &paired, false, false), Access::ScreenOnly);
     }
 
     #[test]
     fn without_a_screen_a_paired_phone_runs_the_box() {
         let paired = one("secret");
-        assert_eq!(access(lan(), "/api/setup/server", Some("secret"), &paired, true), Access::Allowed);
-        assert_eq!(access(lan(), "/api/remote/code", Some("secret"), &paired, true), Access::Allowed);
-        assert_eq!(access(lan(), "/api/setup/server", Some("wrong"), &paired, true), Access::ScreenOnly);
-        assert_eq!(access(lan(), "/api/player", None, &paired, true), Access::NeedsPairing);
-        assert_eq!(access(lan(), "/api/outside/airplay/start", Some("secret"), &paired, true), Access::ScreenOnly);
-        assert_eq!(access(lan(), "/api/player/release", Some("secret"), &paired, true), Access::ScreenOnly);
+        assert_eq!(access(lan(), "/api/setup/server", Some("secret"), &paired, true, false), Access::Allowed);
+        assert_eq!(access(lan(), "/api/remote/code", Some("secret"), &paired, true, false), Access::Allowed);
+        assert_eq!(access(lan(), "/api/setup/server", Some("wrong"), &paired, true, false), Access::ScreenOnly);
+        assert_eq!(access(lan(), "/api/player", None, &paired, true, false), Access::NeedsPairing);
+        assert_eq!(access(lan(), "/api/outside/airplay/start", Some("secret"), &paired, true, false), Access::ScreenOnly);
+        assert_eq!(access(lan(), "/api/player/release", Some("secret"), &paired, true, false), Access::ScreenOnly);
     }
 
     #[test]

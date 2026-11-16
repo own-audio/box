@@ -36,8 +36,8 @@ with a DAC HAT and buttons, controlled from a phone. And it is an AirPlay 2 rece
 and a Music Assistant player.
 
 The software is `ownbox`, one Rust program that drives mpv and serves the touch UI,
-shown full screen by Chromium in a kiosk (cage). In beta (1.0.0-beta.1): it runs every
-day on the two boxes below, but there is no image or installer yet.
+shown full screen by Chromium in a kiosk (cage). In beta: it runs every day on the two
+boxes below, and installs from an SD card image.
 
 ## What it does today
 
@@ -101,16 +101,36 @@ Pi Zero and Zero W (also in older Pirate Radio kits), Pi 1 and Pi 2 — are not 
 and will not be; they are too slow for the box anyway. A 32-bit Raspberry Pi OS on a
 64-bit board does not work either: use the 64-bit image.
 
-## Setting one up
+## Install
 
-There is no ready image or installer yet; today a box is set up from a Mac (or any
-machine with Rust, [zig](https://ziglang.org) and
-[cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild)) over SSH.
+1. Download `own-audio-box-…-arm64.img.xz` from the
+   [latest release](https://github.com/own-audio/box/releases).
+2. In [Raspberry Pi Imager](https://www.raspberrypi.com/software/): your board, then
+   **Use custom** and the downloaded file, then the SD card (8 GB or more). Imager does
+   not offer its settings (Wi-Fi, user, SSH) for a custom file yet; none are needed.
+3. Put the card in and switch on. The first start writes the settings for the board and
+   restarts once; give it two minutes.
 
-1. Write Raspberry Pi OS Lite (64-bit) to a card, with Raspberry Pi Imager (set the
-   user, SSH key and Wi-Fi there) or with `scripts/flash-sd.sh` and a `user-data` like
-   [setup/user-data](setup/user-data) on its boot partition.
-2. Boot the Pi, make sure `ssh <host>` works without a password, then:
+**With a screen**, the wizard shows on it: language, Wi-Fi (or a cable), the own.audio
+server, sign-in with a QR code, sound, the box's name.
+
+**Without a screen**, the box opens its own Wi-Fi, named "own.audio box", when it has no
+network after a minute. Join it with a phone or a laptop: the setup page opens by itself
+(or open `http://10.42.0.1`). Choose your Wi-Fi and its password, the box's name and the
+sound card on its pins (the pHAT BEAT of a Pirate Radio, a DAC HAT; none for USB or HDMI),
+and the box joins your network. Then, back on your own Wi-Fi, open
+`http://<name>.local` — the page says which — and the first phone there runs the same
+wizard as the screen and becomes the box's screen. Further phones pair with a QR code
+from Settings → Phone control on one already paired.
+
+The box comes as `ownbox.local` until it is named; then the name is its address ("own.audio
+kitchen" → `kitchen.local`). Updates arrive in Settings → Updates.
+
+## Development
+
+From a Mac (or any machine with Rust, [zig](https://ziglang.org) and
+[cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild)), onto a Pi with Raspberry
+Pi OS Lite (64-bit) that `ssh <host>` reaches without a password:
 
 ```bash
 rustup target add aarch64-unknown-linux-gnu
@@ -120,45 +140,32 @@ setup/install-kiosk.sh <host>     # once, on a box with a screen
 ssh <host> journalctl -u ownbox -f
 ```
 
-ownbox runs as the user you log in as. The screen then shows the first-run wizard:
-language, Wi-Fi, the own.audio server, sign-in with a QR code, the sound output.
-
-`deploy.sh` cross-compiles with `cargo zigbuild`, installs ownbox, its systemd units, the
-kiosk, the polkit rules (Wi-Fi, the outside sources), the journal cap and the Wi-Fi
-country (`WIFI_COUNTRY`, CZ when not given). `setup/boot-config.sh` then writes
-what depends on the build: a marked block at the end of `config.txt` (power button,
-Bluetooth off, an audio HAT's overlay), the CPU cap for the board and the kiosk's scale
-for the panel. An I²S HAT without an EEPROM is named in `config.toml`:
+ownbox runs as the user you log in as. `deploy.sh` cross-compiles with `cargo zigbuild`,
+installs ownbox, its systemd units, the kiosk, the polkit rules (Wi-Fi, the outside
+sources), the journal cap and the Wi-Fi country (`WIFI_COUNTRY`, CZ when not given).
+`setup/boot-config.sh` then writes what depends on the build: a marked block at the end
+of `config.txt` (power button, Bluetooth off, an audio HAT's overlay), the CPU cap for
+the board and the kiosk's scale for the panel. An I²S HAT without an EEPROM is chosen in
+Settings → Sound card on the pins, or named in `config.toml`:
 
 ```toml
 audio_hat = "hifiberry-dacplus"   # an overlay in /boot/firmware/overlays; takes effect at the next boot
 ```
- Settings live in
-`~/.config/ownbox/config.toml` (written with defaults on first start) and what is changed
-on the screen in `~/.local/state/ownbox/` (`prefs.json`, `session.json`, `queue.json`).
 
-## A box without a screen (the radio)
+Settings live in `~/.config/ownbox/config.toml` (written with defaults on first start)
+and what is changed on the box in `~/.local/state/ownbox/` (`prefs.json`,
+`session.json`, `queue.json`).
 
-A Pirate Radio (Pi Zero 2 W + pHAT BEAT) runs the same `ownbox` without the kiosk. One
-card is enough: flash Raspberry Pi OS Lite (no customisation in Imager), then
+The image is built by `setup/image/build.sh` (64-bit ARM Linux, as root; GitHub Actions
+runs it as `.github/workflows/image.yml` for every release). `scripts/prepare-sd.sh`
+still prepares a bare Raspberry Pi OS card as a Pirate Radio that installs itself on
+first boot, for development.
 
-```bash
-WIFI_SSID=… WIFI_PASSWORD=… scripts/prepare-sd.sh   # writes onto /Volumes/bootfs
-```
-
-puts the Wi-Fi, your SSH key (`SSH_KEY_FILE`, `~/.ssh/id_ed25519.pub` by default), ownbox
-and `setup/radio/` on the boot partition; the script lists its other options (user,
-Wi-Fi country, time zone, server). On first
-boot cloud-init runs `firstboot.sh`: it installs mpv, ownbox and its units, writes the
-`config.txt` block (the pHAT BEAT's DAC, its five buttons as media keys, on/off as
-shutdown) and reboots — about ten minutes on a Zero 2 W, logged in
-`/var/log/ownbox-firstboot.log`. Then open `http://ownbox-radio.local:8686/` on a phone.
-
-With `headless = true` in `config.toml` the first phone to open the box pairs without a
-code and runs the setup wizard; paired phones may change the box's settings, as the
-screen would. Further phones pair with a code from Settings → Phone control on a
-phone already paired. Media keys from any input device (the HAT's buttons, a USB
-keyboard, the Jabra's volume buttons) control playback on every box.
+With `headless = true` in `config.toml` (the image sets it at every boot when no screen
+is connected) the first phone to open the box pairs without a code and runs the setup
+wizard; paired phones may change the box's settings, as the screen would. Media keys
+from any input device (the HAT's buttons, a USB keyboard, the Jabra's volume buttons)
+control playback on every box.
 
 ## Power button
 
@@ -181,12 +188,13 @@ GPIO17 (pin 11) with wake kept on GPIO3 — see HARDWARE.md.
 ## Layout
 
 - `src/` — `ownbox`: config, sign-in, the own.audio API (music, books, podcasts), the
-  play queue around mpv, screen, Wi-Fi, prefs, the equalizer, hardware detection,
-  outside sources, phone pairing, hardware buttons, the web server
+  play queue around mpv, screen, Wi-Fi and the setup Wi-Fi, prefs, the equalizer,
+  hardware detection, outside sources, phone pairing, hardware buttons, the web server
 - `ui/` — the touch UI (HTML, CSS, JS, Czech words in `i18n.js`), built into the binary
 - `setup/` — systemd units, kiosk, polkit rules, journal settings, `boot-config.sh`,
   the AirPlay build and `apply-sources.sh`, cloud-init template, the blank cursor;
-  `setup/radio/` — the radio's first-boot installer, config and cloud-init template
+  `setup/image/` — the SD card image's build, config and per-boot check;
+  `setup/radio/` — a bare card's first-boot installer for the radio (development)
 - `scripts/` — `flash-sd.sh`, `prepare-sd.sh` (the radio's card), `deploy.sh`, `ui-check.cjs` (drives the UI headless
   through an SSH tunnel)
 - `docs/` — hardware, the power-button picture, the README's pictures
@@ -202,8 +210,8 @@ section of the [changelog](CHANGELOG.md) as its notes. Boxes offer the update in
 Settings → Updates and put the previous version back if the new one does not start.
 Settings shows the running version.
 
-Where it is going: an install script for Raspberry Pi OS, then a ready SD card image
-for Raspberry Pi Imager.
+Each release carries the SD card image as well. Next: own.audio box in Raspberry Pi
+Imager's own list, so it can be picked there with Imager's settings.
 
 ## Licence
 

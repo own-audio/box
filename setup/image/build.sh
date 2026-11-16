@@ -63,7 +63,7 @@ cp /etc/resolv.conf "$root/etc/resolv.conf"
 echo "== packages"
 in_root apt-get update -q
 in_root apt-get install -y -q --no-install-recommends \
-  mpv avahi-daemon polkitd squeezelite cage chromium fonts-dejavu-core python3 rfkill
+  mpv avahi-daemon polkitd squeezelite cage chromium fonts-dejavu-core python3 rfkill dnsmasq-base
 
 echo "== AirPlay 2 (built from source)"
 cp -r "$setup/airplay" "$root/var/tmp/ownbox-airplay"
@@ -106,6 +106,7 @@ fill "$setup/50-ownbox-network.rules" > "$root/etc/polkit-1/rules.d/50-ownbox-ne
 fill "$setup/51-ownbox-sources.rules" > "$root/etc/polkit-1/rules.d/51-ownbox-sources.rules"
 install -D -m 644 "$setup/ownbox-journald.conf" "$root/etc/systemd/journald.conf.d/ownbox.conf"
 install -D -m 644 "$setup/ownbox-wifi-powersave.conf" "$root/etc/NetworkManager/conf.d/ownbox-wifi-powersave.conf"
+install -D -m 644 "$setup/dnsmasq-ownbox-setup.conf" "$root/etc/NetworkManager/dnsmasq-shared.d/ownbox-setup.conf"
 install -D -o 0 -g 0 -m 644 "$here/config.toml" "$root/home/$BOX_USER/.config/ownbox/config.toml"
 in_root chown -R "$BOX_USER:$BOX_USER" "/home/$BOX_USER"
 in_root python3 /dev/stdin /opt/ownbox/cursors < "$setup/blank-cursor.py"
@@ -120,6 +121,11 @@ in_root systemctl disable getty@tty1.service
 # The box asks nothing on its console: no first-boot user prompt (Imager's settings, when
 # given, still create a login user through cloud-init).
 in_root systemctl mask userconfig.service 2>/dev/null || true
+# Fewer writes to the SD card: no daily package-list updates, manual-page index or dpkg
+# backups (the box updates itself from GitHub, not apt), and zram's swap is never written
+# back to the card. The journal already lives in memory (Raspberry Pi OS's default).
+in_root systemctl mask apt-daily.timer apt-daily-upgrade.timer apt-listchanges.timer \
+  man-db.timer dpkg-db-backup.timer rpi-zram-writeback.timer
 echo ownbox > "$root/etc/hostname"
 sed -i 's/^127\.0\.1\.1.*/127.0.1.1\townbox/' "$root/etc/hosts"
 printf 'own.audio box %s (Raspberry Pi OS Lite 2026-10-06, arm64)\n' "$version" > "$root/etc/ownbox-image"

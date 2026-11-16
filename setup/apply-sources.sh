@@ -3,12 +3,15 @@
 # box's own: its name (prefs.json, set in the wizard), its sound card (config.toml) and
 # whether each source is on (prefs.json). Run as root by ownbox-sources.path whenever
 # prefs.json changes; a service is restarted only when its settings really changed.
+# Also the box's own settings that need root: its network name (on a box from the SD card
+# image) and the sound card on the GPIO header, which goes into config.txt and takes a
+# restart.
 set -euo pipefail
 
 STATE=/home/@USER@/.local/state/ownbox/prefs.json
 CONFIG=/home/@USER@/.config/ownbox/config.toml
 
-IFS=$'\t' read -r NAME DEVICE AIRPLAY MA < <(python3 - "$STATE" "$CONFIG" <<'EOF'
+IFS=$'\t' read -r NAME DEVICE AIRPLAY MA HOST < <(python3 - "$STATE" "$CONFIG" <<'EOF'
 import json, sys, tomllib
 try:
     prefs = json.load(open(sys.argv[1]))
@@ -46,8 +49,16 @@ def best_card():
 device = prefs.get("audio_device") or config.get("audio_device") or best_card()
 device = device[len("alsa/"):] if device.startswith("alsa/") else device
 on = lambda key: "yes" if prefs.get(key, True) is not False else "no"
+# The network name from the name given on the box: "own.audio pirate radio" → pirate-radio
+# (pirate-radio.local); "-" until one is given, so Imager's hostname stays until then.
+import re, unicodedata
+host = "-"
+if prefs.get("box_name"):
+    h = unicodedata.normalize("NFKD", prefs["box_name"]).encode("ascii", "ignore").decode().lower()
+    h = re.sub(r"[^a-z0-9]+", "-", h.replace("own.audio", "")).strip("-")[:40].strip("-")
+    host = "ownbox" if h in ("", "box") else h
 # Fields separated by tabs: the name may have spaces.
-print("\t".join([name.replace("\t", " "), device, on("airplay_enabled"), on("music_assistant_enabled")]))
+print("\t".join([name.replace("\t", " "), device, on("airplay_enabled"), on("music_assistant_enabled"), host]))
 EOF
 )
 
@@ -101,4 +112,18 @@ if installed squeezelite.service; then
     systemctl restart squeezelite.service || true
   fi
   if [ "$MA" = yes ]; then systemctl enable --now --quiet squeezelite.service; else systemctl disable --now --quiet squeezelite.service; fi
+fi
+
+# The name as the box's address, only on a box made from the SD card image: a box set up
+# by hand keeps the hostname its owner gave it.
+if [ -e /etc/ownbox-image ] && [ "$HOST" != - ] && [ "$(hostname)" != "$HOST" ]; then
+  hostnamectl set-hostname "$HOST"
+  sed -i "s/^127\.0\.1\.1.*/127.0.1.1\t$HOST/" /etc/hosts
+  systemctl try-restart avahi-daemon.service || true
+fi
+
+# A sound card chosen on the box: its overlay into config.txt, which the firmware reads at
+# boot only.
+if [ -x /opt/ownbox/boot-config.sh ] && [ "$(/opt/ownbox/boot-config.sh)" = reboot ]; then
+  systemctl reboot
 fi

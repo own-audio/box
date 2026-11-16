@@ -9,6 +9,7 @@ set -euo pipefail
 
 CONFIG_TXT=${CONFIG_TXT:-/boot/firmware/config.txt}
 CONFIG_TOML=${CONFIG_TOML:-/home/@USER@/.config/ownbox/config.toml}
+PREFS_JSON=${PREFS_JSON:-/home/@USER@/.local/state/ownbox/prefs.json}
 BEGIN="# own.audio box begin: written by the deploy, edit config.toml instead"
 END="# own.audio box end"
 
@@ -21,8 +22,19 @@ except Exception:
     print("")
 EOF
 }
-HAT=$(toml audio_hat)
-BUTTONS=$(toml buttons)
+# The sound card chosen on the box (Settings, the setup Wi-Fi) wins over config.toml's.
+pref() {
+  python3 - "$PREFS_JSON" "$1" <<'EOF'
+import json, sys
+try:
+    v = json.load(open(sys.argv[1])).get(sys.argv[2])
+    print("-" if v is None else str(v).strip())
+except Exception:
+    print("-")
+EOF
+}
+HAT=$(pref audio_hat); [ "$HAT" = - ] && HAT=$(toml audio_hat)
+BUTTONS=$(pref hat_buttons); [ "$BUTTONS" = - ] && BUTTONS=$(toml buttons)
 case "$HAT" in *[!a-z0-9-]*) echo "audio_hat: not an overlay name: $HAT" >&2; exit 1 ;; esac
 if [ -n "$HAT" ] && [ ! -e "/boot/firmware/overlays/$HAT.dtbo" ]; then
   echo "audio_hat: no overlay $HAT.dtbo" >&2; exit 1
@@ -88,9 +100,11 @@ case "$MODEL" in
   *"Pi 4"*) MAX=1200000 ;;
   *) MAX="" ;;
 esac
+# Files are written only when they change: this runs at every boot and after every change
+# of the box's settings, and the SD card should not take a write each time.
+write() { cmp -s "$1" <(printf '%s\n' "$2") || printf '%s\n' "$2" > "$1"; }
 if [ -n "$MAX" ]; then
-  printf '# own.audio box: CPU cap for %s (written by the deploy).\nw /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq - - - - %s\n' "$MODEL" "$MAX" \
-    > /etc/tmpfiles.d/ownbox-cpu.conf
+  write /etc/tmpfiles.d/ownbox-cpu.conf "$(printf '# own.audio box: CPU cap for %s (written by the deploy).\nw /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq - - - - %s' "$MODEL" "$MAX")"
   systemd-tmpfiles --create /etc/tmpfiles.d/ownbox-cpu.conf
 else
   rm -f /etc/tmpfiles.d/ownbox-cpu.conf
@@ -103,4 +117,4 @@ for c in /sys/class/drm/card*-DSI-*; do
   [ "$(cat "$c/status" 2>/dev/null)" = connected ] || continue
   case "$(head -1 "$c/modes" 2>/dev/null)" in 720x1280|1280x720) SCALE=1.6 ;; esac
 done
-printf 'KIOSK_URL=http://localhost:8686\nKIOSK_SCALE=%s\n' "$SCALE" > /etc/default/ownbox-kiosk
+write /etc/default/ownbox-kiosk "$(printf 'KIOSK_URL=http://localhost:8686\nKIOSK_SCALE=%s' "$SCALE")"

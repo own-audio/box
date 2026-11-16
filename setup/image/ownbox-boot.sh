@@ -28,6 +28,12 @@ if [ -z "$(raspi-config nonint get_wifi_country 2>/dev/null)" ]; then
   rfkill unblock wifi || true
 fi
 
+# cloud-init has done its one job (Imager's settings) once a boot has finished it; it would
+# only cost seconds and writes at every boot after. (Its status says "running" this early.)
+if [ ! -e /etc/cloud/cloud-init.disabled ] && [ -e /var/lib/cloud/instance/boot-finished ]; then
+  touch /etc/cloud/cloud-init.disabled
+fi
+
 if [ "$(/opt/ownbox/boot-config.sh)" = reboot ]; then
   echo "config.txt written for $(tr -d '\0' </proc/device-tree/model); rebooting once"
   systemctl reboot

@@ -10,7 +10,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::{AppState, books, eq, hardware, update, library, outside, player, podcasts, power, remote, setup, wifi};
+use crate::{AppState, books, eq, hardware, hotspot, update, library, outside, player, podcasts, power, remote, setup, wifi};
 
 // The UI is built into the binary: one file to deploy, nothing to get out of step.
 const INDEX_HTML: &str = include_str!("../ui/index.html");
@@ -82,6 +82,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/update/rollback", post(update_rollback))
         .route("/api/audio", get(audio_state))
         .route("/api/audio/output", post(audio_set))
+        .route("/api/audio/hats", get(hats_state))
+        .route("/api/audio/hat", post(hat_set))
+        .route("/api/hotspot", get(hotspot_state))
+        .route("/api/hotspot/apply", post(hotspot_apply))
         .route("/api/outside/{kind}/{event}", post(outside_event))
         .route("/api/setup", get(setup_state))
         .route("/api/setup/check", post(setup_check))
@@ -103,6 +107,9 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/screen", get(screen_state).post(screen_set))
         .route("/api/screen/settings", post(screen_settings))
         .route("/api/screen/touch", post(screen_touch))
+        // Before the guard, so it sees unknown paths too: on the setup Wi-Fi a phone's
+        // check for a sign-in page (/hotspot-detect.html, /generate_204) is sent to setup.
+        .fallback(|| async { StatusCode::NOT_FOUND })
         .layer(axum::middleware::from_fn_with_state(state.clone(), guard))
         .with_state(state)
 }
@@ -331,7 +338,18 @@ async fn guard(
 ) -> axum::response::Response {
     let token = req.headers().get(header::COOKIE).and_then(|v| v.to_str().ok()).and_then(remote::token_from_cookies);
     let paired = s.prefs.get().remote_devices;
-    match remote::access(peer.ip(), req.uri().path(), token, &paired, s.config.headless) {
+    let setup = s.hotspot.serves(peer.ip());
+    if setup {
+        s.hotspot.touch();
+        // On the setup Wi-Fi every name leads to the box; a phone checking for a sign-in page
+        // (captive.apple.com, connectivitycheck…) is sent to the setup page, so it opens it.
+        let host = req.headers().get(header::HOST).and_then(|v| v.to_str().ok()).unwrap_or("");
+        let host = host.rsplit_once(':').map_or(host, |(h, _)| h);
+        if host != hotspot::ADDRESS.to_string() {
+            return axum::response::Redirect::to(&format!("http://{}/", hotspot::ADDRESS)).into_response();
+        }
+    }
+    match remote::access(peer.ip(), req.uri().path(), token, &paired, s.config.headless, setup) {
         remote::Access::Allowed => next.run(req).await,
         remote::Access::NeedsPairing => (StatusCode::UNAUTHORIZED, Json(json!({ "error": "pair this phone on the box first" }))).into_response(),
         remote::Access::ScreenOnly => (StatusCode::FORBIDDEN, Json(json!({ "error": "only on the box's own screen" }))).into_response(),
@@ -355,6 +373,8 @@ async fn remote_status(
         "headless": headless,
         // The first phone pairs without a code (see `Remote::pair_first`).
         "first": headless && devices.is_empty(),
+        // On the box's own setup Wi-Fi: the setup page, nothing else.
+        "setup_wifi": s.hotspot.serves(peer.ip()),
     }))
 }
 
@@ -648,7 +668,127 @@ async fn setup_state(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> 
         "hosted_url": setup::HOSTED_URL,
         "box_name": s.auth.device_name(),
         "signed_in": matches!(s.auth.view().await, crate::session::View::SignedIn { .. }),
+        // Chosen already (on the setup Wi-Fi, or before a reload): the wizard skips it.
+        "language_set": prefs.language.is_some(),
+        "address": box_address(&s),
     }))
+}
+
+/// Where phones find the box: `<host>.local`. A box from the SD card image takes its name
+/// for its address (`apply-sources.sh`), so a name just given shows at once.
+fn box_address(s: &AppState) -> String {
+    let host = if std::path::Path::new("/etc/ownbox-image").exists() && s.prefs.get().box_name.is_some() {
+        hotspot::host_name(&s.auth.device_name())
+    } else {
+        std::fs::read_to_string("/proc/sys/kernel/hostname").map(|h| h.trim().to_owned()).unwrap_or_else(|_| "ownbox".into())
+    };
+    format!("{host}.local")
+}
+
+// --- sound cards on the GPIO header -----------------------------------------------------
+
+/// The cards offered by name: their overlay (as `boot-config.sh` writes it into
+/// config.txt) and, for the pHAT BEAT, its buttons. One without an EEPROM is not found by
+/// the firmware on its own, hence the list.
+const HATS: [(&str, &str, &str); 7] = [
+    ("", "", "None (USB, HDMI or the headphone jack)"),
+    ("hifiberry-dac", "phat-beat", "Pimoroni pHAT BEAT (Pirate Radio)"),
+    ("hifiberry-dac", "", "Pimoroni pHAT DAC, HiFiBerry DAC or MiniAmp"),
+    ("iqaudio-dacplus", "", "Raspberry Pi DAC+ or IQaudIO DAC+"),
+    ("hifiberry-dacplus", "", "HiFiBerry DAC+ or Amp2"),
+    ("justboom-dac", "", "JustBoom DAC or Amp"),
+    ("allo-boss-dac-pcm512x-audio", "", "Allo Boss DAC"),
+];
+
+fn hats_json(s: &AppState) -> serde_json::Value {
+    let p = s.prefs.get();
+    let hat = p.audio_hat.clone().unwrap_or_else(|| s.config.audio_hat.clone());
+    let buttons = p.hat_buttons.clone().unwrap_or_else(|| s.config.buttons.clone());
+    json!({
+        "choices": HATS.iter().enumerate().map(|(i, (overlay, buttons, label))| json!({ "id": i, "overlay": overlay, "buttons": buttons, "label": label })).collect::<Vec<_>>(),
+        "current": HATS.iter().position(|(o, b, _)| *o == hat && *b == buttons),
+    })
+}
+
+async fn hats_state(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    Json(hats_json(&s))
+}
+
+#[derive(Deserialize)]
+struct HatRequest {
+    id: usize,
+}
+
+/// A card chosen on the box: saved, and the root unit writes config.txt and restarts the
+/// box when it changed (`apply-sources.sh`, `boot-config.sh`).
+async fn hat_set(State(s): State<Arc<AppState>>, Json(req): Json<HatRequest>) -> axum::response::Response {
+    let Some((overlay, buttons, _)) = HATS.get(req.id) else {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "no such sound card" }))).into_response();
+    };
+    s.prefs.update(|p| {
+        p.audio_hat = Some((*overlay).to_owned());
+        p.hat_buttons = Some((*buttons).to_owned());
+    });
+    Json(hats_json(&s)).into_response()
+}
+
+// --- the setup Wi-Fi --------------------------------------------------------------------
+
+async fn hotspot_state(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let snap = s.hotspot.snapshot();
+    Json(json!({
+        "active": snap.active,
+        "networks": snap.networks,
+        "error": snap.error,
+        "box_name": s.auth.device_name(),
+        "language": language(&s),
+        "hats": hats_json(&s),
+    }))
+}
+
+#[derive(Deserialize)]
+struct HotspotApply {
+    ssid: String,
+    #[serde(default)]
+    password: Option<String>,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    language: Option<String>,
+    #[serde(default)]
+    hat: Option<usize>,
+}
+
+/// The setup page's one form: language and name now, the home Wi-Fi next (the box's own
+/// network goes down for it), the sound card last, since a new one restarts the box.
+async fn hotspot_apply(State(s): State<Arc<AppState>>, Json(req): Json<HotspotApply>) -> axum::response::Response {
+    let ssid = req.ssid.trim().to_owned();
+    if ssid.is_empty() {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "choose a network" }))).into_response();
+    }
+    if req.hat.is_some_and(|i| i >= HATS.len()) {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "no such sound card" }))).into_response();
+    }
+    if let Some(lang) = req.language.filter(|l| matches!(l.as_str(), "cs" | "en")) {
+        s.prefs.update(|p| p.language = Some(lang));
+    }
+    if let Some(name) = req.name.map(|n| n.trim().chars().take(60).collect::<String>()).filter(|n| !n.is_empty()) {
+        s.auth.set_device_name(name.clone());
+        s.prefs.update(|p| p.box_name = Some(name));
+    }
+    let own = s.auth.device_name();
+    let address = box_address(&s);
+    let state = Arc::clone(&s);
+    let hat = req.hat;
+    tokio::spawn(Arc::clone(&s.hotspot).join(ssid.clone(), req.password, own, move || {
+        if let Some((overlay, buttons, _)) = hat.and_then(|i| HATS.get(i)) {
+            state.prefs.update(|p| {
+                p.audio_hat = Some((*overlay).to_owned());
+                p.hat_buttons = Some((*buttons).to_owned());
+            });
+        }
+    }));
+    Json(json!({ "ssid": ssid, "address": address })).into_response()
 }
 
 #[derive(Deserialize)]

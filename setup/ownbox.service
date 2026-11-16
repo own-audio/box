@@ -7,6 +7,8 @@ After=sound.target
 [Service]
 User=@USER@
 SupplementaryGroups=audio video input
+# Port 80 as well, for http://ownbox.local without a port and the setup Wi-Fi's page.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
 RuntimeDirectory=ownbox
 ExecStart=/opt/ownbox/ownbox
 Environment=RUST_LOG=ownbox=info

@@ -20,6 +20,12 @@ pub struct Config {
     /// Where the UI and its API are served. On the LAN, for paired phones; the screen is
     /// the same page on localhost.
     pub listen: String,
+    /// Also served here, so `http://ownbox.local` works without the port (and a browser
+    /// that tries https first falls back at once). Empty: not at all. Needs
+    /// CAP_NET_BIND_SERVICE (ownbox.service); without it ownbox carries on without.
+    pub listen_http: String,
+    /// A headless box without a network opens its own Wi-Fi to be set up from a phone.
+    pub setup_wifi: bool,
     /// Backlight level while the screen is on, 1–255.
     pub screen_brightness: u8,
     /// Seconds without a touch before the backlight goes off; 0 keeps it on.
@@ -56,6 +62,8 @@ impl Default for Config {
             // IPv6 and IPv4 both: a phone that finds `ownbox.local` over IPv6 first
             // otherwise waits, or never gets through (seen with an iPhone).
             listen: "[::]:8686".into(),
+            listen_http: "[::]:80".into(),
+            setup_wifi: true,
             screen_brightness: 255,
             screen_off_after_secs: 30,
             language: "cs".into(),

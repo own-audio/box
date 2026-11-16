@@ -14,7 +14,7 @@ bin=target/aarch64-unknown-linux-gnu/release/ownbox
 user="$(ssh "$host" id -un)"
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
-for f in setup/ownbox.service setup/ownbox-kiosk.service setup/blank-cursor.py setup/boot-config.sh setup/install-update.sh setup/ownbox-update.path setup/ownbox-update.service setup/50-ownbox-network.rules setup/ownbox-journald.conf setup/ownbox-wifi-powersave.conf setup/51-ownbox-sources.rules setup/apply-sources.sh setup/ownbox-sources.path setup/ownbox-sources.service setup/airplay/shairport-restart.conf setup/squeezelite.service; do
+for f in setup/ownbox.service setup/ownbox-kiosk.service setup/blank-cursor.py setup/boot-config.sh setup/install-update.sh setup/ownbox-update.path setup/ownbox-update.service setup/50-ownbox-network.rules setup/ownbox-journald.conf setup/ownbox-wifi-powersave.conf setup/51-ownbox-sources.rules setup/apply-sources.sh setup/ownbox-sources.path setup/ownbox-sources.service setup/airplay/shairport-restart.conf setup/squeezelite.service setup/dnsmasq-ownbox-setup.conf; do
   sed "s/@USER@/$user/g" "$f" > "$stage/$(basename "$f")"
 done
 scp -q "$bin" "$stage"/* "$host:/tmp/"
@@ -34,6 +34,7 @@ ssh "$host" 'set -e
     sudo install -D -m 644 /tmp/ownbox-journald.conf /etc/systemd/journald.conf.d/ownbox.conf
     sudo systemctl restart systemd-journald
   fi
+  sudo install -D -m 644 /tmp/dnsmasq-ownbox-setup.conf /etc/NetworkManager/dnsmasq-shared.d/ownbox-setup.conf
   if ! cmp -s /tmp/ownbox-wifi-powersave.conf /etc/NetworkManager/conf.d/ownbox-wifi-powersave.conf; then
     sudo install -D -m 644 /tmp/ownbox-wifi-powersave.conf /etc/NetworkManager/conf.d/ownbox-wifi-powersave.conf
     sudo nmcli general reload conf || true

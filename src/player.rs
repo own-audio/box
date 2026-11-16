@@ -25,7 +25,11 @@ use tokio::sync::Mutex;
 use crate::{books, library::Track, mpv::Mpv, podcasts, prefs::PrefsStore, session::Auth};
 
 const TICK: Duration = Duration::from_millis(500);
+/// The place in a book or episode goes to the server this often while it plays.
 const SAVE_EVERY: Duration = Duration::from_secs(30);
+/// …and to the SD card only this often: pause, skip and stop save at once anyway, and a
+/// cheap card wears with every write. A power cut loses at most this much of a song.
+const PERSIST_EVERY: Duration = Duration::from_secs(120);
 /// Shorter listens are not worth a session in the statistics.
 const MIN_SESSION_SECS: f64 = 5.0;
 
@@ -53,6 +57,7 @@ struct Queue {
     active: bool,
     paused: bool,
     last_saved: Option<Instant>,
+    last_persisted: Option<Instant>,
     listening: Option<Listening>,
     sleep: Option<Sleep>,
     /// A queue read back from disk after a restart: shown as paused at this second, and
@@ -629,8 +634,11 @@ impl Player {
                 && let Some(position) = self.property_f64("time-pos").await
             {
                 self.save_position(&q, position, false);
-                self.persist(&q, position);
                 q.last_saved = Some(Instant::now());
+                if q.last_persisted.is_none_or(|t| t.elapsed() >= PERSIST_EVERY) {
+                    self.persist(&q, position);
+                    q.last_persisted = Some(Instant::now());
+                }
             }
         }
         Ok(())

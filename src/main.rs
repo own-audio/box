@@ -4,6 +4,7 @@ mod buttons;
 mod config;
 mod eq;
 mod hardware;
+mod hotspot;
 mod library;
 mod mpv;
 mod outside;
@@ -35,6 +36,7 @@ pub struct AppState {
     pub started: Instant,
     pub updater: Arc<update::Updater>,
     pub http: reqwest::Client,
+    pub hotspot: Arc<hotspot::Hotspot>,
 }
 
 #[tokio::main]
@@ -138,7 +140,13 @@ async fn main() -> anyhow::Result<()> {
         started: Instant::now(),
         updater: Arc::clone(&updater),
         http: http.clone(),
+        hotspot: hotspot::Hotspot::new(),
     });
+    // Only a box without a screen: one with a screen sets its Wi-Fi up on it.
+    if state.config.headless && state.config.setup_wifi {
+        let named = Arc::clone(&state);
+        tokio::spawn(Arc::clone(&state.hotspot).run(move || named.auth.device_name()));
+    }
     tokio::spawn(updater.run(http));
     tokio::spawn(buttons::run(Arc::clone(&state)));
 
@@ -169,12 +177,42 @@ async fn main() -> anyhow::Result<()> {
             }
         });
     }
+    let plain = if state.config.listen_http.is_empty() {
+        None
+    } else {
+        match tokio::net::TcpListener::bind(&state.config.listen_http).await {
+            Ok(l) => Some(l),
+            Err(err) => {
+                tracing::warn!(%err, listen = %state.config.listen_http, "not serving the plain address");
+                None
+            }
+        }
+    };
     let (stopping, stopped) = tokio::sync::oneshot::channel();
-    let serve = axum::serve(listener, web::router(state.clone()).into_make_service_with_connect_info::<std::net::SocketAddr>())
-        .with_graceful_shutdown(async move {
+    let (stop_all, _) = tokio::sync::broadcast::channel::<()>(1);
+    {
+        let stop_all = stop_all.clone();
+        tokio::spawn(async move {
             shutdown_signal().await;
+            let _ = stop_all.send(());
             let _ = stopping.send(());
         });
+    }
+    let serve_on = |listener: tokio::net::TcpListener| {
+        let mut stop = stop_all.subscribe();
+        axum::serve(listener, web::router(state.clone()).into_make_service_with_connect_info::<std::net::SocketAddr>())
+            .with_graceful_shutdown(async move {
+                let _ = stop.recv().await;
+            })
+            .into_future()
+    };
+    let main_server = serve_on(listener);
+    let serve = async move {
+        match plain {
+            Some(l) => tokio::try_join!(main_server, serve_on(l)).map(drop),
+            None => main_server.await,
+        }
+    };
     // The screen and phones ask every second over kept-alive connections; waiting for them
     // all to close could last until systemd's SIGKILL. A few seconds is enough.
     tokio::select! {
