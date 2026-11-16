@@ -147,9 +147,15 @@ fn public(path: &str) -> bool {
     matches!(path, "/" | "/app.js" | "/style.css" | "/i18n.js" | "/api/remote/pair" | "/api/remote/status")
 }
 
+/// The box itself: loopback, also as an IPv4 address mapped into IPv6 (`::ffff:127.0.0.1`),
+/// which is how IPv4 arrives on the dual-stack `[::]` socket.
+pub fn is_box(peer: IpAddr) -> bool {
+    peer.to_canonical().is_loopback()
+}
+
 /// `headless`: the box has no screen, so a paired phone stands in for it and may run the box.
 pub fn access(peer: IpAddr, path: &str, token: Option<&str>, paired: &[Paired], headless: bool) -> Access {
-    if peer.is_loopback() {
+    if is_box(peer) {
         return Access::Allowed;
     }
     let is_paired = token.is_some_and(|t| paired.iter().any(|p| p.token_hash == hash(t)));
@@ -183,6 +189,10 @@ mod tests {
     #[test]
     fn the_box_itself_needs_nothing() {
         assert_eq!(access("127.0.0.1".parse().unwrap(), "/api/wifi", None, &[], false), Access::Allowed);
+        assert_eq!(access("::1".parse().unwrap(), "/api/wifi", None, &[], false), Access::Allowed);
+        assert_eq!(access("::ffff:127.0.0.1".parse().unwrap(), "/api/wifi", None, &[], false), Access::Allowed);
+        // A phone over IPv4 on the dual-stack socket is still a phone.
+        assert_eq!(access("::ffff:192.168.1.20".parse().unwrap(), "/api/wifi", None, &[], false), Access::ScreenOnly);
     }
 
     #[test]

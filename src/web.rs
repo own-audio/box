@@ -350,7 +350,7 @@ async fn remote_status(
     let headless = s.config.headless;
     Json(json!({
         // Without a screen, a paired phone is the screen.
-        "screen": peer.ip().is_loopback() || (headless && paired),
+        "screen": remote::is_box(peer.ip()) || (headless && paired),
         "paired": paired,
         "headless": headless,
         // The first phone pairs without a code (see `Remote::pair_first`).

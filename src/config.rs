@@ -53,7 +53,9 @@ impl Default for Config {
                 "--audio-samplerate=48000".into(),
                 "--audio-format=s16".into(),
             ],
-            listen: "0.0.0.0:8686".into(),
+            // IPv6 and IPv4 both: a phone that finds `ownbox.local` over IPv6 first
+            // otherwise waits, or never gets through (seen with an iPhone).
+            listen: "[::]:8686".into(),
             screen_brightness: 255,
             screen_off_after_secs: 30,
             language: "cs".into(),

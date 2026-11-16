@@ -7,6 +7,15 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- ownbox listened on IPv4 only, while the box announces `ownbox.local` with its IPv6
+  address too: a phone that tried IPv6 first waited, or never got through. It now
+  listens on `[::]:8686`, both at once (the box's own screen is still told apart, also
+  as `::ffff:127.0.0.1`); `deploy.sh` moves boxes set up before.
+- The image left AirPlay without two libraries (`libplist`, `libconfig`): removing the
+  build tools took them along. They are now kept, and the build fails if one goes.
+
 ### Added
 
 - An SD card image (`setup/image/build.sh`, built in GitHub Actions by `image.yml`):

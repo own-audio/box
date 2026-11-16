@@ -42,7 +42,8 @@ ssh "$host" 'set -e
   [ "$(sudo raspi-config nonint get_wifi_country 2>/dev/null)" = "${WIFI_COUNTRY:-CZ}" ] || sudo raspi-config nonint do_wifi_country "${WIFI_COUNTRY:-CZ}"
   [ -e /opt/ownbox/cursors/default/cursors/default ] || sudo python3 /tmp/blank-cursor.py /opt/ownbox/cursors
   # Phone control needs the LAN; boxes set up before it listened on themselves only.
-  sed -i "s/^listen = \"127.0.0.1:8686\"$/listen = \"0.0.0.0:8686\"/" ~/.config/ownbox/config.toml 2>/dev/null || true
+  # And IPv6 too: an iPhone may try the box over IPv6 first and never fall back.
+  sed -i -E "s/^listen = \"(127\.0\.0\.1|0\.0\.0\.0):8686\"$/listen = \"[::]:8686\"/" ~/.config/ownbox/config.toml 2>/dev/null || true
   sudo install -m 755 /tmp/ownbox /opt/ownbox/ownbox
   sudo install -m 644 /tmp/ownbox.service /tmp/ownbox-kiosk.service /etc/systemd/system/
   # What differs by build (phase 8): config.txt block, CPU cap, the kiosk scale.
