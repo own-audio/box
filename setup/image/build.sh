@@ -29,7 +29,7 @@ root=$work/root
 loop=
 cleanup() {
   set +e
-  for m in boot/firmware dev/pts dev proc sys run; do mountpoint -q "$root/$m" && umount "$root/$m"; done
+  for m in boot/firmware dev/pts dev proc sys; do mountpoint -q "$root/$m" && umount "$root/$m"; done
   mountpoint -q "$root" && umount "$root"
   [ -n "$loop" ] && losetup -d "$loop"
   rm -rf "$work"
@@ -49,7 +49,7 @@ resize2fs "${loop}p2"
 mkdir -p "$root"
 mount "${loop}p2" "$root"
 mount "${loop}p1" "$root/boot/firmware"
-for m in dev dev/pts proc sys run; do mount --bind "/$m" "$root/$m"; done
+for m in dev dev/pts proc sys; do mount --bind "/$m" "$root/$m"; done
 
 in_root() { chroot "$root" /usr/bin/env DEBIAN_FRONTEND=noninteractive LC_ALL=C.UTF-8 "$@"; }
 # Nothing starts inside the chroot.
@@ -119,7 +119,7 @@ rm -rf "$root"/var/lib/apt/lists/* "$root"/var/log/apt/* "$root"/tmp/* "$root"/v
 rm -f "$root/usr/sbin/policy-rc.d" "$root/etc/resolv.conf"
 cp -a "$resolv_backup" "$root/etc/resolv.conf" 2>/dev/null || true
 du -sh "$root" | sed 's/^/root file system: /'
-for m in boot/firmware dev/pts dev proc sys run; do umount "$root/$m"; done
+for m in boot/firmware dev/pts dev proc sys; do umount "$root/$m"; done
 umount "$root"
 e2fsck -pf "${loop}p2" || [ $? -le 1 ]
 # Free blocks to zeros, so they compress to nothing.

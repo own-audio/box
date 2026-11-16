@@ -41,7 +41,7 @@ make -j"$(nproc)" >/dev/null
 sudo make install >/dev/null
 
 sudo install -D -m 644 "$HERE/shairport-restart.conf" /etc/systemd/system/shairport-sync.service.d/ownbox-restart.conf
-if [ -d /run/systemd/system ]; then
+if ! systemd-detect-virt --quiet --chroot; then
   sudo systemctl daemon-reload
   sudo systemctl enable --now nqptp
 else
