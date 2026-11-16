@@ -30,9 +30,9 @@ pub struct Config {
     /// `allo-boss-dac-pcm512x-audio`…). The deploy writes it into `config.txt`; empty for USB
     /// sound or a HAT the firmware finds itself.
     pub audio_hat: String,
-    /// The GitHub "latest release" URL ownbox checks for updates of itself, e.g.
-    /// `https://api.github.com/repos/<owner>/own-audio-box/releases/latest`. Empty: no
-    /// updates (a build without the release key has none either).
+    /// Where ownbox looks for updates of itself: GitHub's list of releases (betas
+    /// included), or one release document such as `…/releases/latest`. Empty: no updates
+    /// (a build without the release key has none either).
     pub update_feed: String,
     /// A box without a screen (the radio): the first phone to open it pairs without a code,
     /// and paired phones may set the box up, as the screen would.
@@ -58,7 +58,7 @@ impl Default for Config {
             screen_off_after_secs: 30,
             language: "cs".into(),
             audio_hat: String::new(),
-            update_feed: String::new(),
+            update_feed: "https://api.github.com/repos/own-audio/box/releases?per_page=20".into(),
             headless: false,
             buttons: String::new(),
         }

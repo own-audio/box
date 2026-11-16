@@ -2,11 +2,25 @@
 
 What changed in the own.audio box, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow `ownbox`'s
-`Cargo.toml`. Nothing has been released yet.
+`Cargo.toml` and [semantic versioning](https://semver.org); a tag `vX.Y.Z` publishes
+that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.1] — 2026-11-16
+
+The first public version. A Raspberry Pi with a touch screen, or a small one without,
+that plays music, audiobooks and podcasts from an own.audio server, is controlled from
+a phone, and takes AirPlay 2 and Music Assistant. Tested on a Pi 3 B+ with the official
+7" display and on a Pi Zero 2 W with a pHAT BEAT; set up from a Mac for now (see the
+README). A box built from this release offers the next ones in Settings → Updates.
+
 ### Changed
+
+- Version 1.0.0-beta.1 (was 0.1.0). Updates read the repository's list of releases
+  (`own-audio/box`, the default `update_feed`), so betas are found too, and versions
+  compare as semver: `1.0.0-beta.2` after `beta.1`, `1.0.0` after every beta. Tags with
+  a `-` are published as pre-releases.
 
 - Ready for a public repository: the setup files no longer name one user. Units, polkit
   rules and scripts carry `@USER@`, filled in at install (`deploy.sh` and

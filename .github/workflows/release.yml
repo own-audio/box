@@ -45,5 +45,9 @@ jobs:
         run: |
           # The notes are the version's section of CHANGELOG.md.
           awk -v v="${GITHUB_REF_NAME#v}" '$0 ~ "^## \\[" v "\\]" {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > notes.md
+          # A version with a "-" (1.0.0-beta.1) is a pre-release; boxes find it in the
+          # release list all the same.
+          pre=; case "$GITHUB_REF_NAME" in *-*) pre=--prerelease ;; esac
+          test -s notes.md
           gh release create "$GITHUB_REF_NAME" ownbox-aarch64 ownbox-aarch64.minisig ownbox-aarch64.sha256 \
-            --title "ownbox ${GITHUB_REF_NAME#v}" --notes-file notes.md
+            --title "ownbox ${GITHUB_REF_NAME#v}" --notes-file notes.md $pre

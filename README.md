@@ -36,8 +36,8 @@ with a DAC HAT and buttons, controlled from a phone. And it is an AirPlay 2 rece
 and a Music Assistant player.
 
 The software is `ownbox`, one Rust program that drives mpv and serves the touch UI,
-shown full screen by Chromium in a kiosk (cage). Early days: it runs every day on the
-two boxes below, but there is no release, image or installer yet.
+shown full screen by Chromium in a kiosk (cage). In beta (1.0.0-beta.1): it runs every
+day on the two boxes below, but there is no image or installer yet.
 
 ## What it does today
 
@@ -66,8 +66,8 @@ two boxes below, but there is no release, image or installer yet.
   card go and shows what plays, and playing own.audio takes it back. AirPlay needs
   `setup/airplay/build.sh` run once on the Pi.
 - **Sound output:** Settings lists the cards found (an I²S DAC, USB, HDMI, the jack).
-- **Updates:** signed releases from GitHub, installed from Settings with an automatic
-  way back; built and tested, off until the first release.
+- **Updates:** signed releases from this repository, betas included, installed from
+  Settings with an automatic way back.
 
 ## Tested on
 
@@ -187,8 +187,9 @@ GPIO17 (pin 11) with wake kept on GPIO3 — see HARDWARE.md.
 
 ## Versions
 
-[Semantic versioning](https://semver.org), 0.x until the box is one people can buy the
-parts for and set up without a Mac. Each release is a tag `vX.Y.Z`: GitHub Actions
+[Semantic versioning](https://semver.org). Betas of 1.0.0 for now (`1.0.0-beta.1`,
+`beta.2`…); 1.0.0 once people can buy the parts and set a box up without a Mac. Each
+release is a tag `vX.Y.Z` (a beta is published as a pre-release): GitHub Actions
 builds ownbox for the Pi, signs it with minisign and publishes it as a GitHub Release
 ([.github/workflows/release.yml](.github/workflows/release.yml)), with that version's
 section of the [changelog](CHANGELOG.md) as its notes. Boxes offer the update in

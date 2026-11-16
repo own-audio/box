@@ -55,15 +55,75 @@ pub struct Updater {
     state: Mutex<Option<String>>,
 }
 
-/// `v1.2.3` or `1.2.3` as numbers; anything after a `-` or `+` is ignored.
-fn parse_version(v: &str) -> Option<(u64, u64, u64)> {
-    let core = v.trim().trim_start_matches('v').split(['-', '+']).next()?;
+/// A version as semver orders it: `v1.2.3`, `1.0.0-beta.2`; build metadata (`+…`) is
+/// ignored.
+#[derive(Debug, PartialEq, Eq)]
+struct Version {
+    core: (u64, u64, u64),
+    /// Empty for a release, which comes after all of its pre-releases.
+    pre: Vec<String>,
+}
+
+fn parse_version(v: &str) -> Option<Version> {
+    let v = v.trim().trim_start_matches('v').split('+').next()?;
+    let (core, pre) = match v.split_once('-') {
+        Some((c, p)) => (c, p.split('.').map(str::to_owned).collect()),
+        None => (v, Vec::new()),
+    };
     let mut parts = core.split('.').map(|p| p.parse::<u64>().ok());
-    Some((parts.next()??, parts.next().flatten().unwrap_or(0), parts.next().flatten().unwrap_or(0)))
+    let core = (parts.next()??, parts.next().flatten().unwrap_or(0), parts.next().flatten().unwrap_or(0));
+    Some(Version { core, pre })
+}
+
+impl Ord for Version {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use std::cmp::Ordering::*;
+        self.core.cmp(&other.core).then_with(|| match (self.pre.is_empty(), other.pre.is_empty()) {
+            (true, true) => Equal,
+            (true, false) => Greater,
+            (false, true) => Less,
+            // Numeric identifiers by number and before words, as semver says.
+            (false, false) => {
+                for (a, b) in self.pre.iter().zip(&other.pre) {
+                    let o = match (a.parse::<u64>(), b.parse::<u64>()) {
+                        (Ok(x), Ok(y)) => x.cmp(&y),
+                        (Ok(_), Err(_)) => Less,
+                        (Err(_), Ok(_)) => Greater,
+                        (Err(_), Err(_)) => a.cmp(b),
+                    };
+                    if o != Equal {
+                        return o;
+                    }
+                }
+                self.pre.len().cmp(&other.pre.len())
+            }
+        })
+    }
+}
+
+impl PartialOrd for Version {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 pub fn newer(candidate: &str, current: &str) -> bool {
     matches!((parse_version(candidate), parse_version(current)), (Some(a), Some(b)) if a > b)
+}
+
+/// The newest signed release in a feed: GitHub's list of releases (which, unlike
+/// `releases/latest`, includes the betas) or a single release document. Drafts are left
+/// out, and so is a release without the signed binary.
+fn newest_release(doc: &Value) -> Option<Release> {
+    match doc.as_array() {
+        Some(list) => list
+            .iter()
+            .filter(|r| !r.get("draft").and_then(Value::as_bool).unwrap_or(false))
+            .filter_map(parse_release)
+            .filter(|r| parse_version(&r.version).is_some())
+            .max_by(|a, b| parse_version(&a.version).cmp(&parse_version(&b.version))),
+        None => parse_release(doc),
+    }
 }
 
 /// A GitHub "latest release" document: the tag, the notes and the two assets.
@@ -149,7 +209,7 @@ impl Updater {
             .error_for_status()?
             .json()
             .await?;
-        let release = parse_release(&doc).ok_or_else(|| anyhow!("the release has no {BINARY_ASSET} with a signature"))?;
+        let release = newest_release(&doc).ok_or_else(|| anyhow!("no release with {BINARY_ASSET} and a signature"))?;
         let found = newer(&release.version, VERSION).then_some(release);
         *self.available.lock().expect("update lock") = found.clone();
         Ok(found)
@@ -243,6 +303,27 @@ trusted comment: timestamp:1794701022\tfile:data.txt\thashed
         assert!(!newer("v0.0.9", "0.1.0"));
         assert!(!newer("nightly", "0.1.0"));
         assert!(newer("1.0.0-rc.1", "0.9.0"));
+        assert!(newer("1.0.0-beta.2", "1.0.0-beta.1"));
+        assert!(newer("1.0.0-beta.10", "1.0.0-beta.9"));
+        assert!(newer("1.0.0", "1.0.0-rc.1"));
+        assert!(newer("1.0.0-rc.1", "1.0.0-beta.3"));
+        assert!(!newer("1.0.0-beta.1", "1.0.0"));
+        assert!(!newer("1.0.0-beta.1", "1.0.0-beta.1+build.5"));
+        assert!(newer("1.0.0-beta.1", "0.1.0"));
+    }
+
+    #[test]
+    fn picks_the_newest_from_a_list() {
+        let rel = |tag: &str, draft: bool| json!({
+            "tag_name": tag, "draft": draft,
+            "assets": [
+                { "name": "ownbox-aarch64", "browser_download_url": format!("https://example/{tag}") },
+                { "name": "ownbox-aarch64.minisig", "browser_download_url": "https://example/sig" },
+            ],
+        });
+        let list = json!([rel("v1.0.0-beta.2", false), rel("v1.0.0-beta.3", true), rel("v1.0.0-beta.10", false), rel("v1.0.0-beta.1", false)]);
+        assert_eq!(newest_release(&list).expect("release").version, "1.0.0-beta.10");
+        assert!(newest_release(&json!([])).is_none());
     }
 
     #[test]
