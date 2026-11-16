@@ -1,0 +1,9 @@
+[Unit]
+Description=own.audio box: rewrite AirPlay and Music Assistant settings when the box's change
+
+[Path]
+PathChanged=/home/@USER@/.local/state/ownbox/prefs.json
+PathChanged=/home/@USER@/.config/ownbox/config.toml
+
+[Install]
+WantedBy=multi-user.target

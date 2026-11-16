@@ -1,0 +1,9 @@
+[Unit]
+Description=own.audio box: watch for an update request from ownbox
+
+[Path]
+PathExists=/home/@USER@/.local/state/ownbox/update/request
+Unit=ownbox-update.service
+
+[Install]
+WantedBy=multi-user.target

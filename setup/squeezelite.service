@@ -1,0 +1,22 @@
+# Music Assistant's player on the box. Replaces Debian's init.d script, which passes the
+# player's name unquoted: "own.audio box" became three arguments and squeezelite quit at
+# every start while systemd still showed it active. Settings come from
+# /etc/default/squeezelite, written by apply-sources.sh. $$ leaves the variables to sh.
+[Unit]
+Description=Squeezelite (Music Assistant player)
+Wants=network-online.target
+After=network-online.target sound.target
+# squeezelite quits at start when it cannot open the card (own.audio or AirPlay is playing);
+# it is retried until the card is free, however long that takes.
+StartLimitIntervalSec=0
+
+[Service]
+EnvironmentFile=-/etc/default/squeezelite
+ExecStart=/bin/sh -c 'exec /usr/bin/squeezelite -n "$${SL_NAME:-own.audio box}" -o "$${SL_SOUNDCARD:-default}" $${SB_SERVER_IP:+-s "$$SB_SERVER_IP"} $$SB_EXTRA_ARGS'
+DynamicUser=yes
+SupplementaryGroups=audio
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

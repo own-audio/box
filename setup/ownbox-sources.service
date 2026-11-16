@@ -1,0 +1,8 @@
+[Unit]
+Description=own.audio box: write AirPlay and Music Assistant settings
+# prefs.json changes often (volume, brightness); the script restarts a source only when its
+# own settings changed.
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ownbox/apply-sources.sh

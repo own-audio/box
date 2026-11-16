@@ -1,0 +1,237 @@
+# Changelog
+
+What changed in the own.audio box, newest first. The format follows
+[Keep a Changelog](https://keepachangelog.com/); versions follow `ownbox`'s
+`Cargo.toml`. Nothing has been released yet.
+
+## [Unreleased]
+
+### Changed
+
+- Ready for a public repository: the setup files no longer name one user. Units, polkit
+  rules and scripts carry `@USER@`, filled in at install (`deploy.sh` and
+  `install-kiosk.sh`: the SSH login; `prepare-sd.sh`: `OWNBOX_USER`, your login by
+  default). `prepare-sd.sh` also takes `WIFI_COUNTRY`, `TIMEZONE` and an optional
+  `OWNBOX_SERVER`, and defaults to `~/.ssh/id_ed25519.pub`; the radio's `config.toml` no
+  longer names a server (the wizard asks). The README is written for someone building
+  one.
+
+### Fixed
+
+- ownbox took 20 s to stop and was then killed by systemd, on every deploy, update and
+  shutdown. The button and AirPlay readers each block a thread in a read that never
+  ends, and the runtime waited for them. It now exits once the place is saved and mpv
+  is stopped. Open browser connections (the screen asks every second) hold the stop
+  for at most 3 s.
+- On a phone, the now-playing screen was taller than the screen: it scrolled, and the
+  blurred cover behind it ended partway down. It now fits between Safari's bars (smaller
+  cover and play button, a still smaller cover on a short phone), and the backdrop is
+  pinned to the screen.
+- Music Assistant never saw the boxes: squeezelite was not running. Debian's init.d
+  script passes the player's name unquoted, so "own.audio box" became three arguments
+  and squeezelite quit at every start, while systemd showed it active. The box now runs
+  it with its own unit (`setup/squeezelite.service`), installed by `deploy.sh` and on a
+  new radio's first boot, which also installs squeezelite and the source settings.
+  squeezelite also quits when the card is busy at its start; the unit retries every
+  10 s without a limit.
+- shairport-sync stayed down after a crash (a broken stream from Music Assistant
+  crashed it on the radio): it now restarts after 2 s, installed by `deploy.sh` and
+  `setup/airplay/build.sh`.
+- Now playing: the Queue button ran off the edge on a phone, and on the 7" screen once
+  the queue was long ("Queue · 12 of 34"). The Equalizer and Queue buttons now move under
+  the volume slider when they do not fit beside it.
+- A tap on a phone showed nothing until the box answered. Safari on iOS drew no pressed
+  state, and the play and skip buttons have no background to light up. A press now shows
+  at once, as a slight shrink and a lit background. A button the box takes longer over
+  pulses until it is done, and play/pause flips its icon at the tap.
+- Rows of buttons no longer wrap or run off the screen. What does not fit scrolls
+  sideways, as in the own.audio apps. This covers the sub-navigation, toolbars,
+  settings choices, equalizer presets, and a book's speed and sleep timer.
+- A box without a backlight (the radio) wrote "screen off" to the log every 5 s.
+- Music Assistant could not play to a box whose own player was paused: a paused mpv kept
+  the sound card, which takes one program at a time. After 15 s of pause ownbox lets
+  the card go; play picks up at the same second.
+- Wi-Fi power save is off on the boxes (`setup/ownbox-wifi-powersave.conf`): on the
+  radio's Zero 2 W the Wi-Fi driver lost reads while AirPlay streamed.
+- AirPlay and Music Assistant played to the USB card on a box without one (the radio):
+  `apply-sources.sh` now takes the output chosen in Settings, then `config.toml`'s, then
+  the best card found, as ownbox does.
+- A screen lit by an ownbox restart (every deploy or update) or by another browser stayed
+  lit, because the page did not know: the Pi then reported under-voltage again. ownbox
+  now turns the backlight off itself when no touch has been reported for the idle time
+  plus 15 s, and the page re-reads the screen's state every 3 s.
+
+### Added
+
+- Settings → Tlačítka: action buttons (play, play all, to the queue, to a playlist, the
+  equalizer, the queue, the sleep timer) show their text, as before, or only an icon.
+  Chosen once for the box, like the appearance; the label stays as the hover tip and for
+  screen readers.
+- The home page's sideways rows hold twice as many: 24 playlists, recently played
+  albums, recently added albums and audiobooks (was 12).
+
+- Home (music) starts with the playlists, the ones played on this box latest first, as
+  tiles with their covers. Then "Naposledy poslouchané": the albums the account played
+  last, on any device (from the server's history). Then recently added and favourites.
+- Žánrová stanice picks from about a dozen big groups instead of every tag (192 on the
+  NAS, many of them "Pop, Rock" or "rock" beside "Rock"):
+  - Rock, Punk, Ska, Pop, Blues a jazz, Elektronika a dance, Folk a country, Hip-hop a
+    R&B, Metal, Reggae, Klasická hudba, Latino,
+  - each shown only with at least 20 tracks, and "Ostatní" for the rest.
+  - The tags are not changed: each is split into parts, and each part goes to the first
+    group whose word it contains.
+- Playlists → Chytré playlisty, as the web app's "Chytré": the saved smart playlists and
+  the server's five presets. Zapomenuté oblíbené, Nové v knihovně, Zase po čase and Co
+  poslouchá rodina are drawn at once. Žánrová stanice asks for a genre first, from the
+  library's genres with their track counts and the letter strip. Nothing is saved; "Nový
+  výběr" draws again. On a phone a page's title gets its own line, above its buttons.
+- Smart playlists from the own.audio apps are listed among the playlists, marked
+  "Chytrý playlist". Opening one has the server draw its tracks anew. Play plays that
+  draw, and "Nový výběr" draws again. They are made and changed in the apps.
+- The queue: holding a track offers "Přehrát jako další" and "Přidat do fronty", and an
+  album has "Do fronty". With nothing playing, the tracks simply play. A book's or
+  podcast's queue takes no music.
+- An artist's page has "Přehrát vše": every track on the artist's albums, album by
+  album.
+- Fast scroll, as on the iPod. The A–Z lists (albums, artists, books, authors) have a
+  strip of letters at the right edge. Dragging along it shows the letter large in the
+  middle, and letting go jumps there. Scrolling fast through such a list shows the
+  letter it has reached the same way.
+- Making playlists on the box and from a phone:
+  - Playlists → Nový playlist names a new one (the box's keyboard, or the phone's own).
+  - Holding a track anywhere (album, playlist, favourites, search, queue) adds it to a
+    playlist.
+  - An album's "Add to playlist" adds the whole album.
+  - "Do playlistu" on the now-playing screen adds what plays.
+  - In one's own playlist, holding a track takes it out, and "Smazat" (two taps)
+    deletes the playlist.
+  - Playlists shared by others in the family are marked and are only played.
+  - The box uses the server's v2 playlists, which say whose each one is.
+- Settings → Vzhled: dark (as before), light, or as the device is set. The choice is
+  kept on the box and reaches every paired phone within 5 s. "As the device" follows
+  each phone's own setting, and stays dark on the box's screen, which has none.
+- Settings → Název boxu: the box can be renamed after the wizard. The new name reaches
+  AirPlay and Music Assistant at once, and the account's device list at the next sign-in
+  (the server has no rename).
+- The own.audio mark (as on www.own.audio) with "own.audio box": animated on the wizard's
+  first and last steps, still on the sign-in and pairing screens and at the top of
+  Settings.
+- On a phone, typing (search, the wizard, the Wi-Fi password) uses the phone's own
+  keyboard in a real text field at the top, instead of the box's keyboard, which did not
+  fit. The box's keyboard shows a blinking cursor; the search placeholder is translated.
+- A box without a screen: `headless = true` lets the first phone pair without a code and
+  lets paired phones set the box up (wizard, sign-in by tapping the link, Wi-Fi, server).
+  `scripts/prepare-sd.sh` and `setup/radio/` turn a fresh Raspberry Pi OS Lite card into
+  the radio (Pi Zero 2 W + pHAT BEAT), installed by itself on first boot.
+- Hardware buttons: media keys from any input device play/pause, skip and change the
+  volume. `buttons = "phat-beat"` maps the pHAT BEAT's buttons in `config.txt` (on/off
+  shuts down). ownbox runs with the `input` group.
+- Phone control: phones on the same network open the box at `http://ownbox.local:8686/`
+  and pair by scanning a QR code from Settings → Ovládání z telefonu. A paired phone
+  gets the library and the player in a phone layout; the box's own settings stay on
+  its screen. Unpaired devices get only the pairing page. ownbox now listens on the LAN
+  (the deploy updates `listen` in older `config.toml` files).
+- AirPlay 2 and Music Assistant (squeezelite) as outside sources: when one plays, ownbox
+  lets the sound card go and shows what plays; playing own.audio on the box takes the
+  card back. `setup/airplay/build.sh` builds shairport-sync with AirPlay 2 and nqptp;
+  `apply-sources.sh` keeps their settings in step with the box name and sound card.
+  The box appears as "own.audio box" in AirPlay menus.
+- Hardware profiles, the software half: the board, panel and sound cards are found at
+  start and shown in Settings; Settings → Zvukový výstup chooses the output (an I²S DAC,
+  USB, HDMI or the jack), each with its own mpv options. The deploy writes a marked
+  block in `config.txt` (power button by build, an optional `audio_hat` overlay), the
+  CPU cap by board and the kiosk's scale factor for Touch Display 2
+  (`setup/boot-config.sh`, replacing `setup/ownbox-cpu.conf`).
+- Updates of ownbox from GitHub Releases, signed with minisign: Settings → Aktualizace
+  checks, installs and goes back; a root unit verifies again, swaps the binary and puts
+  the previous one back if the new one does not answer within a minute. Off until the
+  repository is public and a release key exists (`update_feed`, `OWNBOX_UPDATE_PUBKEY`).
+  `.github/workflows/release.yml` builds, signs and publishes a tagged version.
+- Settings → Přehrávání do boxu switches AirPlay and Music Assistant on and off.
+- First-run wizard: language, network (Wi-Fi when there is no cable), library (the
+  hosted own.audio service or your own server at home, the address checked against
+  `/.well-known/own-audio` with a plain message for each problem), sign-in with the QR
+  code, sound (volume and test tone), the box's name, done. Settings → Knihovna shows
+  the server and runs the wizard again.
+- The server address and the box name can change while ownbox runs; a new server ends
+  the session and empties the queue. A new box's `config.toml` has no server: the
+  wizard asks.
+- Equalizer, the same as the own.audio Music apps: six bands (60 Hz – 15 kHz, ±12 dB),
+  a preamp, the seven presets; live in mpv, kept on the server like the apps keep
+  theirs. From Settings → Zvuk and the now-playing screen.
+- Plan: support for the 5" Touch Display 2 next to the 7" models (the last screen
+  added), and a setting for common I²S audio HATs by their overlay, left open and
+  untested.
+- Plan: the apps' equalizer, signed updates from GitHub Releases, Music Assistant as a
+  second outside source, and phases 8–12 (hardware profiles, first-run wizard,
+  AirPlay 2, phone control, the article).
+
+## [0.1.0] — 2026-11-14
+
+The first working box, on a Raspberry Pi 3 B+ with the official 7" display and a USB
+speakerphone, against the own.audio server on a NAS.
+
+### Added
+
+- `ownbox`: one Rust program that supervises mpv and talks to it over its JSON IPC,
+  serves the touch UI (built into the binary), and is deployed from the Mac with
+  `scripts/deploy.sh` (cross-compiled with `cargo zigbuild`).
+- Kiosk: Chromium in cage on tty1, started by systemd, with an invisible pointer.
+- Sign-in with a code: a QR code and short code on the screen, approved on the phone;
+  the session kept on disk (mode 600) and refreshed.
+- Music: recently added, favourites, albums by date or A–Z, artists, playlists, search
+  with an on-screen keyboard (Czech and German letters, digits, symbols), album and
+  playlist pages, jump to a letter in long lists. Gapless play: mpv holds the playing
+  track and the next one, each stream address fetched just before it is needed.
+- Audiobooks: continue listening, all books, authors, book pages with chapters and
+  parts; resume at the saved file and second; ±30 s, speed per book, sleep timer
+  (15/30/60 min, end of part); positions saved to the server every 30 s, on pause,
+  between files and at the end.
+- Podcasts: continue listening, shows with unplayed counts, new episodes, show and
+  episode pages, mark as played/unplayed; an episode that runs to its end is marked
+  played; an episode not yet stored on the server is fetched by the server first.
+- Listening sessions reported to the server for music, books and podcasts.
+- Now playing: bar and full screen, volume (kept), queue with jump.
+- Settings: account, player, audio, server, power flags, version, test tone, sign-out
+  (two taps), language (Czech by default, English), brightness and screen-off time,
+  Wi-Fi networks with a password page.
+- The screen speaks Czech by default, in the glossary's terms, with Czech plurals and
+  dates.
+- The queue and position survive a restart of ownbox or the Pi and come back paused.
+- A notice under the top bar while the server cannot be reached.
+- `POST /api/player/pause` to pause or play explicitly.
+
+### Changed
+
+- The box looks like the own.audio web app:
+  - its colours (the brand purple, true black, cards, each library's own colour for
+    its main buttons),
+  - pill-shaped buttons and chips, a chosen chip in the inverse colour,
+  - 12 px covers and track rows with their small cover,
+  - the system font.
+- The now-playing screen has a round play button in the text colour, the cover blurred
+  behind everything, and "Právě hraje" at the top. It slides up when opened.
+- Presses spring: a button shrinks under the finger and springs back past its size when
+  let go, held long enough to see even on a quick tap. The icon buttons get a round
+  wave behind them. Sheets slide up, notes pop in, and pages fade in.
+
+- Boot from 43.6 s to 31.5 s: cloud-init off after the first boot, ownbox no longer
+  waits for the network.
+- Chromium runs incognito and the journal is capped at 50 MB, to spare the SD card.
+
+### Fixed
+
+- Under-voltage: the display backlight overloaded the supply; the screen goes dark
+  after 30 s idle (the first touch only wakes it) and the CPU is capped at 800 MHz on
+  the Pi 3 (through cpufreq: `arm_freq` in `config.txt` is ignored by its firmware).
+- Crackling on the USB speakerphone: output at its own 48 kHz / 16 bit with a 1 s
+  buffer.
+- A position read as 0 at shutdown: systemd stopped mpv before ownbox could read it
+  (`KillMode=mixed` now), and no position is saved when mpv gives none.
+- An mpv crash no longer counts as the end of the queue (which would have marked a
+  podcast episode played): the queue waits at the last position heard.
+- A stream cut off by the network more than 10 s before its end is treated as
+  interrupted, not finished; mpv reconnects through short drops.
+- The first play right after an mpv restart: commands wait up to 2 s for its socket.
+- Playlist covers (v1 cover addresses need the session; v2's signed ones are used).
+- Settings rows filled as soon as the page shows, not 5 s later.

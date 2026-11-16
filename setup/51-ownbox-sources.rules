@@ -1,0 +1,12 @@
+// own.audio box: ownbox (user @USER@, filled in at install) ends an AirPlay or Music
+// Assistant session to take the sound card back, by restarting that source's service.
+// Only these two units. Installed to /etc/polkit-1/rules.d/.
+polkit.addRule(function (action, subject) {
+  if (action.id === "org.freedesktop.systemd1.manage-units" && subject.user === "@USER@") {
+    var unit = action.lookup("unit");
+    var verb = action.lookup("verb");
+    if ((unit === "shairport-sync.service" || unit === "squeezelite.service") && verb === "restart") {
+      return polkit.Result.YES;
+    }
+  }
+});

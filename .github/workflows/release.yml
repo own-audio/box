@@ -1,0 +1,49 @@
+# A tag v* builds ownbox for the Pi, signs it with the release key and publishes it as a
+# GitHub Release; boxes with `update_feed` set offer it in Settings.
+# Needs: the repository variable OWNBOX_UPDATE_PUBKEY (the base64 line of the minisign
+# .pub file, built into ownbox) and the secrets MINISIGN_KEY (the secret key file) and
+# MINISIGN_PASSWORD.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test
+        run: cargo test
+      - name: Build
+        env:
+          OWNBOX_UPDATE_PUBKEY: ${{ vars.OWNBOX_UPDATE_PUBKEY }}
+        run: |
+          test -n "$OWNBOX_UPDATE_PUBKEY"
+          # The Pi has glibc 2.41 (Trixie); 2.36 keeps Bookworm working, as the deploy does.
+          pip install ziglang==0.13.0 && cargo install cargo-zigbuild --locked
+          cargo zigbuild --release --target aarch64-unknown-linux-gnu.2.36
+          cp target/aarch64-unknown-linux-gnu/release/ownbox ownbox-aarch64
+      - name: Sign
+        env:
+          MINISIGN_KEY: ${{ secrets.MINISIGN_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          sudo apt-get install -y -q minisign
+          printf '%s\n' "$MINISIGN_KEY" > minisign.key
+          printf '%s\n' "$MINISIGN_PASSWORD" | minisign -S -s minisign.key -m ownbox-aarch64 -t "ownbox ${GITHUB_REF_NAME}"
+          rm minisign.key
+          sha256sum ownbox-aarch64 > ownbox-aarch64.sha256
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The notes are the version's section of CHANGELOG.md.
+          awk -v v="${GITHUB_REF_NAME#v}" '$0 ~ "^## \\[" v "\\]" {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" ownbox-aarch64 ownbox-aarch64.minisig ownbox-aarch64.sha256 \
+            --title "ownbox ${GITHUB_REF_NAME#v}" --notes-file notes.md

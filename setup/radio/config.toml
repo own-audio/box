@@ -1,0 +1,11 @@
+# own.audio radio: a Pimoroni Pirate Radio (Pi Zero 2 W + pHAT BEAT), no screen.
+# Written once at first boot; later changes are made from a phone (Settings). The server
+# is chosen in the setup wizard on the first phone, unless OWNBOX_SERVER gave one.
+device_name = "own.audio rádio"
+# Empty: the best output found (the pHAT BEAT's DAC).
+audio_device = ""
+audio_options = ["--audio-buffer=1"]
+audio_hat = "hifiberry-dac"
+buttons = "phat-beat"
+headless = true
+language = "cs"

@@ -1,0 +1,21 @@
+#cloud-config
+# own.audio box — first boot of Raspberry Pi OS Lite. The @…@ fields and SSH_KEY are
+# filled in by hand (or copy the result of scripts/prepare-sd.sh for the radio).
+hostname: ownbox
+manage_etc_hosts: true
+timezone: @TIMEZONE@
+
+users:
+  - name: @USER@
+    gecos: @USER@
+    groups: [adm, dialout, cdrom, sudo, audio, video, plugdev, games, users, input, render, netdev, gpio, i2c, spi]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys:
+      - SSH_KEY
+
+ssh_pwauth: false
+
+runcmd:
+  - [systemctl, enable, --now, ssh]

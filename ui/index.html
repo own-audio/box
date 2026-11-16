@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>own.audio box</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <section id="signin" hidden>
+    <header class="brand"><h1>own.audio box</h1></header>
+    <div id="signin-start">
+      <h2 data-i18n="Sign in to own.audio">Sign in to own.audio</h2>
+      <p data-i18n="Use your phone to let this box into your library. No password is typed here.">Use your phone to let this box into your library. No password is typed here.</p>
+      <button id="signin-button" type="button" class="primary" data-i18n="Sign in">Sign in</button>
+      <p id="signin-error" class="bad" role="alert"></p>
+    </div>
+    <div id="signin-pending" hidden>
+      <img id="qr" alt="" width="240" height="240">
+      <div class="code-box">
+        <p id="pending-hint">Scan the code with your phone, or open the address below and enter the code.</p>
+        <p id="link" class="link"></p>
+        <p id="user-code" class="code"></p>
+        <p id="expires" class="muted"></p>
+        <button id="new-code" type="button" class="secondary" data-i18n="New code">New code</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="app" hidden>
+    <nav id="topbar">
+      <button id="back" type="button" class="icon" aria-label="Back" hidden></button>
+      <div id="tabs">
+        <button type="button" data-tab="music" data-i18n="Music">Music</button>
+        <button type="button" data-tab="books" data-i18n="Books">Books</button>
+        <button type="button" data-tab="podcasts" data-i18n="Podcasts">Podcasts</button>
+        <button type="button" data-tab="search" data-i18n="Search">Search</button>
+      </div>
+      <button type="button" data-tab="settings" class="icon" aria-label="Settings"></button>
+    </nav>
+    <div id="offline" role="status" hidden></div>
+    <main id="view"></main>
+    <footer id="nowbar" hidden>
+      <div id="nb-open">
+        <img id="nb-cover" alt="">
+        <div class="nb-text">
+          <div id="nb-title" class="ellipsis"></div>
+          <div id="nb-artist" class="ellipsis muted"></div>
+        </div>
+      </div>
+      <button id="nb-prev" type="button" class="icon" aria-label="Previous"></button>
+      <button id="nb-toggle" type="button" class="icon big" aria-label="Play or pause"></button>
+      <button id="nb-next" type="button" class="icon" aria-label="Next"></button>
+      <div id="nb-progress"><div></div></div>
+    </footer>
+  </div>
+
+  <section id="nowplaying" hidden>
+    <div id="np-glow" aria-hidden="true"><img id="np-glow-img" alt=""></div>
+    <div class="np-label" data-i18n="Now playing">Now playing</div>
+    <button id="np-close" type="button" class="icon" aria-label="Close"></button>
+    <img id="np-cover" alt="">
+    <div class="np-side">
+      <div id="np-title" class="clamp2"></div>
+      <div id="np-artist" class="ellipsis"></div>
+      <div id="np-album" class="ellipsis muted"></div>
+      <div id="np-bar"><div></div></div>
+      <div class="np-times"><span id="np-pos">0:00</span><span id="np-dur">0:00</span></div>
+      <div class="np-controls">
+        <button id="np-prev" type="button" class="icon" aria-label="Previous"></button>
+        <button id="np-back30" type="button" class="icon skip" aria-label="Back 30 seconds" hidden>−30</button>
+        <button id="np-toggle" type="button" class="icon huge" aria-label="Play or pause"></button>
+        <button id="np-fwd30" type="button" class="icon skip" aria-label="Forward 30 seconds" hidden>+30</button>
+        <button id="np-next" type="button" class="icon" aria-label="Next"></button>
+      </div>
+      <div class="np-book" hidden>
+        <button id="np-speed" type="button" class="secondary">1.0×</button>
+        <button id="np-sleep" type="button" class="secondary"></button>
+      </div>
+      <div class="np-volume">
+        <span id="np-vol-icon" class="vol-icon"></span>
+        <input id="np-volume" type="range" min="0" max="100" class="slider">
+        <div class="np-actions">
+          <button id="np-eq" type="button" class="secondary"></button>
+          <button id="np-queue" type="button" class="secondary"></button>
+          <button id="np-add" type="button" class="secondary"></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="queue" hidden>
+    <div class="queue-head">
+      <h2 data-i18n="Queue">Queue</h2>
+      <button id="queue-close" type="button" class="icon" aria-label="Close"></button>
+    </div>
+    <div id="queue-list" class="rows"></div>
+  </section>
+
+  <div id="toast" role="status" hidden></div>
+  <div id="scrub" hidden></div>
+  <div id="bigletter" aria-hidden="true" hidden></div>
+
+  <script src="/i18n.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

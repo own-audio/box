@@ -1,0 +1,7 @@
+[Unit]
+Description=own.audio box: install an ownbox update or go back to the previous one
+# ownbox asks by writing update/request; see setup/install-update.sh.
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ownbox/install-update.sh

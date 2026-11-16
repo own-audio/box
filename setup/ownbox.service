@@ -1,0 +1,21 @@
+[Unit]
+Description=own.audio box player (ownbox)
+# Not waiting for the network: ownbox copes with a server out of reach (the screen says
+# so and clears it), and waiting cost ~5.5 s of every boot.
+After=sound.target
+
+[Service]
+User=@USER@
+SupplementaryGroups=audio video input
+RuntimeDirectory=ownbox
+ExecStart=/opt/ownbox/ownbox
+Environment=RUST_LOG=ownbox=info
+# SIGTERM to ownbox alone first: it reads mpv's position and saves it before stopping
+# mpv itself. With the default (control-group) mpv died at once and the position was lost.
+KillMode=mixed
+TimeoutStopSec=20
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

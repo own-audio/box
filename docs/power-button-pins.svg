@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 640" font-family="Helvetica, Arial, sans-serif">
+  <rect width="900" height="640" fill="#ffffff"/>
+  <text x="450" y="38" text-anchor="middle" font-size="24" font-weight="bold" fill="#222">Raspberry Pi 3 B+ — tlačítko zapnutí/vypnutí</text>
+  <text x="450" y="64" text-anchor="middle" font-size="15" fill="#555">Pohled shora (součástky k tobě), GPIO lišta nahoře, USB a Ethernet vpravo</text>
+
+  <!-- board -->
+  <rect x="60" y="90" width="640" height="420" rx="22" fill="#1f7a3a" stroke="#0f4a22" stroke-width="3"/>
+  <!-- mounting holes -->
+  <circle cx="95" cy="125" r="11" fill="#fff" stroke="#c9a640" stroke-width="4"/>
+  <circle cx="530" cy="125" r="11" fill="#fff" stroke="#c9a640" stroke-width="4"/>
+  <circle cx="95" cy="475" r="11" fill="#fff" stroke="#c9a640" stroke-width="4"/>
+  <circle cx="530" cy="475" r="11" fill="#fff" stroke="#c9a640" stroke-width="4"/>
+
+  <!-- USB + Ethernet on right edge -->
+  <rect x="640" y="120" width="110" height="80" fill="#b8b8b8" stroke="#666" stroke-width="2"/>
+  <text x="695" y="166" text-anchor="middle" font-size="15" fill="#222">USB</text>
+  <rect x="640" y="220" width="110" height="80" fill="#b8b8b8" stroke="#666" stroke-width="2"/>
+  <text x="695" y="266" text-anchor="middle" font-size="15" fill="#222">USB</text>
+  <rect x="640" y="330" width="120" height="110" fill="#c8c8c8" stroke="#666" stroke-width="2"/>
+  <text x="700" y="390" text-anchor="middle" font-size="15" fill="#222">Ethernet</text>
+
+  <!-- SD card on left edge (underside) -->
+  <rect x="32" y="265" width="40" height="70" fill="#d9d9d9" stroke="#666" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="52" y="358" text-anchor="middle" font-size="13" fill="#222">SD</text>
+  <text x="52" y="374" text-anchor="middle" font-size="11" fill="#555">(zespodu)</text>
+
+  <!-- CPU -->
+  <rect x="260" y="250" width="110" height="110" fill="#333" stroke="#111" stroke-width="2"/>
+  <text x="315" y="310" text-anchor="middle" font-size="14" fill="#ddd">CPU</text>
+
+  <!-- display ribbon -->
+  <rect x="100" y="230" width="22" height="120" fill="#e8d9a8" stroke="#8a7a40" stroke-width="2"/>
+  <text x="111" y="372" text-anchor="middle" font-size="11" fill="#fff">DSI</text>
+
+  <!-- GPIO header: 20 columns x 2 rows -->
+  <rect x="125" y="100" width="410" height="52" fill="#111" rx="4"/>
+  <!-- outer row (even pins) y=113, inner row (odd pins) y=139 ; column spacing 20, first col x=140 -->
+  <g>
+    <!-- generate pins: col i (0..19): x = 140 + 20*i -->
+    <g fill="#c9a640">
+      <rect x="133" y="132" width="14" height="14"/>
+      <circle cx="160" cy="139" r="7"/><circle cx="180" cy="139" r="7"/><circle cx="200" cy="139" r="7"/><circle cx="220" cy="139" r="7"/>
+      <circle cx="240" cy="139" r="7"/><circle cx="260" cy="139" r="7"/><circle cx="280" cy="139" r="7"/><circle cx="300" cy="139" r="7"/>
+      <circle cx="320" cy="139" r="7"/><circle cx="340" cy="139" r="7"/><circle cx="360" cy="139" r="7"/><circle cx="380" cy="139" r="7"/>
+      <circle cx="400" cy="139" r="7"/><circle cx="420" cy="139" r="7"/><circle cx="440" cy="139" r="7"/><circle cx="460" cy="139" r="7"/>
+      <circle cx="480" cy="139" r="7"/><circle cx="500" cy="139" r="7"/><circle cx="520" cy="139" r="7"/>
+      <circle cx="140" cy="113" r="7"/><circle cx="160" cy="113" r="7"/><circle cx="180" cy="113" r="7"/><circle cx="200" cy="113" r="7"/>
+      <circle cx="220" cy="113" r="7"/><circle cx="240" cy="113" r="7"/><circle cx="260" cy="113" r="7"/><circle cx="280" cy="113" r="7"/>
+      <circle cx="300" cy="113" r="7"/><circle cx="320" cy="113" r="7"/><circle cx="340" cy="113" r="7"/><circle cx="360" cy="113" r="7"/>
+      <circle cx="380" cy="113" r="7"/><circle cx="400" cy="113" r="7"/><circle cx="420" cy="113" r="7"/><circle cx="440" cy="113" r="7"/>
+      <circle cx="460" cy="113" r="7"/><circle cx="480" cy="113" r="7"/><circle cx="500" cy="113" r="7"/><circle cx="520" cy="113" r="7"/>
+    </g>
+    <!-- 5V pins 2 and 4 (red) -->
+    <circle cx="140" cy="113" r="7" fill="#d32f2f"/>
+    <circle cx="160" cy="113" r="7" fill="#d32f2f"/>
+    <!-- highlighted: pin 5 (GPIO3) inner col 3, pin 6 (GND) outer col 3 -->
+    <circle cx="180" cy="139" r="11" fill="#1e88e5" stroke="#fff" stroke-width="3"/>
+    <circle cx="180" cy="113" r="11" fill="#000" stroke="#fff" stroke-width="3"/>
+    <!-- alt GND pin 9 inner col 5 -->
+    <circle cx="220" cy="139" r="9" fill="#000" stroke="#ffeb3b" stroke-width="3"/>
+  </g>
+
+  <!-- pin 1 label -->
+  <line x1="140" y1="146" x2="110" y2="205" stroke="#fff" stroke-width="2"/>
+  <text x="104" y="222" text-anchor="middle" font-size="13" fill="#fff">pin 1</text>
+  <text x="104" y="237" text-anchor="middle" font-size="11" fill="#fff">(čtverec)</text>
+
+  <!-- callouts above board -->
+  <line x1="180" y1="102" x2="180" y2="80" stroke="#000" stroke-width="2"/>
+  <line x1="140" y1="102" x2="140" y2="80" stroke="#d32f2f" stroke-width="2"/>
+
+  <!-- legend box -->
+  <rect x="60" y="530" width="780" height="95" rx="10" fill="#f4f6f8" stroke="#ccc"/>
+  <circle cx="90" cy="556" r="11" fill="#1e88e5" stroke="#fff" stroke-width="3"/>
+  <text x="112" y="562" font-size="17" fill="#222"><tspan font-weight="bold">pin 5 = GPIO3</tspan> — jeden drát tlačítka (vnitřní řada, 3. zleva)</text>
+  <circle cx="90" cy="586" r="11" fill="#000" stroke="#999" stroke-width="2"/>
+  <text x="112" y="592" font-size="17" fill="#222"><tspan font-weight="bold">pin 6 = GND</tspan> — druhý drát (vnější řada u okraje, 3. zleva)</text>
+  <circle cx="90" cy="614" r="9" fill="#000" stroke="#ffeb3b" stroke-width="3"/>
+  <text x="112" y="620" font-size="15" fill="#444">pin 9 = GND náhradní, když je pin 6 obsazený napájením displeje.  Červené piny 2 a 4 = 5 V — tam ne!</text>
+
+  <!-- right-side note -->
+  <text x="780" y="470" text-anchor="end" font-size="13" fill="#444">Pin 1 je na konci lišty</text>
+  <text x="780" y="488" text-anchor="end" font-size="13" fill="#444">dál od USB, blíž k SD kartě.</text>
+</svg>
