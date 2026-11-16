@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+
+- 64-bit only, by decision: Raspberry Pi Zero 2 W, 3, 4 and 5 on 64-bit Raspberry Pi OS.
+  32-bit boards (Pi Zero/Zero W, Pi 1, Pi 2) and 32-bit Raspberry Pi OS are not
+  supported (README, Tested on).
+
 ## [1.0.0-beta.1] — 2026-11-16
 
 The first public version. A Raspberry Pi with a touch screen, or a small one without,

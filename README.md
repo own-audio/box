@@ -95,6 +95,12 @@ Meant to work, not yet tested on hardware:
 | Screen | Touch Display 2, 7" and 5" (720 × 1280, turned to landscape). No other screens. |
 | Sound | Raspberry Pi DAC+; other I²S HATs through their overlay (`audio_hat` in `config.toml`) |
 
+**64-bit only.** The box runs on 64-bit Raspberry Pi OS (arm64) and is built for it
+alone: Raspberry Pi Zero 2 W, 3, 4 and 5. Boards that can only run 32-bit — the first
+Pi Zero and Zero W (also in older Pirate Radio kits), Pi 1 and Pi 2 — are not supported
+and will not be; they are too slow for the box anyway. A 32-bit Raspberry Pi OS on a
+64-bit board does not work either: use the 64-bit image.
+
 ## Setting one up
 
 There is no ready image or installer yet; today a box is set up from a Mac (or any
