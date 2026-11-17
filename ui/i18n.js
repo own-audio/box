@@ -318,6 +318,8 @@ const CS = {
   'Your music, from your own library': 'Vaše hudba z vaší vlastní knihovny',
   'Confirm in own.audio': 'Potvrdit v own.audio',
   'Copy the code': 'Kopírovat kód',
+  'Hold the code to copy it': 'Kód zkopírujete podržením',
+  'Hold the address to copy it': 'Adresu zkopírujete podržením',
   'Waiting for the approval; this page moves on by itself.': 'Čekám na potvrzení; stránka pak pokračuje sama.',
   'Confirm the code in your own.audio account. No password is typed here.': 'Potvrďte kód ve svém účtu own.audio. Žádné heslo se tu nezadává.',
   'A short tone from the box': 'Krátký tón z boxu',

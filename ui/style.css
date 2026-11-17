@@ -812,3 +812,5 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 .ob-link { display: flex; align-items: center; gap: 10px; background: var(--panel); border-radius: 16px; padding: 10px 10px 10px 18px; }
 .ob-link a { flex: 1; color: var(--accent); font-size: 20px; font-weight: 600; word-break: break-all; text-decoration: none; }
 .ob-link button { min-height: 42px; font-size: 15px; }
+/* The code and the box's address can be selected for a long press, when copying did not. */
+.wiz-code .code, .ob-link a { user-select: text; -webkit-user-select: text; }

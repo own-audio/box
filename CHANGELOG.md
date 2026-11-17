@@ -7,6 +7,13 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- Copying the sign-in code and the box's address did nothing: the box is served over plain
+  http, where browsers offer no clipboard API, and the button quietly went away. It now
+  copies the old way, which works there (Safari on iPhone too), and if that fails as well
+  it selects the text for a long press and says so.
+
 ## [1.0.0-beta.6] — 2026-11-17
 
 A smaller image, a box that finds its way to the near access point after a restart, and

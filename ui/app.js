@@ -1793,6 +1793,38 @@ function wizProgress(step) {
   }, ...Array.from({ length: 7 }, (_, i) => el('span', { class: i < step ? 'on' : '' })));
 }
 
+/** Copies `text`. The box is served over plain http, where browsers do not offer the
+ * clipboard API: a selected, off-screen text field and the old copy command still work
+ * there (Safari on iPhone too). False when neither did; the caller then shows the text
+ * selected, for a long press. */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch { /* the old way below */ }
+  const area = el('textarea', { readonly: true, style: 'position:fixed;top:0;left:-9999px;opacity:0' });
+  area.value = text;
+  document.body.append(area);
+  area.focus();
+  area.select();
+  area.setSelectionRange(0, text.length);
+  let done = false;
+  try { done = document.execCommand('copy'); } catch { done = false; }
+  area.remove();
+  return done;
+}
+
+/** Selects the text of `node`, so a long press copies it when the button could not. */
+function selectText(node) {
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
 /** A choice as a tile: an icon, a name and a line under it. */
 function wizChoice(icon, title, sub, onclick) {
   return el('button', { class: 'choice', onclick }, obIcon(icon, 30),
@@ -1942,7 +1974,8 @@ function wizSignIn() {
       // On a phone the page opens in another tab; this one notices the approval by itself.
       const open = el('a', { class: 'button primary wiz-open', target: '_blank', rel: 'noopener', hidden: true, text: t('Confirm in own.audio') });
       const copy = el('button', { class: 'secondary', hidden: true, text: t('Copy the code'), onclick: async () => {
-        try { await navigator.clipboard.writeText(code.textContent); copy.textContent = t('Copied'); } catch { copy.hidden = true; }
+        if (await copyText(code.textContent)) copy.textContent = t('Copied');
+        else { selectText(code); copy.textContent = t('Hold the code to copy it'); }
       } });
       const waiting = el('p', { class: 'wiz-waiting muted', hidden: true }, el('span', { class: 'wiz-dot' }), t('Waiting for the approval; this page moves on by itself.'));
       wizStep(box, {
@@ -3049,10 +3082,12 @@ async function setupWifiPage() {
 
   const done = (r) => {
     const link = `http://${r.address}/`;
+    const address = el('a', { href: link, text: r.address });
     const copy = el('button', {
       class: 'secondary', text: t('Copy'),
       onclick: async () => {
-        try { await navigator.clipboard.writeText(link); copy.textContent = t('Copied'); } catch { copy.hidden = true; }
+        if (await copyText(link)) copy.textContent = t('Copied');
+        else { selectText(address); copy.textContent = t('Hold the address to copy it'); }
       },
     });
     page.replaceChildren(el('div', { class: 'ob-body ob-done' },
@@ -3064,7 +3099,7 @@ async function setupWifiPage() {
           el('span', { text: t('This Wi-Fi closes in a moment. Connect this phone back to {s}.', { s: r.ssid }) })),
         el('li', {}, el('span', { class: 'ob-num', text: '2' }),
           el('span', { text: t('Open the box\'s address. There it asks for your own.audio library.') }))),
-      el('div', { class: 'ob-link' }, el('a', { href: link, text: r.address }), copy),
+      el('div', { class: 'ob-link' }, address, copy),
       el('p', { class: 'ob-note', text: t('If the box cannot join, its own Wi-Fi comes back within a minute, with the reason.') })));
   };
 
