@@ -20,6 +20,13 @@ that version's section below as a GitHub Release.
   setup again. Its Wi-Fi, sound card, buttons, name and language stay. On a box without a
   screen the first phone to open the page then pairs, as on a new box.
 
+### Security
+
+- The build pins what it fetches by commit, not by tag: AirPlay (nqptp 1.2.4,
+  shairport-sync 4.3.7; a moved tag now fails the build) and the GitHub actions. The image
+  workflow takes the release tag as a variable and checks its form, instead of pasting it
+  into the shell script.
+
 ### Fixed
 
 - Play/pause on a phone was an egg, not a circle, when a book's ±30 s buttons were in the
