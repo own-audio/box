@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- Beta images open a root shell over USB (`g_serial`, `systemd.debug_shell` on ttyGS0): a
+  box that never reaches a network can still be looked into from a computer on its data
+  port. Releases leave it out. README: Serial console.
+
 ### Changed
 
 - The setup Wi-Fi's page is a short onboarding in the app's own look instead of one long

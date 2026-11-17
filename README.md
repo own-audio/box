@@ -147,6 +147,20 @@ it kept moving to such an access point and dropped the network every few seconds
 The box comes as `ownbox.local` until it is named; then the name is its address ("own.audio
 kitchen" → `kitchen.local`). Updates arrive in Settings → Updates.
 
+## Serial console (beta images)
+
+Beta images open a root shell over USB, for a box that never reaches a network. Connect
+the Zero 2 W's data port (marked USB, not PWR) — or a Pi 4/5's USB-C — to a computer; the
+box can take its power from it. A minute after power-on a serial port appears:
+
+```bash
+screen /dev/cu.usbmodem* 115200    # macOS
+screen /dev/ttyACM0 115200         # Linux
+```
+
+Press Enter for a `root@ownbox` prompt. `journalctl -u ownbox -b`, `nmcli device` and
+`/var/log` are the usual first looks. Releases (a version without `-beta`) leave this out.
+
 ## Development
 
 From a Mac (or any machine with Rust, [zig](https://ziglang.org) and
