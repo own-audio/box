@@ -4,6 +4,7 @@
 //! shairport-sync's hooks) need nothing; box administration stays with the screen.
 
 use std::{
+    collections::HashMap,
     net::IpAddr,
     sync::Mutex,
     time::{Duration, Instant},
@@ -38,8 +39,17 @@ struct Code {
 
 const MAX_TRIES: u32 = 10;
 
+/// A phone that adds the page to its home screen gets an app with its own storage, which
+/// does not see the browser's cookie. The manifest's start address carries this code, one
+/// per paired phone: the app's first start pairs with it, once, within a day. Long and
+/// random, so guessing is no way in.
+const INSTALL_TTL: Duration = Duration::from_secs(24 * 3600);
+const INSTALL_LEN: usize = 16;
+
 pub struct Remote {
     code: Mutex<Option<Code>>,
+    /// Install codes by the paired phone they were made for.
+    install: Mutex<HashMap<String, (String, Instant)>>,
 }
 
 /// What a request may reach, by who sends it.
@@ -64,7 +74,7 @@ pub fn hash(token: &str) -> String {
 
 impl Remote {
     pub fn new() -> Self {
-        Self { code: Mutex::new(None) }
+        Self { code: Mutex::new(None), install: Mutex::new(HashMap::new()) }
     }
 
     /// A new one-time code; the previous one stops working.
@@ -76,8 +86,36 @@ impl Remote {
         (code, CODE_TTL.as_secs())
     }
 
-    /// Spends the code (once) and pairs the phone: the token to put in its cookie.
+    /// The install code for the phone paired as `device`: the one it has while unspent and
+    /// fresh, else a new one.
+    pub fn install_code(&self, device: &str) -> String {
+        let mut codes = self.install.lock().expect("install lock");
+        codes.retain(|_, (_, made)| made.elapsed() < INSTALL_TTL);
+        codes
+            .entry(device.to_owned())
+            .or_insert_with(|| {
+                let mut bytes = [0u8; INSTALL_LEN];
+                rand::thread_rng().fill_bytes(&mut bytes);
+                (bytes.iter().map(|b| CODE_ALPHABET[*b as usize % CODE_ALPHABET.len()] as char).collect(), Instant::now())
+            })
+            .0
+            .clone()
+    }
+
+    /// Spends the code (once) and pairs the phone: the token to put in its cookie. An
+    /// install code (see `install_code`) works as well.
     pub fn pair(&self, code: &str, name: &str, prefs: &PrefsStore) -> Option<String> {
+        {
+            let mut codes = self.install.lock().expect("install lock");
+            codes.retain(|_, (_, made)| made.elapsed() < INSTALL_TTL);
+            let given = code.trim();
+            if given.len() == INSTALL_LEN
+                && let Some(device) = codes.iter().find(|(_, (c, _))| c.eq_ignore_ascii_case(given)).map(|(d, _)| d.clone())
+            {
+                codes.remove(&device);
+                return Some(Self::add(name, prefs));
+            }
+        }
         let mut current = self.code.lock().expect("code lock");
         let c = current.as_mut()?;
         if c.expires <= Instant::now() || c.misses >= MAX_TRIES {
@@ -146,7 +184,10 @@ fn screen_only(path: &str) -> bool {
 
 /// Paths an unpaired phone may load: the page itself and the pairing call.
 fn public(path: &str) -> bool {
-    matches!(path, "/" | "/app.js" | "/style.css" | "/i18n.js" | "/api/remote/pair" | "/api/remote/status")
+    matches!(
+        path,
+        "/" | "/app.js" | "/style.css" | "/i18n.js" | "/api/remote/pair" | "/api/remote/status" | "/manifest.webmanifest"
+    ) || (path.starts_with("/icons/") && path.ends_with(".png"))
 }
 
 /// The box itself: loopback, also as an IPv4 address mapped into IPv6 (`::ffff:127.0.0.1`),
@@ -223,6 +264,22 @@ mod tests {
         for bad in ["evil.example.com", "evil.example.com:8686", "192.168.88.64.nip.io", "[not-an-ip]", "rebind.local.evil.com"] {
             assert!(!host_allowed(bad), "{bad}");
         }
+    }
+
+    #[test]
+    fn an_install_code_pairs_once() {
+        let dir = std::env::temp_dir().join(format!("ownbox-install-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let prefs = PrefsStore::load(dir.join("prefs.json"));
+        let remote = Remote::new();
+        let code = remote.install_code("phone-a");
+        assert_eq!(code.len(), INSTALL_LEN);
+        assert_eq!(remote.install_code("phone-a"), code, "the same one while unspent");
+        assert!(remote.pair(&code.to_lowercase(), "Home screen", &prefs).is_some());
+        assert!(remote.pair(&code, "Again", &prefs).is_none(), "spent");
+        assert_ne!(remote.install_code("phone-a"), code, "a new one after");
+        assert_eq!(prefs.get().remote_devices.len(), 1);
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

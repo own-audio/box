@@ -9,6 +9,12 @@ that version's section below as a GitHub Release.
 
 ### Added
 
+- The page can live on a phone's home screen as an app: a manifest with the box's name,
+  the own.audio icon (`scripts/home-icons.cjs` renders it) and no browser bars. On an
+  iPhone the app has its own storage and does not see Safari's pairing, so a paired
+  phone's manifest starts the app at a one-time install code: its first start pairs it,
+  within a day. On Android, over plain http, Chrome adds a shortcut that opens in the
+  browser instead (a full install needs https). Settings → Phone control says how.
 - Settings → Library → "Sign out and start over" (two taps): the box signs out, on the
   server too, forgets its server, queue, equalizer and every paired phone, and runs the
   setup again. Its Wi-Fi, sound card, buttons, name and language stay. On a box without a

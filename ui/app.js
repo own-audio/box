@@ -2370,8 +2370,13 @@ function phoneSettings() {
       } }))));
   };
   draw();
+  // On a phone that is not yet running the page from its home screen: how to put it there.
+  const standalone = navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
   group.append(
     el('p', { class: 'muted small', text: t('Phones on this network can control the box from their browser once paired.') }),
+    onPhone() && !standalone ? el('p', { class: 'muted small', text: /iPhone|iPad/.test(navigator.userAgent)
+      ? t('To keep the box as an app on this iPhone: Share → Add to Home Screen. It pairs itself on its first start, within a day.')
+      : t('To keep the box on this phone\'s home screen: the browser menu → Add to Home screen.') }) : '', // '' not null: append writes null out as text
     el('div', { class: 'buttons' }, el('button', { class: 'secondary', text: t('Pair a phone'), onclick: () => push(pairView()) })),
     list);
   return group;

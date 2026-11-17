@@ -146,6 +146,11 @@ that is clearly stronger than the one it is on; one that refuses it is tried aga
 minutes later. The Wi-Fi chip's own roaming is off — it kept moving to such an access point
 and dropped the network every few seconds.
 
+**On the home screen.** In Safari on an iPhone, Share → Add to Home Screen keeps the box
+as an app (its own icon, no browser bars); it pairs itself on its first start, within a
+day of adding it. On Android the browser menu's Add to Home screen gives a shortcut that
+opens in the browser.
+
 The box comes as `ownbox.local` until it is named; then the name is its address ("own.audio
 kitchen" → `kitchen.local`). Updates arrive in Settings → Updates.
 

@@ -17,6 +17,10 @@ const INDEX_HTML: &str = include_str!("../ui/index.html");
 const APP_JS: &str = include_str!("../ui/app.js");
 const STYLE_CSS: &str = include_str!("../ui/style.css");
 const I18N_JS: &str = include_str!("../ui/i18n.js");
+const ICON_180: &[u8] = include_bytes!("../ui/icons/icon-180.png");
+const ICON_192: &[u8] = include_bytes!("../ui/icons/icon-192.png");
+const ICON_512: &[u8] = include_bytes!("../ui/icons/icon-512.png");
+const ICON_MASKABLE_512: &[u8] = include_bytes!("../ui/icons/icon-maskable-512.png");
 
 pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
@@ -30,6 +34,8 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/sign-in", post(sign_in))
         .route("/api/sign-in/qr.svg", get(sign_in_qr))
         .route("/api/sign-out", post(sign_out))
+        .route("/manifest.webmanifest", get(manifest))
+        .route("/icons/{name}", get(icon))
         .route("/api/library/albums", get(lib_albums))
         .route("/api/library/albums/{id}", get(lib_album))
         .route("/api/library/artists", get(lib_artists))
@@ -1208,6 +1214,45 @@ async fn sign_in_qr(State(s): State<Arc<AppState>>) -> axum::response::Response 
 async fn sign_out(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
     s.auth.sign_out().await;
     Json(json!({ "ok": true }))
+}
+
+/// The page as a home-screen app: the box's own name, its icon, no browser bars. A paired
+/// phone's manifest starts at an install code, so the app — which has its own storage and
+/// does not see the browser's cookie — pairs itself on its first start.
+async fn manifest(State(s): State<Arc<AppState>>, headers: axum::http::HeaderMap) -> axum::response::Response {
+    let token = headers.get(header::COOKIE).and_then(|v| v.to_str().ok()).and_then(remote::token_from_cookies);
+    let device = token.and_then(|t| s.prefs.get().remote_devices.into_iter().find(|p| p.token_hash == remote::hash(t)));
+    let start = device.map_or_else(|| "/".to_owned(), |d| format!("/?pair={}", s.remote.install_code(&d.id)));
+    let name = s.auth.device_name();
+    let short = name.trim_start_matches("own.audio").trim();
+    let short = if short.is_empty() || short == "box" { "own.audio" } else { short };
+    let body = json!({
+        "name": name,
+        "short_name": short,
+        "start_url": start,
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#000000",
+        "theme_color": "#000000",
+        "icons": [
+            { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+            { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+            { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+        ],
+    });
+    // Not cached: it carries a code that is spent once.
+    ([(header::CONTENT_TYPE, "application/manifest+json"), (header::CACHE_CONTROL, "no-store")], body.to_string()).into_response()
+}
+
+async fn icon(Path(name): Path<String>) -> axum::response::Response {
+    let body = match name.as_str() {
+        "icon-180.png" => ICON_180,
+        "icon-192.png" => ICON_192,
+        "icon-512.png" => ICON_512,
+        "icon-maskable-512.png" => ICON_MASKABLE_512,
+        _ => return StatusCode::NOT_FOUND.into_response(),
+    };
+    ([(header::CONTENT_TYPE, "image/png"), (header::CACHE_CONTROL, "max-age=86400")], body).into_response()
 }
 
 fn asset(content_type: &'static str, body: &'static str) -> impl IntoResponse {
