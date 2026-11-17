@@ -36,6 +36,9 @@ that version's section below as a GitHub Release.
 
 ### Fixed
 
+- A slow server no longer holds up a pause, a skip or the volume: the player asks it for
+  the next entry's address after letting go of the queue, and uses the answer only if the
+  queue is still where it was.
 - Play/pause on a phone was an egg, not a circle, when a book's ±30 s buttons were in the
   row: the row was too tight and the button lost width but not height. It keeps its size
   now and the gaps give way.

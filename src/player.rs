@@ -310,6 +310,40 @@ impl Player {
         }
     }
 
+    /// `prepare_next` without holding the queue while the server is asked: the entry is
+    /// read, the lock let go, the address fetched, and it goes into mpv only if the queue is
+    /// still where it was (no skip, no new album, no restarted mpv meanwhile).
+    async fn prepare_next_unlocked(&self) {
+        let (index, next, generation) = {
+            let mut q = self.queue.lock().await;
+            if !q.active || !q.next_missing {
+                return;
+            }
+            let Some(next) = q.tracks.get(q.index + 1).cloned() else {
+                q.next_missing = false;
+                return;
+            };
+            q.next_tried = Some(Instant::now());
+            (q.index, next, q.mpv_generation)
+        };
+        let url = match self.stream_url(&next).await {
+            Ok(url) => url,
+            Err(err) => {
+                tracing::warn!(%err, "preparing the next entry; trying again");
+                return;
+            }
+        };
+        let mut q = self.queue.lock().await;
+        let same = q.active
+            && q.next_missing
+            && q.index == index
+            && q.mpv_generation == generation
+            && q.tracks.get(index + 1).is_some_and(|t| t.id == next.id);
+        if same && self.mpv.command(json!(["loadfile", url, "append"])).await.is_ok() {
+            q.next_missing = false;
+        }
+    }
+
     /// Before playing something else: keep the place in what was playing, close its session.
     async fn leave(&self, q: &mut Queue, reason: &str) {
         if q.active
@@ -559,10 +593,21 @@ impl Player {
         }
     }
 
+    /// One tick. Asking the server for the next entry's address happens after the queue is
+    /// let go, so a slow server does not hold up a pause or a skip meanwhile.
     async fn step(&self) -> anyhow::Result<()> {
+        if self.step_locked().await? {
+            self.prepare_next_unlocked().await;
+        }
+        Ok(())
+    }
+
+    /// The tick's work under the queue's lock; true when the next entry is to be fetched.
+    async fn step_locked(&self) -> anyhow::Result<bool> {
+        let mut fetch_next = false;
         let mut q = self.queue.lock().await;
         if !q.active {
-            return Ok(());
+            return Ok(false);
         }
         if self.mpv.generation() != q.mpv_generation {
             // mpv was restarted under us: what it played is gone, not finished. Stop where it
@@ -574,7 +619,7 @@ impl Player {
             q.paused = true;
             q.restored = Some(position);
             self.persist(&q, position);
-            return Ok(());
+            return Ok(false);
         }
         let pos = self.property("playlist-pos").await.and_then(|v| v.as_i64()).context("no playlist-pos")?;
         let idle = self.property_bool("idle-active").await.unwrap_or(false);
@@ -598,7 +643,7 @@ impl Player {
             q.restored = Some(reached);
             q.last_position = reached;
             self.persist(&q, reached);
-            return Ok(());
+            return Ok(false);
         }
         let paused = self.property_bool("pause").await.unwrap_or(false);
         // A pause from elsewhere (mpv itself, a future hardware button) counts as one too.
@@ -617,7 +662,7 @@ impl Player {
             q.index += 1;
             self.mpv.command(json!(["playlist-remove", 0])).await?;
             q.next_missing = q.index + 1 < q.tracks.len();
-            self.prepare_next(&mut q).await;
+            fetch_next = q.next_missing;
             if matches!(q.sleep, Some(Sleep::EndOfPart)) {
                 q.sleep = None;
                 self.mpv.command(json!(["set_property", "pause", true])).await?;
@@ -655,9 +700,9 @@ impl Player {
             q.sleep = None;
             self.forget_persisted();
         } else {
-            // Not every tick: the queue is locked while the server is asked.
+            // Not every tick: a server that does not answer is asked again in 15 s.
             if q.next_missing && q.next_tried.is_none_or(|t| t.elapsed() >= Duration::from_secs(15)) {
-                self.prepare_next(&mut q).await;
+                fetch_next = true;
             }
             if let Some(Sleep::At(at)) = q.sleep
                 && Instant::now() >= at
@@ -679,7 +724,7 @@ impl Player {
                 }
             }
         }
-        Ok(())
+        Ok(fetch_next)
     }
 
     // --- the server's record ------------------------------------------------------------
