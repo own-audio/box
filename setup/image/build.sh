@@ -149,6 +149,28 @@ case "$version" in
     ;;
 esac
 
+echo "== slimming"
+# What a box never reads: manual pages, package docs (the copyright files stay) and the
+# languages other than Czech and English. dpkg is told too, so the box's own updates of
+# these packages do not bring them back.
+cat > "$root/etc/dpkg/dpkg.cfg.d/ownbox-slim" <<'SLIM'
+path-exclude /usr/share/man/*
+path-exclude /usr/share/doc/*
+path-include /usr/share/doc/*/copyright
+path-exclude /usr/share/info/*
+path-exclude /usr/share/locale/*
+path-include /usr/share/locale/cs/*
+path-include /usr/share/locale/en*/*
+path-include /usr/share/locale/locale.alias
+SLIM
+rm -rf "$root"/usr/share/man/* "$root"/usr/share/info/*
+find "$root/usr/share/doc" -mindepth 1 ! -name copyright ! -type d -delete 2>/dev/null || true
+find "$root/usr/share/doc" -mindepth 1 -type d -empty -delete 2>/dev/null || true
+find "$root/usr/share/locale" -mindepth 1 -maxdepth 1 -type d ! -name cs ! -name 'en*' -exec rm -rf {} + 2>/dev/null || true
+# The 25 biggest packages, so the next one to drop is easy to find.
+in_root dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -rn | head -25 \
+  | awk -F'\t' '{printf "  %6.1f MB  %s\n", $1/1024, $2}'
+
 echo "== cleaning up"
 in_root apt-get clean
 rm -rf "$root"/var/lib/apt/lists/* "$root"/var/log/apt/* "$root"/tmp/* "$root"/var/tmp/*
@@ -158,11 +180,26 @@ du -shx "$root" | sed 's/^/root file system: /'
 for m in boot/firmware dev/pts dev proc sys; do umount "$root/$m"; done
 umount "$root"
 e2fsck -pf "${loop}p2" || [ $? -le 1 ]
+# The file system shrinks back to what it holds plus a little room: Imager then writes a
+# smaller image, and Raspberry Pi OS grows it to the whole card at the first boot
+# ("resize" in cmdline.txt). The build needed the extra room only for AirPlay's compile.
+resize2fs -M "${loop}p2"
+bs=$(dumpe2fs -h "${loop}p2" 2>/dev/null | awk -F: '/^Block size/{gsub(/ /,"",$2); print $2}')
+blocks=$(dumpe2fs -h "${loop}p2" 2>/dev/null | awk -F: '/^Block count/{gsub(/ /,"",$2); print $2}')
+blocks=$(( blocks + 256 * 1024 * 1024 / bs ))
+resize2fs "${loop}p2" "$blocks"
+e2fsck -pf "${loop}p2" || [ $? -le 1 ]
 # Free blocks to zeros, so they compress to nothing.
 zerofree "${loop}p2"
 losetup -d "$loop"; loop=
+start=$(parted -ms "$work/box.img" unit s print | awk -F: '$1 == 2 { sub(/s$/, "", $2); print $2 }')
+sectors=$(( blocks * bs / 512 ))
+[ -n "$start" ] || { echo "no second partition"; exit 1; }
+echo "$start, $sectors" | sfdisk --no-reread --no-tell-kernel -N 2 "$work/box.img"
+truncate -s $(( (start + sectors) * 512 )) "$work/box.img"
+ls -lh "$work/box.img" | awk '{print "image: " $5}'
 
 echo "== compressing"
-xz -T0 -6 -c "$work/box.img" > "$out"
+xz -T0 -9 -c "$work/box.img" > "$out"
 ( cd "$(dirname "$out")" && sha256sum "$(basename "$out")" > "$(basename "$out").sha256" )
 ls -lh "$out"

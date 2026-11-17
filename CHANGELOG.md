@@ -7,6 +7,14 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+
+- A smaller image to download and to write. The root file system shrinks back to what it
+  holds plus 256 MB (Raspberry Pi OS grows it to the whole card at the first boot), so
+  Imager writes about half as much; manual pages, package docs and languages other than
+  Czech and English are left out (and stay out through updates), and the image is
+  compressed with `xz -9`. The build log lists the 25 biggest packages.
+
 ## [1.0.0-beta.5] — 2026-11-17
 
 A new first setup on the phone, and a way into a box that never reaches a network.
