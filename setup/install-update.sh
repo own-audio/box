@@ -77,6 +77,9 @@ ownbox-brcmfmac.conf /etc/modprobe.d/ownbox-brcmfmac.conf 644 new
 FILES
   rm -rf "$work"
   systemctl daemon-reload
+  # Units that start at boot since a later release (their [Install] says so).
+  [ -e /etc/systemd/system/ownbox-sources.service ] && systemctl enable --quiet ownbox-sources.service
+  return 0
 }
 
 # ownbox kept stopping (ownbox-recover.service, from ownbox.service's OnFailure). An update

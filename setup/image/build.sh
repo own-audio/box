@@ -116,7 +116,7 @@ printf 'KIOSK_URL=http://localhost:8686\nKIOSK_SCALE=1\n' > "$root/etc/default/o
 
 echo "== services"
 in_root systemctl enable ownbox-boot.service ownbox.service ownbox-kiosk.service \
-  ownbox-update.path ownbox-sources.path squeezelite.service avahi-daemon.service
+  ownbox-update.path ownbox-sources.path ownbox-sources.service squeezelite.service avahi-daemon.service
 in_root systemctl set-default graphical.target
 in_root systemctl disable getty@tty1.service
 # The box asks nothing on its console: no first-boot user prompt (Imager's settings, when

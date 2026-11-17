@@ -9,6 +9,11 @@ that version's section below as a GitHub Release.
 
 ### Fixed
 
+- After choosing a sound card on the pins, Squeezelite (and AirPlay) stayed on HDMI: their
+  settings were written before the restart that loads the card, when HDMI was the best one
+  there, and nothing wrote them again. They are now written at every start as well, once
+  the sound cards are up. Seen on the Pirate Radio from a fresh beta.7 card.
+
 - A box with a screen, written from the image, stopped at its first start: systemd's own
   first-boot wizard waited on the console for a keyboard (locale, keymap, time zone, root
   password) and the kiosk never came up. The image masks it; a box without a screen got

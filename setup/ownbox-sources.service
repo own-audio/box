@@ -4,7 +4,14 @@ Description=own.audio box: write AirPlay and Music Assistant settings
 # own settings changed. No start limit: five volume steps in ten seconds hit systemd's
 # default, which failed the path unit and the settings were never written again.
 StartLimitIntervalSec=0
+# Also at every start, once the sound cards are there: a card on the pins appears only after
+# the restart that loads it, and settings written before it (the best card then was HDMI)
+# left Squeezelite and AirPlay on an output with nothing behind it.
+After=sound.target
 
 [Service]
 Type=oneshot
 ExecStart=/opt/ownbox/apply-sources.sh
+
+[Install]
+WantedBy=multi-user.target

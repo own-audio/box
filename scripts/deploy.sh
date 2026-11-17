@@ -67,6 +67,7 @@ ssh "$host" 'set -e
   [ "$squeezelite_new" = no ] || sudo systemctl try-restart squeezelite.service
   sudo systemctl enable --quiet ownbox.service ownbox-kiosk.service
   sudo systemctl enable --now --quiet ownbox-sources.path
+  sudo systemctl enable --quiet ownbox-sources.service
   sudo systemctl enable --now --quiet ownbox-update.path
   sudo systemctl start ownbox-sources.service
   sudo systemctl restart ownbox.service

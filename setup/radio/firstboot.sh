@@ -36,7 +36,7 @@ raspi-config nonint do_wifi_country @WIFI_COUNTRY@ || true
 touch /etc/cloud/cloud-init.disabled
 
 systemctl daemon-reload
-systemctl enable ownbox.service ownbox-update.path ownbox-sources.path squeezelite.service
+systemctl enable ownbox.service ownbox-update.path ownbox-sources.path ownbox-sources.service squeezelite.service
 rm -rf "$here"
 echo "== $(date -Is) done, rebooting"
 systemctl reboot
