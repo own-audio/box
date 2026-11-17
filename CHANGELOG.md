@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- A box written from the image never opened its setup Wi-Fi: a fresh Raspberry Pi OS
+  keeps NetworkManager's Wi-Fi switched off until a country is set. The image now ships
+  with it on, and ownbox switches it on before opening the setup Wi-Fi.
+
 ## [1.0.0-beta.2] — 2026-11-16
 
 An SD card image: write it with Raspberry Pi Imager, put it in, switch on. A box with a

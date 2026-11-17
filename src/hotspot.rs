@@ -128,6 +128,13 @@ impl Hotspot {
     }
 
     async fn start(&self, ssid: &str) -> anyhow::Result<()> {
+        // A fresh Raspberry Pi OS keeps NetworkManager's Wi-Fi switched off until a country
+        // is set; a box nobody can reach is worse than a radio someone switched off.
+        if wifi::status().await.is_ok_and(|s| !s.radio) {
+            tracing::info!("switching the Wi-Fi on for the setup Wi-Fi");
+            wifi::set_radio(true).await?;
+            tokio::time::sleep(Duration::from_secs(3)).await;
+        }
         // One radio: what is around is listed before it starts sending.
         let networks = wifi::scan().await.unwrap_or_default();
         let _ = wifi::nmcli(&["connection", "delete", "id", CONNECTION], wifi::QUICK).await;

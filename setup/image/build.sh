@@ -126,6 +126,10 @@ in_root systemctl mask userconfig.service 2>/dev/null || true
 # back to the card. The journal already lives in memory (Raspberry Pi OS's default).
 in_root systemctl mask apt-daily.timer apt-daily-upgrade.timer apt-listchanges.timer \
   man-db.timer dpkg-db-backup.timer rpi-zram-writeback.timer
+# NetworkManager keeps the Wi-Fi switched off on a fresh Raspberry Pi OS; the box needs it
+# for its own setup Wi-Fi before anyone has chosen a country.
+printf '[main]\nNetworkingEnabled=true\nWirelessEnabled=true\nWWANEnabled=true\n' \
+  > "$root/var/lib/NetworkManager/NetworkManager.state"
 echo ownbox > "$root/etc/hostname"
 sed -i 's/^127\.0\.1\.1.*/127.0.1.1\townbox/' "$root/etc/hosts"
 printf 'own.audio box %s (Raspberry Pi OS Lite 2026-10-06, arm64)\n' "$version" > "$root/etc/ownbox-image"
