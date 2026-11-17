@@ -7,6 +7,15 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+
+- The setup Wi-Fi's page is a short onboarding in the app's own look instead of one long
+  form: a welcome, the home Wi-Fi (signal bars, the password right under the chosen
+  network, shown on request), the box's name with rooms to pick and the `.local` address it
+  becomes, the sound card as tiles, a summary where each line leads back, and a last page
+  that says where to go with the address to copy. It follows the phone's light or dark
+  setting; a failed try comes back straight to the network, with the reason.
+
 ## [1.0.0-beta.4] — 2026-11-17
 
 A robustness and security pass, every part tried on the Pirate Radio: a box that keeps its

@@ -2799,61 +2799,239 @@ function pairingHelp(error) {
 
 // --- the setup Wi-Fi ------------------------------------------------------------------
 // A box without a screen or a network opens a Wi-Fi of its own; a phone that joins gets this
-// page by itself. One form: language, name, the home Wi-Fi, the sound card. The box then
-// joins the home network, so the page cannot show what happens next: it says where to go.
+// page by itself. A few short steps — welcome, the home Wi-Fi, a name, the sound — then the
+// box joins the home network, so the last page cannot follow it: it says where to go next.
+// It follows the phone's own light or dark setting, and needs nothing from the internet.
+
+const WIFI_BARS = (signal) => {
+  const lit = signal >= 70 ? 4 : signal >= 45 ? 3 : signal >= 25 ? 2 : 1;
+  const bar = (i, h) => `<rect x="${2 + i * 5}" y="${18 - h}" width="3.4" height="${h}" rx="1.2" opacity="${i < lit ? 1 : 0.25}"/>`;
+  return `<svg viewBox="0 0 22 20" width="22" height="20" aria-hidden="true" fill="currentColor">${bar(0, 5)}${bar(1, 9)}${bar(2, 13)}${bar(3, 17)}</svg>`;
+};
+const OB_ICON = {
+  check: '<path d="M5 12.5 10 17.5 19 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  speaker: '<rect x="6" y="3" width="12" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="14.5" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="7.5" r="1.3"/>',
+  chip: '<rect x="5" y="5" width="14" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  radio: '<rect x="3" y="8" width="18" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="15.5" cy="14" r="2.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6.5 12.5h4M6.5 15.5h4M7 8l9-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3"/>',
+};
+const obIcon = (name, size = 24) => {
+  const span = el('span', { class: 'ob-icon', 'aria-hidden': 'true' });
+  span.innerHTML = `<svg viewBox="0 0 24 24" width="${size}" height="${size}">${OB_ICON[name]}</svg>`;
+  return span;
+};
+
+// A sound card's label in two lines: "Pimoroni pHAT BEAT (Pirate Radio)" → its name, and
+// what it is in or what it covers underneath.
+const obTitle = (label) => t(label).replace(/\s*\(.*\)\s*$/, '');
+const obSub = (label) => (t(label).match(/\((.*)\)\s*$/) || [])[1] || '';
+
+// The address the box takes from its name, as `hotspot::host_name` makes it.
+function obHostName(name) {
+  const h = name.toLowerCase().replace(/own\.audio/g, '').normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .replace(/ł/g, 'l').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
+  return !h || h === 'box' ? 'ownbox' : h;
+}
 
 async function setupWifiPage() {
   $('signin').hidden = true;
   $('app').hidden = true;
-  const page = el('section', { id: 'setup', class: 'setup' });
+  document.documentElement.dataset.theme = 'auto';
+  const page = el('section', { id: 'setup', class: 'setup ob' });
   document.body.append(page);
   const st = await get('/api/hotspot');
   if (st.language === 'cs' || st.language === 'en') LANG = st.language;
-  let chosen = null;
-  const draw = () => {
-    const name = el('input', { type: 'text', value: st.box_name, maxlength: 60, autocomplete: 'off' });
-    const password = el('input', { type: 'password', autocomplete: 'off', placeholder: t('Wi-Fi password') });
-    const hat = el('select', {}, ...st.hats.choices.map((c) => el('option', { value: c.id, text: t(c.label) })));
-    if (st.hats.current != null) hat.value = st.hats.current;
-    const msg = el('p', { class: st.error ? 'bad' : 'muted', role: 'alert', text: st.error ? t('Joining failed: {e}', { e: t(st.error) }) : '' });
-    const nets = el('div', { class: 'rows' }, ...st.networks.map((n) => el('div', {
-      class: n.ssid === chosen ? 'row current' : 'row',
-      onclick: () => { chosen = n.ssid; draw(); },
-    }, el('div', { class: 'main' }, el('div', { class: 'ellipsis', text: n.ssid }),
-      el('div', { class: 'sub muted', text: `${n.signal} %${n.secure ? '' : ` · ${t('open')}`}` })))));
-    const net = st.networks.find((n) => n.ssid === chosen);
-    const lang = (code, label) => el('button', { class: LANG === code ? 'on' : 'secondary', text: label, onclick: () => { LANG = code; draw(); } });
-    const go = el('button', {
-      class: 'primary', text: t('Connect the box'), disabled: !chosen,
+
+  const STEPS = ['welcome', 'wifi', 'name', 'sound', 'check'];
+  const form = {
+    ssid: null,
+    password: '',
+    name: st.box_name || 'own.audio box',
+    hat: st.hats.current != null ? st.hats.current : 0,
+  };
+  // Back from a try that failed: straight to the network, with the reason.
+  let step = st.error ? 'wifi' : 'welcome';
+  let showPassword = false;
+
+  const network = () => st.networks.find((n) => n.ssid === form.ssid);
+  const needsPassword = () => !!(network() && network().secure);
+  const canGo = {
+    welcome: () => true,
+    wifi: () => !!form.ssid && (!needsPassword() || form.password.length >= 8),
+    name: () => form.name.trim().length > 0,
+    sound: () => true,
+    check: () => true,
+  };
+  const go = (to) => { step = to; draw(); page.scrollTop = 0; };
+  const next = () => go(STEPS[STEPS.indexOf(step) + 1]);
+  const back = () => go(STEPS[STEPS.indexOf(step) - 1]);
+
+  const head = () => {
+    const i = STEPS.indexOf(step);
+    return el('header', { class: 'ob-head' },
+      i > 0 ? el('button', { class: 'icon ob-back', 'aria-label': t('Back'), onclick: back }) : el('span', { class: 'ob-back' }),
+      el('div', { class: 'ob-progress', role: 'progressbar', 'aria-valuemin': 1, 'aria-valuemax': STEPS.length, 'aria-valuenow': i + 1 },
+        ...STEPS.map((_, j) => el('span', { class: j <= i ? 'on' : '' }))),
+      el('div', { class: 'ob-lang' },
+        ...[['cs', 'CZ'], ['en', 'EN']].map(([code, label]) => el('button', {
+          class: LANG === code ? 'on' : '', text: label, 'aria-pressed': String(LANG === code),
+          onclick: () => { LANG = code; draw(); },
+        }))));
+  };
+  const foot = (label, onclick, enabled = true) => el('footer', { class: 'ob-foot' },
+    el('button', { class: 'primary ob-go', text: label, disabled: !enabled, onclick }));
+
+  const views = {
+    welcome: () => [
+      el('div', { class: 'ob-hero' },
+        (() => { const b = brand(96, { animated: true, big: true }); b.classList.add('ob-brand'); return b; })(),
+        el('h1', { text: t('Your music, from your own library') }),
+        el('p', { class: 'ob-lead', text: t('Three short steps and this box joins your home Wi-Fi. Then it plays from your own.audio library.') })),
+      el('ol', { class: 'ob-list' },
+        ...[t('Your Wi-Fi'), t('A name for the box'), t('Its sound')].map((s, i) => el('li', {},
+          el('span', { class: 'ob-num', text: String(i + 1) }), el('span', { text: s })))),
+      foot(t('Start'), next),
+    ],
+
+    wifi: () => {
+      const password = el('input', {
+        type: showPassword ? 'text' : 'password', value: form.password, autocomplete: 'off', autocapitalize: 'off',
+        spellcheck: 'false', placeholder: t('Wi-Fi password'), class: 'ob-input',
+        oninput: (e) => { form.password = e.target.value; nextBtn.disabled = !canGo.wifi(); },
+        onkeydown: (e) => { if (e.key === 'Enter' && canGo.wifi()) next(); },
+      });
+      const eye = el('button', {
+        class: 'icon ob-eye' + (showPassword ? ' on' : ''), 'aria-label': t('Show the password'), 'aria-pressed': String(showPassword),
+        onclick: () => { showPassword = !showPassword; password.type = showPassword ? 'text' : 'password'; eye.classList.toggle('on', showPassword); },
+      }, obIcon('eye'));
+      const card = (n) => {
+        const chosen = n.ssid === form.ssid;
+        const bars = el('span', { class: 'ob-bars' });
+        bars.innerHTML = WIFI_BARS(n.signal);
+        return el('div', { class: chosen ? 'ob-net chosen' : 'ob-net' },
+          el('button', {
+            class: 'ob-net-pick', 'aria-pressed': String(chosen),
+            onclick: () => { if (form.ssid !== n.ssid) { form.ssid = n.ssid; form.password = ''; } draw(); if (n.secure) setTimeout(() => $('ob-pass')?.focus(), 50); },
+          },
+          bars,
+          el('span', { class: 'ob-net-name ellipsis', text: n.ssid }),
+          el('span', { class: 'ob-net-sub', text: n.secure ? '' : t('open') }),
+          chosen ? obIcon('check', 22) : null),
+          chosen && n.secure ? el('div', { class: 'ob-pass' }, Object.assign(password, { id: 'ob-pass' }), eye) : null,
+          chosen && n.secure && form.password.length > 0 && form.password.length < 8
+            ? el('p', { class: 'ob-hint', text: t('A Wi-Fi password has at least 8 characters.') }) : null);
+      };
+      const nextBtn = el('button', { class: 'primary ob-go', text: t('Continue'), disabled: !canGo.wifi(), onclick: next });
+      return [
+        el('h2', { text: t('Which Wi-Fi should the box join?') }),
+        el('p', { class: 'ob-lead', text: t('Choose your home network. The box only knows 2.4 GHz networks.') }),
+        st.error ? el('div', { class: 'ob-alert', role: 'alert' },
+          el('strong', { text: t('The box could not join.') }), ' ', t(st.error)) : null,
+        st.networks.length
+          ? el('div', { class: 'ob-nets' }, ...st.networks.map(card))
+          : el('div', { class: 'ob-empty' }, el('p', { text: t('No networks in reach.') }),
+            el('p', { class: 'muted', text: t('Move the box closer to your router; it looks again in a few minutes.') })),
+        el('footer', { class: 'ob-foot' }, nextBtn),
+      ];
+    },
+
+    name: () => {
+      const address = el('span', { class: 'ob-addr', text: `${obHostName(form.name)}.local` });
+      const input = el('input', {
+        type: 'text', value: form.name, maxlength: 60, autocomplete: 'off', class: 'ob-input big',
+        oninput: (e) => { form.name = e.target.value; address.textContent = `${obHostName(form.name)}.local`; nextBtn.disabled = !canGo.name(); },
+        onkeydown: (e) => { if (e.key === 'Enter' && canGo.name()) next(); },
+      });
+      const rooms = LANG === 'cs' ? ['Obývák', 'Kuchyň', 'Ložnice', 'Dětský pokoj', 'Pracovna'] : ['Living room', 'Kitchen', 'Bedroom', 'Kids\' room', 'Study'];
+      const nextBtn = el('button', { class: 'primary ob-go', text: t('Continue'), disabled: !canGo.name(), onclick: next });
+      return [
+        el('h2', { text: t('What should we call it?') }),
+        el('p', { class: 'ob-lead', text: t('The name shows in AirPlay and in your own.audio apps, and it becomes the box\'s address.') }),
+        input,
+        el('div', { class: 'ob-chips' }, ...rooms.map((r) => el('button', {
+          class: 'secondary', text: r, onclick: () => { form.name = r; input.value = r; input.dispatchEvent(new Event('input')); },
+        }))),
+        el('p', { class: 'ob-note' }, t('Address: '), address),
+        el('footer', { class: 'ob-foot' }, nextBtn),
+      ];
+    },
+
+    sound: () => [
+      el('h2', { text: t('Where does the sound come out?') }),
+      el('p', { class: 'ob-lead', text: t('A sound card on the pins must be named here; USB, HDMI and the headphone jack are found by themselves.') }),
+      el('div', { class: 'ob-choices', role: 'radiogroup' }, ...st.hats.choices.map((c) => {
+        const chosen = form.hat === c.id;
+        const icon = c.id === 0 ? 'speaker' : c.buttons ? 'radio' : 'chip';
+        return el('button', {
+          class: chosen ? 'ob-choice chosen' : 'ob-choice', role: 'radio', 'aria-checked': String(chosen),
+          onclick: () => { form.hat = c.id; draw(); },
+        }, obIcon(icon, 26), el('span', { class: 'ob-choice-text' },
+          el('span', { class: 'ob-choice-title', text: obTitle(c.label) }),
+          obSub(c.label) ? el('span', { class: 'ob-choice-sub', text: obSub(c.label) }) : null), chosen ? obIcon('check', 22) : null);
+      })),
+      foot(t('Continue'), next),
+    ],
+
+    check: () => {
+      const hat = st.hats.choices.find((c) => c.id === form.hat);
+      const row = (label, value, to) => el('button', { class: 'ob-sum-row', onclick: () => go(to) },
+        el('span', { class: 'muted', text: label }), el('span', { class: 'ob-sum-val ellipsis', text: value }));
+      const msg = el('p', { class: 'ob-hint bad', role: 'alert' });
+      const goBtn = el('button', {
+        class: 'primary ob-go', text: t('Connect the box'),
+        onclick: async () => {
+          goBtn.disabled = true;
+          goBtn.classList.add('busy');
+          try {
+            const r = await post('/api/hotspot/apply', {
+              ssid: form.ssid, password: form.password || null, name: form.name.trim(), language: LANG, hat: form.hat,
+            });
+            done(r);
+          } catch (e) {
+            msg.textContent = t(e.message);
+            goBtn.disabled = false;
+            goBtn.classList.remove('busy');
+          }
+        },
+      });
+      return [
+        el('h2', { text: t('All set?') }),
+        el('p', { class: 'ob-lead', text: t('Tap a line to change it.') }),
+        el('div', { class: 'ob-sum' },
+          row(t('Wi-Fi'), form.ssid, 'wifi'),
+          row(t('Name'), form.name.trim(), 'name'),
+          row(t('Sound'), hat ? obTitle(hat.label) : '', 'sound')),
+        msg,
+        el('footer', { class: 'ob-foot' }, goBtn),
+      ];
+    },
+  };
+
+  const done = (r) => {
+    const link = `http://${r.address}/`;
+    const copy = el('button', {
+      class: 'secondary', text: t('Copy'),
       onclick: async () => {
-        go.disabled = true;
-        try {
-          const r = await post('/api/hotspot/apply', {
-            ssid: chosen, password: password.value || null, name: name.value, language: LANG, hat: Number(hat.value),
-          });
-          page.replaceChildren(brand(56),
-            el('h2', { text: t('The box is joining {s}', { s: r.ssid }) }),
-            el('p', { text: t('This Wi-Fi closes now. Connect this phone back to {s}, then open:', { s: r.ssid }) }),
-            el('p', { class: 'code' }, el('a', { href: `http://${r.address}/`, text: `http://${r.address}` })),
-            el('p', { class: 'muted', text: t('There the box asks for your own.audio library. If the box cannot join, its own Wi-Fi comes back in a minute, with the reason.') }));
-        } catch (e) {
-          msg.className = 'bad';
-          msg.textContent = t(e.message);
-          go.disabled = false;
-        }
+        try { await navigator.clipboard.writeText(link); copy.textContent = t('Copied'); } catch { copy.hidden = true; }
       },
     });
-    // The DOM's own replaceChildren writes null out as text; leave the missing parts out.
-    page.replaceChildren(...[brand(56),
-      el('h2', { text: t('Set up the box') }),
-      el('div', { class: 'buttons' }, lang('cs', 'Čeština'), lang('en', 'English')),
-      el('label', { text: t('Name') }), name,
-      el('label', { text: t('Your Wi-Fi') }),
-      st.networks.length ? nets : el('p', { class: 'muted', text: t('No networks in reach.') }),
-      net && net.secure ? password : null,
-      el('label', { text: t('Sound card on the pins') }), hat,
-      msg,
-      el('div', { class: 'wiz-next' }, go)].filter(Boolean));
+    page.replaceChildren(el('div', { class: 'ob-body ob-done' },
+      el('div', { class: 'ob-hero' },
+        brand(96, { animated: true, big: true }),
+        el('h1', { text: t('The box is joining {s}', { s: r.ssid }) })),
+      el('ol', { class: 'ob-list' },
+        el('li', {}, el('span', { class: 'ob-num', text: '1' }),
+          el('span', { text: t('This Wi-Fi closes in a moment. Connect this phone back to {s}.', { s: r.ssid }) })),
+        el('li', {}, el('span', { class: 'ob-num', text: '2' }),
+          el('span', { text: t('Open the box\'s address. There it asks for your own.audio library.') }))),
+      el('div', { class: 'ob-link' }, el('a', { href: link, text: r.address }), copy),
+      el('p', { class: 'ob-note', text: t('If the box cannot join, its own Wi-Fi comes back within a minute, with the reason.') })));
+  };
+
+  const draw = () => {
+    page.replaceChildren(head(), el('div', { class: `ob-body ob-${step}` }, ...views[step]().filter(Boolean)));
+    const backBtn = page.querySelector('.ob-back');
+    if (backBtn && backBtn.tagName === 'BUTTON') backBtn.innerHTML = `<svg viewBox="0 0 24 24">${ICONS.back}</svg>`;
   };
   draw();
 }
