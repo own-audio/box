@@ -137,7 +137,8 @@ network.
 **Your own Wi-Fi** should be WPA2 on 2.4 GHz. The Zero 2 W cannot join a WPA2/WPA3 network
 on a MikroTik ax access point (tried on a hAP ax² under CAPsMAN: refused every time, while
 the same access point's WPA2-only network took it at once), so give 2.4 GHz a WPA2-only
-security profile there; 5 GHz can stay WPA2/WPA3. Other routers' WPA2/WPA3 networks have not
+security profile there, and 20 MHz channels on 2.4 GHz (at 40 MHz the same access points
+refused the radio after some of its restarts); 5 GHz can stay WPA2/WPA3. Other routers' WPA2/WPA3 networks have not
 been tried. The Zero 2 W and the Pi 3 B know 2.4 GHz only. When several access points send
 the same network name (a mesh, or an old router next to a new one), the box checks every
 two minutes and moves to one that is clearly stronger than the one it is on; one that

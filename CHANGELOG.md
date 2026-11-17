@@ -18,6 +18,11 @@ that version's section below as a GitHub Release.
   full strength). The box now scans twice, adds what NetworkManager sees afterwards, and the
   page's list fills in every 8 s.
 
+### Documentation
+
+- README: on MikroTik ax access points, 2.4 GHz at 20 MHz as well as WPA2 only (at 40 MHz
+  the radio was refused after some of its restarts and ended up on a far access point).
+
 ### Changed
 
 - A smaller image to download and to write. The root file system shrinks back to what it
