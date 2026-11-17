@@ -7,6 +7,13 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- A box with a screen, written from the image, stopped at its first start: systemd's own
+  first-boot wizard waited on the console for a keyboard (locale, keymap, time zone, root
+  password) and the kiosk never came up. The image masks it; a box without a screen got
+  past it unseen.
+
 ## [1.0.0-beta.7] — 2026-11-17
 
 The rest of the robustness and security pass, and the box on a phone's home screen. From
