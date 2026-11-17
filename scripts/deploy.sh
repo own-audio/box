@@ -39,7 +39,7 @@ ssh "$host" 'set -e
     sudo install -D -m 644 /tmp/ownbox-wifi-powersave.conf /etc/NetworkManager/conf.d/ownbox-wifi-powersave.conf
     sudo nmcli general reload conf || true
   fi
-  # The Wi-Fi chip's own roaming off; the driver reads it at the next boot.
+  # The Wi-Fi chip roams on its own no more; the driver reads it at the next boot.
   sudo install -D -m 644 /tmp/ownbox-brcmfmac.conf /etc/modprobe.d/ownbox-brcmfmac.conf
   # Raspberry Pi OS keeps Wi-Fi blocked until a country is set (regulatory domain).
   [ "$(sudo raspi-config nonint get_wifi_country 2>/dev/null)" = "${WIFI_COUNTRY:-CZ}" ] || sudo raspi-config nonint do_wifi_country "${WIFI_COUNTRY:-CZ}"
