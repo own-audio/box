@@ -175,7 +175,12 @@ drop=$(in_root dpkg-query -Wf '${Package}\n' \
   | grep -E '^(firmware-(atheros|mediatek|realtek)|gcc-14.*|cpp-14.*|linux-headers-.*|rpi-connect-lite|mkvtoolnix)$' || true)
 if [ -n "$drop" ]; then
   # shellcheck disable=SC2086
-  in_root apt-get purge -y -q --autoremove $drop 2>&1 | grep -E '^(Removing|Purging) ' || true
+  echo "dropping: $(echo $drop)"
+  if in_root apt-get purge -y -q --autoremove $drop > "$work/purge.log" 2>&1; then
+    grep -E '^Removing ' "$work/purge.log" | sed 's/^/  /'
+  else
+    echo "apt could not drop them:"; tail -20 "$work/purge.log"
+  fi
 fi
 for must in mpv chromium cage squeezelite avahi-daemon network-manager raspi-firmware; do
   in_root dpkg -s "$must" >/dev/null 2>&1 || { echo "slimming removed $must"; exit 1; }
