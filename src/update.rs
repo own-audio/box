@@ -32,6 +32,10 @@ pub struct Release {
     binary_url: String,
     #[serde(skip)]
     signature_url: String,
+    /// The box's system files (units, scripts, settings; `setup/`), signed like the program.
+    /// Releases before 1.0.0-beta.7 have none.
+    #[serde(skip)]
+    setup_url: Option<(String, String)>,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -126,6 +130,9 @@ fn newest_release(doc: &Value) -> Option<Release> {
     }
 }
 
+/// The box's system files in a release (see `setup/install-update.sh`).
+const SETUP_ASSET: &str = "ownbox-setup.tar.gz";
+
 /// A GitHub "latest release" document: the tag, the notes and the two assets.
 fn parse_release(v: &Value) -> Option<Release> {
     let asset = |name: &str| {
@@ -142,6 +149,7 @@ fn parse_release(v: &Value) -> Option<Release> {
         notes: v.get("body").and_then(Value::as_str).unwrap_or_default().to_owned(),
         binary_url: asset(BINARY_ASSET)?,
         signature_url: asset(&format!("{BINARY_ASSET}.minisig"))?,
+        setup_url: asset(SETUP_ASSET).zip(asset(&format!("{SETUP_ASSET}.minisig"))),
     })
 }
 
@@ -264,7 +272,24 @@ impl Updater {
             bail!("the download is not a program");
         }
         verify(&binary, &signature)?;
+        let setup = match &release.setup_url {
+            Some((url, sig_url)) => {
+                let bundle = get(url).await?.error_for_status()?.bytes().await?;
+                let sig = get(sig_url).await?.error_for_status()?.text().await?;
+                if bundle.len() > 5_000_000 {
+                    bail!("the system files are too big");
+                }
+                verify(&bundle, &sig)?;
+                Some((bundle, sig))
+            }
+            None => None,
+        };
         tokio::fs::create_dir_all(&self.dir).await?;
+        let _ = tokio::fs::remove_file(self.dir.join(SETUP_ASSET)).await;
+        if let Some((bundle, sig)) = setup {
+            tokio::fs::write(self.dir.join(SETUP_ASSET), &bundle).await?;
+            tokio::fs::write(self.dir.join(format!("{SETUP_ASSET}.minisig")), sig.as_bytes()).await?;
+        }
         tokio::fs::write(self.dir.join("ownbox.new"), &binary).await?;
         tokio::fs::write(self.dir.join("ownbox.new.minisig"), signature.as_bytes()).await?;
         // The root unit's path unit watches for this file.
@@ -346,6 +371,17 @@ trusted comment: timestamp:1794701022\tfile:data.txt\thashed
         });
         let r = parse_release(&doc).expect("release");
         assert_eq!((r.version.as_str(), r.binary_url.as_str(), r.signature_url.as_str()), ("0.2.0", "https://example/bin", "https://example/sig"));
+        assert!(r.setup_url.is_none(), "an older release without system files");
+        let with_setup = json!({
+            "tag_name": "v0.3.0",
+            "assets": [
+                { "name": "ownbox-aarch64", "browser_download_url": "b" },
+                { "name": "ownbox-aarch64.minisig", "browser_download_url": "s" },
+                { "name": "ownbox-setup.tar.gz", "browser_download_url": "t" },
+                { "name": "ownbox-setup.tar.gz.minisig", "browser_download_url": "ts" },
+            ],
+        });
+        assert_eq!(parse_release(&with_setup).and_then(|r| r.setup_url), Some(("t".to_owned(), "ts".to_owned())));
         let unsigned = json!({ "tag_name": "v0.2.0", "assets": [{ "name": "ownbox-aarch64", "browser_download_url": "x" }] });
         assert!(parse_release(&unsigned).is_none());
     }

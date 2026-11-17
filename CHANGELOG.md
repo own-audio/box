@@ -9,6 +9,13 @@ that version's section below as a GitHub Release.
 
 ### Added
 
+- An update from Settings brings the box's system files too, not only the program: each
+  release carries `ownbox-setup.tar.gz` (units, scripts, settings), signed like the
+  program. The root unit checks it with the installed ownbox, unpacks it into a folder of
+  its own and puts only the files on its list in place, at the places on its list: the
+  ones the box has, plus the new ones every box needs (the start-again unit, the Wi-Fi
+  chip's settings). Boxes from beta.4–beta.6 images get beta.4's fixes this way once they
+  update to a release that carries the files.
 - The page can live on a phone's home screen as an app: a manifest with the box's name,
   the own.audio icon (`scripts/home-icons.cjs` renders it) and no browser bars. On an
   iPhone the app has its own storage and does not see Safari's pairing, so a paired

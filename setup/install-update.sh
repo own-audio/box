@@ -6,6 +6,7 @@
 # Results go to /var/lib/ownbox, where ownbox can read but not write.
 set -uo pipefail
 
+BOX_USER=@USER@
 DIR=/home/@USER@/.local/state/ownbox/update
 OPT=/opt/ownbox
 STATE=/var/lib/ownbox
@@ -28,6 +29,54 @@ swap_back() {
   install -m 755 "$OPT/ownbox.previous" "$OPT/ownbox.incoming"
   mv "$OPT/ownbox.incoming" "$OPT/ownbox"
   systemctl restart ownbox.service
+}
+
+# The box's system files from a release (ownbox-setup.tar.gz, signed like the program):
+# checked with the installed ownbox, unpacked into a folder of root's, and only the files
+# named here are put in place, at the places named here — nothing the archive says about
+# paths counts. A file updates the one the box already has; the ones marked "new" are put
+# in even if missing (they came with a later release). @USER@ becomes this box's user.
+install_setup() {
+  local bundle="$DIR/ownbox-setup.tar.gz" work src dest mode always
+  [ -f "$bundle" ] && [ ! -L "$bundle" ] || return 0
+  work=$(mktemp -d /run/ownbox-setup.XXXXXX)
+  install -m 600 "$bundle" "$work/setup.tar.gz" && install -m 600 "$bundle.minisig" "$work/setup.tar.gz.minisig" \
+    || { rm -rf "$work"; echo "no system files"; return 1; }
+  rm -f "$bundle" "$bundle.minisig"
+  if ! "$OPT/ownbox" verify "$work/setup.tar.gz" "$work/setup.tar.gz.minisig"; then
+    rm -rf "$work"; echo "system files: the signature does not match"; return 1
+  fi
+  mkdir "$work/files"
+  tar -xzf "$work/setup.tar.gz" -C "$work/files" --no-same-owner --no-same-permissions || { rm -rf "$work"; return 1; }
+  while read -r src dest mode always; do
+    [ -f "$work/files/$src" ] && [ ! -L "$work/files/$src" ] || continue
+    [ -e "$dest" ] || [ "$always" = new ] || continue
+    sed "s/@USER@/$BOX_USER/g" "$work/files/$src" > "$work/next"
+    install -D -m "$mode" "$work/next" "$dest"
+    echo "  $dest"
+  done <<'FILES'
+boot-config.sh /opt/ownbox/boot-config.sh 755 -
+install-update.sh /opt/ownbox/install-update.sh 755 -
+apply-sources.sh /opt/ownbox/apply-sources.sh 755 -
+image/ownbox-boot.sh /opt/ownbox/ownbox-boot.sh 755 -
+image/ownbox-boot.service /etc/systemd/system/ownbox-boot.service 644 -
+ownbox.service /etc/systemd/system/ownbox.service 644 -
+ownbox-kiosk.service /etc/systemd/system/ownbox-kiosk.service 644 -
+ownbox-update.path /etc/systemd/system/ownbox-update.path 644 -
+ownbox-update.service /etc/systemd/system/ownbox-update.service 644 -
+ownbox-recover.service /etc/systemd/system/ownbox-recover.service 644 new
+ownbox-sources.path /etc/systemd/system/ownbox-sources.path 644 -
+ownbox-sources.service /etc/systemd/system/ownbox-sources.service 644 -
+squeezelite.service /etc/systemd/system/squeezelite.service 644 -
+50-ownbox-network.rules /etc/polkit-1/rules.d/50-ownbox-network.rules 644 -
+51-ownbox-sources.rules /etc/polkit-1/rules.d/51-ownbox-sources.rules 644 -
+ownbox-journald.conf /etc/systemd/journald.conf.d/ownbox.conf 644 -
+ownbox-wifi-powersave.conf /etc/NetworkManager/conf.d/ownbox-wifi-powersave.conf 644 -
+dnsmasq-ownbox-setup.conf /etc/NetworkManager/dnsmasq-shared.d/ownbox-setup.conf 644 -
+ownbox-brcmfmac.conf /etc/modprobe.d/ownbox-brcmfmac.conf 644 new
+FILES
+  rm -rf "$work"
+  systemctl daemon-reload
 }
 
 # ownbox kept stopping (ownbox-recover.service, from ownbox.service's OnFailure). An update
@@ -75,6 +124,9 @@ case "$ACTION" in
       exit 1
     fi
     rm -f "$OPT/ownbox.incoming.minisig"
+    # The system files first, so the new program starts under its own units.
+    echo "system files:"
+    install_setup || echo "system files left as they were"
     chmod 755 "$OPT/ownbox.incoming"
     # A full card must not leave the box without either version.
     cp -p "$OPT/ownbox" "$OPT/ownbox.previous.new" && mv "$OPT/ownbox.previous.new" "$OPT/ownbox.previous" \

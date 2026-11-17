@@ -31,6 +31,14 @@ jobs:
           pip install ziglang==0.13.0 && cargo install cargo-zigbuild --locked
           cargo zigbuild --release --target aarch64-unknown-linux-gnu.2.36
           cp target/aarch64-unknown-linux-gnu/release/ownbox ownbox-aarch64
+          # The box's system files, which an update puts in place as well (the list and
+          # where each goes are in setup/install-update.sh; the box ignores anything else).
+          tar -C setup --owner=0 --group=0 --sort=name -czf ownbox-setup.tar.gz \
+            boot-config.sh install-update.sh apply-sources.sh image/ownbox-boot.sh image/ownbox-boot.service \
+            ownbox.service ownbox-kiosk.service ownbox-update.path ownbox-update.service ownbox-recover.service \
+            ownbox-sources.path ownbox-sources.service squeezelite.service \
+            50-ownbox-network.rules 51-ownbox-sources.rules ownbox-journald.conf ownbox-wifi-powersave.conf \
+            dnsmasq-ownbox-setup.conf ownbox-brcmfmac.conf
       - name: Sign
         env:
           MINISIGN_KEY: ${{ secrets.MINISIGN_KEY }}
@@ -39,6 +47,7 @@ jobs:
           sudo apt-get install -y -q minisign
           printf '%s\n' "$MINISIGN_KEY" > minisign.key
           printf '%s\n' "$MINISIGN_PASSWORD" | minisign -S -s minisign.key -m ownbox-aarch64 -t "ownbox ${GITHUB_REF_NAME}"
+          printf '%s\n' "$MINISIGN_PASSWORD" | minisign -S -s minisign.key -m ownbox-setup.tar.gz -t "ownbox system files ${GITHUB_REF_NAME}"
           rm minisign.key
           sha256sum ownbox-aarch64 > ownbox-aarch64.sha256
       - name: Publish
@@ -52,6 +61,7 @@ jobs:
           pre=; case "$GITHUB_REF_NAME" in *-*) pre=--prerelease ;; esac
           test -s notes.md
           gh release create "$GITHUB_REF_NAME" ownbox-aarch64 ownbox-aarch64.minisig ownbox-aarch64.sha256 \
+            ownbox-setup.tar.gz ownbox-setup.tar.gz.minisig \
             --title "ownbox ${GITHUB_REF_NAME#v}" --notes-file notes.md $pre
       - name: SD card image
         env:
