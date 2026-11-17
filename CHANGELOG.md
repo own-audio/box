@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.6] — 2026-11-17
+
+A smaller image, a box that finds its way to the near access point after a restart, and
+the whole first setup in one look. Tried on the Pirate Radio over its serial console, with
+the router's own log beside it.
+
 ### Fixed
 
 - After a restart the Pirate Radio joined a far access point and stayed there: the near
