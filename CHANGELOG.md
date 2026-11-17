@@ -7,6 +7,15 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.5] — 2026-11-17
+
+A new first setup on the phone, and a way into a box that never reaches a network.
+
+An update from Settings replaces the ownbox program only. The system files that came with
+beta.4 (Wi-Fi chip roaming off, the start-again unit, the settings scripts) and this
+beta's serial console arrive with a freshly written card; a box updated in place keeps the
+ones its card came with.
+
 ### Added
 
 - Beta images open a root shell over USB (`g_serial`, `systemd.debug_shell` on ttyGS0): a
