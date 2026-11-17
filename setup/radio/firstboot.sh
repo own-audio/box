@@ -24,6 +24,7 @@ install -m 644 "$here/squeezelite.service" "$here/ownbox-sources.path" "$here/ow
 install -m 644 "$here/51-ownbox-sources.rules" /etc/polkit-1/rules.d/51-ownbox-sources.rules
 install -m 755 "$here/apply-sources.sh" /opt/ownbox/apply-sources.sh
 install -D -m 644 "$here/ownbox-wifi-powersave.conf" /etc/NetworkManager/conf.d/ownbox-wifi-powersave.conf
+install -D -m 644 "$here/ownbox-brcmfmac.conf" /etc/modprobe.d/ownbox-brcmfmac.conf
 if [ ! -e /home/@USER@/.config/ownbox/config.toml ]; then
   install -D -o @USER@ -g @USER@ -m 644 "$here/config.toml" /home/@USER@/.config/ownbox/config.toml
   chown -R @USER@:@USER@ /home/@USER@/.config

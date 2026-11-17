@@ -7,6 +7,23 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- The box moves to a clearly stronger access point of its network. NetworkManager stays
+  with the one it joined until that one is gone, so a box left beside an old router kept a
+  weak signal while a new one sent the same network next to it. Checked every two minutes;
+  the saved connection is not changed. An access point that refuses the box is not tried
+  again until ownbox restarts.
+- The Wi-Fi chip's own roaming is switched off (`/etc/modprobe.d/ownbox-brcmfmac.conf`). On
+  the Pirate Radio it kept moving to an access point that refused it and dropped the
+  network every few seconds for an hour.
+
+### Changed
+
+- A box that knows a network waits five minutes without it before opening its setup Wi-Fi
+  (a new box still a minute), so a router restarting does not open a network without a
+  password.
+
 ### Security
 
 - A phone can no longer pair over the setup Wi-Fi. It has no password (the Zero 2 W cannot
@@ -15,8 +32,9 @@ that version's section below as a GitHub Release.
 
 ### Documentation
 
-- README: why the setup Wi-Fi is open, and what home Wi-Fi the box joins (WPA2, WPA2/WPA3;
-  WPA3 only untried; two routers with one name).
+- README: why the setup Wi-Fi is open, and what home Wi-Fi the box joins: WPA2 on 2.4 GHz
+  (a Zero 2 W cannot join a MikroTik ax WPA2/WPA3 network), several access points with one
+  name.
 
 ## [1.0.0-beta.3] — 2026-11-17
 

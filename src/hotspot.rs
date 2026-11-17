@@ -7,7 +7,8 @@
 //!
 //! The Zero 2 W has one radio: networks are listed before the box's own Wi-Fi goes up, and
 //! while it is up the box cannot look for the home network. So a box that knows a network
-//! closes its own every few minutes (unless someone is on the page) and tries again.
+//! closes its own every few minutes (unless someone is on the page) and tries again. A box
+//! that knows a network also waits five minutes before opening its own, a fresh one a minute.
 
 use std::{
     net::{IpAddr, Ipv4Addr},
@@ -21,9 +22,12 @@ use crate::wifi::{self, Network};
 
 /// The box on its own network (NetworkManager's shared mode).
 pub const ADDRESS: Ipv4Addr = Ipv4Addr::new(10, 42, 0, 1);
-const CONNECTION: &str = "ownbox-setup";
-/// Without a network this long, the box opens its own.
+pub const CONNECTION: &str = "ownbox-setup";
+/// Without a network this long, a box that knows none (a fresh one) opens its own…
 const OFFLINE_FOR: Duration = Duration::from_secs(60);
+/// …and a box that knows one waits longer: a router restarting or a short outage is no
+/// reason to open a network without a password.
+const OFFLINE_KNOWN_FOR: Duration = Duration::from_secs(5 * 60);
 /// With a network it knows, the box closes its own after this long to look for it again…
 const OPEN_FOR: Duration = Duration::from_secs(5 * 60);
 /// …unless the page was used this recently.
@@ -105,7 +109,8 @@ impl Hotspot {
             }
             if !on {
                 let since = *offline_since.get_or_insert_with(Instant::now);
-                if since.elapsed() >= OFFLINE_FOR
+                let wait = if since.elapsed() >= OFFLINE_FOR && knows_a_network().await { OFFLINE_KNOWN_FOR } else { OFFLINE_FOR };
+                if since.elapsed() >= wait
                     && let Err(err) = self.start(&ssid()).await
                 {
                     tracing::warn!(%err, "opening the setup Wi-Fi");

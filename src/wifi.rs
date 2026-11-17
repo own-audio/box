@@ -173,6 +173,99 @@ pub async fn connect(ssid: &str, password: Option<&str>) -> anyhow::Result<()> {
     }
 }
 
+/// How often the box looks for a better access point of the network it is on.
+const ROAM_EVERY: Duration = Duration::from_secs(120);
+/// How much stronger (nmcli's 0–100 signal) another access point must be to move to it: a
+/// move drops the network for a second or two, so two equal ones must not ping-pong.
+const ROAM_MARGIN: u8 = 20;
+/// After a move the box stays put this long: the chip's own roaming or a signal that only
+/// looked strong in one scan must not send it back and forth.
+const ROAM_REST: Duration = Duration::from_secs(10 * 60);
+
+/// One access point in reach (several may send the same network name).
+#[derive(Debug, Clone, PartialEq)]
+struct AccessPoint {
+    bssid: String,
+    ssid: String,
+    signal: u8,
+    in_use: bool,
+}
+
+fn parse_access_points(text: &str) -> Vec<AccessPoint> {
+    text.lines()
+        .map(fields)
+        .filter_map(|f| {
+            let [in_use, bssid, ssid, signal] = f.as_slice() else { return None };
+            Some(AccessPoint { bssid: bssid.clone(), ssid: ssid.clone(), signal: signal.parse().unwrap_or(0), in_use: in_use == "*" })
+        })
+        .collect()
+}
+
+/// The access point to move to, if one of the same network is clearly stronger than the
+/// one in use.
+fn better_access_point(aps: &[AccessPoint]) -> Option<&AccessPoint> {
+    let current = aps.iter().find(|a| a.in_use)?;
+    aps.iter()
+        .filter(|a| !a.in_use && a.ssid == current.ssid && a.bssid != current.bssid)
+        .max_by_key(|a| a.signal)
+        .filter(|a| a.signal >= current.signal.saturating_add(ROAM_MARGIN))
+}
+
+/// Keeps the box on the strongest access point of its network. NetworkManager stays with
+/// the one it joined until that one is gone — a router replaced by a new one that sends the
+/// same name, or a mesh, leaves the box at the far end of the house. The move names the
+/// access point for this one activation only; the saved connection is not touched.
+pub async fn roam() {
+    // One scan can be wrong: a move needs the same stronger access point twice in a row.
+    let mut seen_better: Option<String> = None;
+    // Access points that refused the box are not tried again until ownbox restarts: a
+    // router that will not take it (a Wi-Fi chip it does not like, band steering) would
+    // otherwise cost the box its network every few minutes.
+    let mut refused: Vec<String> = Vec::new();
+    loop {
+        tokio::time::sleep(ROAM_EVERY).await;
+        let Ok(Status { connected: Some(connection), ethernet: None, .. }) = status().await else { continue };
+        if connection == crate::hotspot::CONNECTION {
+            continue;
+        }
+        let Ok(text) = nmcli(&["-t", "-f", "IN-USE,BSSID,SSID,SIGNAL", "device", "wifi", "list", "ifname", IFACE, "--rescan", "auto"], SCAN).await else {
+            continue;
+        };
+        let mut aps = parse_access_points(&text);
+        aps.retain(|a| a.in_use || !refused.contains(&a.bssid));
+        let Some(better) = better_access_point(&aps) else {
+            seen_better = None;
+            continue;
+        };
+        if seen_better.as_deref() != Some(better.bssid.as_str()) {
+            seen_better = Some(better.bssid.clone());
+            continue;
+        }
+        seen_better = None;
+        let from = aps.iter().find(|a| a.in_use).map_or(0, |a| a.signal);
+        tracing::info!(ssid = %better.ssid, from, to = better.signal, bssid = %better.bssid, "moving to a stronger access point");
+        let bssid = better.bssid.clone();
+        let moved = nmcli(&["connection", "up", "id", &connection, "ifname", IFACE, "ap", &bssid], CONNECT).await;
+        let on = nmcli(&["-t", "-f", "IN-USE,BSSID", "device", "wifi", "list", "ifname", IFACE, "--rescan", "no"], QUICK)
+            .await
+            .unwrap_or_default()
+            .lines()
+            .map(fields)
+            .find(|f| f.first().is_some_and(|c| c == "*"))
+            .and_then(|f| f.get(1).cloned());
+        if moved.is_err() || on.as_deref() != Some(bssid.as_str()) {
+            tracing::warn!(%bssid, err = ?moved.err(), "the stronger access point refused the box; staying with the old one");
+            refused.push(bssid);
+            // Back where it was, by name: NetworkManager may otherwise keep trying the one
+            // that refused, as it is the strongest.
+            if let Some(old) = aps.iter().find(|a| a.in_use) {
+                let _ = nmcli(&["connection", "up", "id", &connection, "ifname", IFACE, "ap", &old.bssid], CONNECT).await;
+            }
+        }
+        tokio::time::sleep(ROAM_REST).await;
+    }
+}
+
 pub async fn forget(ssid: &str) -> anyhow::Result<()> {
     nmcli(&["connection", "delete", "id", ssid], QUICK).await.map(drop)
 }
@@ -195,6 +288,20 @@ mod tests {
         assert_eq!(names, ["Home", "Neighbour", "Cafe"]);
         assert!(list[0].in_use && list[0].saved && list[0].signal == 70);
         assert!(!list[2].secure);
+    }
+
+    #[test]
+    fn moves_only_to_a_clearly_stronger_access_point_of_the_same_network() {
+        let text = "*:D4\\:01\\:C3\\:61\\:E7\\:34:Home:27\n :D0\\:EA\\:11\\:A7\\:C2\\:C5:Home:97\n :AA\\:BB\\:CC\\:DD\\:EE\\:FF:Neighbour:100\n";
+        let aps = parse_access_points(text);
+        assert_eq!(aps[0].bssid, "D4:01:C3:61:E7:34");
+        assert_eq!(better_access_point(&aps).map(|a| a.bssid.as_str()), Some("D0:EA:11:A7:C2:C5"));
+
+        let close = parse_access_points("*:A:Home:60\n :B:Home:75\n");
+        assert_eq!(better_access_point(&close), None, "not worth a drop");
+        let other_network = parse_access_points("*:A:Home:30\n :B:Neighbour:99\n");
+        assert_eq!(better_access_point(&other_network), None);
+        assert_eq!(better_access_point(&parse_access_points(" :A:Home:30\n :B:Home:99\n")), None, "not connected");
     }
 
     #[test]

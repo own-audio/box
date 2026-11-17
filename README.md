@@ -128,15 +128,21 @@ from Settings → Phone control on one already paired.
 **The setup Wi-Fi has no password, on purpose.** The Zero 2 W's Wi-Fi chip cannot send a
 WPA3 network (it refuses to start one), and its Enhanced Open network ends up unencrypted;
 a WPA2 password printed in this README would let anyone in anyway. What protects the box
-instead: the setup Wi-Fi opens only after a minute without any network and closes as soon
-as one is back, and over it a box can only be given a network, a name and a sound card. A
-phone never pairs over it — pairing happens on your own network.
+instead: the setup Wi-Fi opens only when the box has had no network for a while — a
+minute on a new box, five minutes on one that knows a network, so a router restarting does
+not open it — and closes as soon as one is back, and over it a box can only be given a
+network, a name and a sound card. A phone never pairs over it — pairing happens on your own
+network.
 
-**Your own Wi-Fi** can be WPA2 or WPA2/WPA3 (what most routers send by default). A network
-that is WPA3 only should work — the chip supports it as a client — but has not been tried
-yet. The Zero 2 W and the Pi 3 B know 2.4 GHz only. If two routers send the same network
-name, the box stays with the one it joined until that one goes, even when the other is much
-closer; switch off the Wi-Fi of a router you no longer use.
+**Your own Wi-Fi** should be WPA2 on 2.4 GHz. The Zero 2 W cannot join a WPA2/WPA3 network
+on a MikroTik ax access point (tried on a hAP ax² under CAPsMAN: refused every time, while
+the same access point's WPA2-only network took it at once), so give 2.4 GHz a WPA2-only
+security profile there; 5 GHz can stay WPA2/WPA3. Other routers' WPA2/WPA3 networks have not
+been tried. The Zero 2 W and the Pi 3 B know 2.4 GHz only. When several access points send
+the same network name (a mesh, or an old router next to a new one), the box checks every
+two minutes and moves to one that is clearly stronger than the one it is on; one that
+refuses it is not tried again until ownbox restarts. The Wi-Fi chip's own roaming is off —
+it kept moving to such an access point and dropped the network every few seconds.
 
 The box comes as `ownbox.local` until it is named; then the name is its address ("own.audio
 kitchen" → `kitchen.local`). Updates arrive in Settings → Updates.

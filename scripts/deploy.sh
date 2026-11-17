@@ -14,7 +14,7 @@ bin=target/aarch64-unknown-linux-gnu/release/ownbox
 user="$(ssh "$host" id -un)"
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
-for f in setup/ownbox.service setup/ownbox-kiosk.service setup/blank-cursor.py setup/boot-config.sh setup/install-update.sh setup/ownbox-update.path setup/ownbox-update.service setup/50-ownbox-network.rules setup/ownbox-journald.conf setup/ownbox-wifi-powersave.conf setup/51-ownbox-sources.rules setup/apply-sources.sh setup/ownbox-sources.path setup/ownbox-sources.service setup/airplay/shairport-restart.conf setup/squeezelite.service setup/dnsmasq-ownbox-setup.conf; do
+for f in setup/ownbox.service setup/ownbox-kiosk.service setup/blank-cursor.py setup/boot-config.sh setup/install-update.sh setup/ownbox-update.path setup/ownbox-update.service setup/50-ownbox-network.rules setup/ownbox-journald.conf setup/ownbox-wifi-powersave.conf setup/ownbox-brcmfmac.conf setup/51-ownbox-sources.rules setup/apply-sources.sh setup/ownbox-sources.path setup/ownbox-sources.service setup/airplay/shairport-restart.conf setup/squeezelite.service setup/dnsmasq-ownbox-setup.conf; do
   sed "s/@USER@/$user/g" "$f" > "$stage/$(basename "$f")"
 done
 scp -q "$bin" "$stage"/* "$host:/tmp/"
@@ -39,6 +39,8 @@ ssh "$host" 'set -e
     sudo install -D -m 644 /tmp/ownbox-wifi-powersave.conf /etc/NetworkManager/conf.d/ownbox-wifi-powersave.conf
     sudo nmcli general reload conf || true
   fi
+  # The Wi-Fi chip's own roaming off; the driver reads it at the next boot.
+  sudo install -D -m 644 /tmp/ownbox-brcmfmac.conf /etc/modprobe.d/ownbox-brcmfmac.conf
   # Raspberry Pi OS keeps Wi-Fi blocked until a country is set (regulatory domain).
   [ "$(sudo raspi-config nonint get_wifi_country 2>/dev/null)" = "${WIFI_COUNTRY:-CZ}" ] || sudo raspi-config nonint do_wifi_country "${WIFI_COUNTRY:-CZ}"
   [ -e /opt/ownbox/cursors/default/cursors/default ] || sudo python3 /tmp/blank-cursor.py /opt/ownbox/cursors

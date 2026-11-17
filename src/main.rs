@@ -148,6 +148,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::spawn(Arc::clone(&state.hotspot).run(move || named.auth.device_name()));
     }
     tokio::spawn(updater.run(http));
+    tokio::spawn(wifi::roam());
     tokio::spawn(buttons::run(Arc::clone(&state)));
 
     {
