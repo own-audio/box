@@ -1,7 +1,9 @@
 [Unit]
 Description=own.audio box: write AirPlay and Music Assistant settings
 # prefs.json changes often (volume, brightness); the script restarts a source only when its
-# own settings changed.
+# own settings changed. No start limit: five volume steps in ten seconds hit systemd's
+# default, which failed the path unit and the settings were never written again.
+StartLimitIntervalSec=0
 
 [Service]
 Type=oneshot

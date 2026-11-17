@@ -1,5 +1,11 @@
 [Unit]
 Description=own.audio box player (ownbox)
+# Five failed starts in two minutes and systemd gives up on it; ownbox-recover then puts
+# back the previous version if an update came in the last day, and starts it again either
+# way (see install-update.sh recover). Without a limit a broken update looped for good.
+StartLimitIntervalSec=120
+StartLimitBurst=5
+OnFailure=ownbox-recover.service
 # Not waiting for the network: ownbox copes with a server out of reach (the screen says
 # so and clears it), and waiting cost ~5.5 s of every boot.
 After=sound.target

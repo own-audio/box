@@ -47,6 +47,22 @@ pub struct Prefs {
     pub audio_device: Option<String>,
 }
 
+/// Writes `path` so that a power cut leaves the old file or the new one, never half of it:
+/// a temporary file beside it, on the card, then renamed over it. The path unit watching
+/// prefs.json sees the rename as a change.
+pub fn write_atomically(path: &std::path::Path, data: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    let dir = path.parent().unwrap_or(std::path::Path::new("."));
+    std::fs::create_dir_all(dir)?;
+    let tmp = path.with_extension("tmp");
+    let mut file = std::fs::File::create(&tmp)?;
+    file.write_all(data)?;
+    file.sync_all()?;
+    drop(file);
+    std::fs::rename(&tmp, path)?;
+    std::fs::File::open(dir)?.sync_all()
+}
+
 pub struct PrefsStore {
     path: PathBuf,
     prefs: Mutex<Prefs>,
@@ -54,10 +70,17 @@ pub struct PrefsStore {
 
 impl PrefsStore {
     pub fn load(path: PathBuf) -> Self {
-        let prefs = std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|text| serde_json::from_str(&text).ok())
-            .unwrap_or_default();
+        let prefs = match std::fs::read_to_string(&path) {
+            Err(_) => Prefs::default(),
+            Ok(text) => serde_json::from_str(&text).unwrap_or_else(|err| {
+                // Kept aside rather than overwritten by the first change: the sign-in, the
+                // sound card and the paired phones may still be read from it by hand.
+                let aside = path.with_extension("json.bad");
+                tracing::warn!(%err, aside = %aside.display(), "settings unreadable; starting from defaults");
+                let _ = std::fs::rename(&path, &aside);
+                Prefs::default()
+            }),
+        };
         Self { path, prefs: Mutex::new(prefs) }
     }
 
@@ -68,13 +91,28 @@ impl PrefsStore {
     pub fn update(&self, change: impl FnOnce(&mut Prefs)) {
         let mut prefs = self.prefs.lock().expect("prefs lock");
         change(&mut prefs);
-        let saved = self
-            .path
-            .parent()
-            .map_or(Ok(()), std::fs::create_dir_all)
-            .and_then(|()| std::fs::write(&self.path, serde_json::to_vec_pretty(&*prefs).unwrap_or_default()));
-        if let Err(err) = saved {
+        if let Err(err) = write_atomically(&self.path, &serde_json::to_vec_pretty(&*prefs).unwrap_or_default()) {
             tracing::warn!(%err, path = %self.path.display(), "saving settings");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_broken_file_is_kept_aside_and_a_change_writes_a_whole_one() {
+        let dir = std::env::temp_dir().join(format!("ownbox-prefs-{}", std::process::id()));
+        let path = dir.join("prefs.json");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(&path, b"{\"volume\": 4").unwrap();
+        let store = PrefsStore::load(path.clone());
+        assert!(dir.join("prefs.json.bad").exists());
+        store.update(|p| p.volume = Some(33.0));
+        let back: Prefs = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(back.volume, Some(33.0));
+        assert!(!dir.join("prefs.tmp").exists());
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

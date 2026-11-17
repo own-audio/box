@@ -17,10 +17,16 @@ for i in 1 2 3 4 5; do
   sleep 1
 done
 headless=$([ "$screen" = true ] && echo false || echo true)
-if grep -q '^headless *=' "$CONFIG"; then
-  sed -i "s/^headless *=.*/headless = $headless/" "$CONFIG"
-else
-  echo "headless = $headless" >> "$CONFIG"
+# Root writes in a folder ownbox owns: never through a link put there, and only when the
+# value changes (each write starts apply-sources.sh through its path unit).
+if [ -L "$CONFIG" ] || [ ! -f "$CONFIG" ]; then
+  echo "config.toml is not a plain file; leaving it"
+elif ! grep -qx "headless = $headless" "$CONFIG"; then
+  new=$(mktemp "$CONFIG.XXXXXX")
+  grep -v '^headless *=' "$CONFIG" > "$new" || true
+  echo "headless = $headless" >> "$new"
+  chown --reference="$CONFIG" "$new"; chmod --reference="$CONFIG" "$new"
+  mv "$new" "$CONFIG"
 fi
 echo "screen: $screen"
 

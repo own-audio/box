@@ -97,7 +97,7 @@ for f in boot-config.sh install-update.sh apply-sources.sh; do
   fill "$setup/$f" > "$root/opt/ownbox/$f"; chmod 755 "$root/opt/ownbox/$f"
 done
 fill "$here/ownbox-boot.sh" > "$root/opt/ownbox/ownbox-boot.sh"; chmod 755 "$root/opt/ownbox/ownbox-boot.sh"
-for f in ownbox.service ownbox-kiosk.service ownbox-update.path ownbox-update.service \
+for f in ownbox.service ownbox-kiosk.service ownbox-update.path ownbox-update.service ownbox-recover.service \
   ownbox-sources.path ownbox-sources.service squeezelite.service; do
   fill "$setup/$f" > "$root/etc/systemd/system/$f"
 done

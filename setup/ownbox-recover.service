@@ -1,0 +1,6 @@
+[Unit]
+Description=own.audio box: start ownbox again after it kept stopping, on the previous version after an update
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ownbox/install-update.sh recover

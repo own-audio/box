@@ -44,7 +44,7 @@ grep -q 'cfg80211.ieee80211_regdom=' "$boot/cmdline.txt" \
 mkdir -p "$boot/ownbox"
 cp "$bin" "$boot/ownbox/"
 for f in setup/ownbox.service setup/boot-config.sh setup/install-update.sh setup/ownbox-update.path \
-  setup/ownbox-update.service setup/50-ownbox-network.rules setup/ownbox-journald.conf setup/ownbox-wifi-powersave.conf setup/ownbox-brcmfmac.conf \
+  setup/ownbox-update.service setup/ownbox-recover.service setup/50-ownbox-network.rules setup/ownbox-journald.conf setup/ownbox-wifi-powersave.conf setup/ownbox-brcmfmac.conf \
   setup/squeezelite.service setup/ownbox-sources.path setup/ownbox-sources.service setup/51-ownbox-sources.rules setup/apply-sources.sh \
   setup/radio/config.toml setup/radio/firstboot.sh; do
   fill "$f" > "$boot/ownbox/$(basename "$f")"

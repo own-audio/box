@@ -14,7 +14,7 @@ bin=target/aarch64-unknown-linux-gnu/release/ownbox
 user="$(ssh "$host" id -un)"
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
-for f in setup/ownbox.service setup/ownbox-kiosk.service setup/blank-cursor.py setup/boot-config.sh setup/install-update.sh setup/ownbox-update.path setup/ownbox-update.service setup/50-ownbox-network.rules setup/ownbox-journald.conf setup/ownbox-wifi-powersave.conf setup/ownbox-brcmfmac.conf setup/51-ownbox-sources.rules setup/apply-sources.sh setup/ownbox-sources.path setup/ownbox-sources.service setup/airplay/shairport-restart.conf setup/squeezelite.service setup/dnsmasq-ownbox-setup.conf; do
+for f in setup/ownbox.service setup/ownbox-kiosk.service setup/blank-cursor.py setup/boot-config.sh setup/install-update.sh setup/ownbox-update.path setup/ownbox-update.service setup/ownbox-recover.service setup/50-ownbox-network.rules setup/ownbox-journald.conf setup/ownbox-wifi-powersave.conf setup/ownbox-brcmfmac.conf setup/51-ownbox-sources.rules setup/apply-sources.sh setup/ownbox-sources.path setup/ownbox-sources.service setup/airplay/shairport-restart.conf setup/squeezelite.service setup/dnsmasq-ownbox-setup.conf; do
   sed "s/@USER@/$user/g" "$f" > "$stage/$(basename "$f")"
 done
 scp -q "$bin" "$stage"/* "$host:/tmp/"
@@ -27,7 +27,7 @@ ssh "$host" 'set -e
   sudo install -m 644 /tmp/ownbox-sources.path /tmp/ownbox-sources.service /etc/systemd/system/
   # Updates from GitHub Releases: ownbox asks, this root unit installs (or goes back).
   sudo install -m 755 /tmp/install-update.sh /opt/ownbox/install-update.sh
-  sudo install -m 644 /tmp/ownbox-update.path /tmp/ownbox-update.service /etc/systemd/system/
+  sudo install -m 644 /tmp/ownbox-update.path /tmp/ownbox-update.service /tmp/ownbox-recover.service /etc/systemd/system/
   # cloud-init set the box up on its first boot; after that it only cost ~8 s per boot.
   [ -e /etc/cloud/cloud-init.disabled ] || sudo touch /etc/cloud/cloud-init.disabled
   if ! cmp -s /tmp/ownbox-journald.conf /etc/systemd/journald.conf.d/ownbox.conf; then

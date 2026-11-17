@@ -17,7 +17,7 @@ install -d /opt/ownbox
 install -m 755 "$here/ownbox" /opt/ownbox/ownbox
 install -m 755 "$here/boot-config.sh" /opt/ownbox/boot-config.sh
 install -m 755 "$here/install-update.sh" /opt/ownbox/install-update.sh
-install -m 644 "$here/ownbox.service" "$here/ownbox-update.path" "$here/ownbox-update.service" /etc/systemd/system/
+install -m 644 "$here/ownbox.service" "$here/ownbox-update.path" "$here/ownbox-update.service" "$here/ownbox-recover.service" /etc/systemd/system/
 install -m 644 "$here/50-ownbox-network.rules" /etc/polkit-1/rules.d/50-ownbox-network.rules
 install -D -m 644 "$here/ownbox-journald.conf" /etc/systemd/journald.conf.d/ownbox.conf
 install -m 644 "$here/squeezelite.service" "$here/ownbox-sources.path" "$here/ownbox-sources.service" /etc/systemd/system/

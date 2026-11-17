@@ -7,6 +7,11 @@
 # Run as root by scripts/deploy.sh. Prints "reboot" when config.txt changed.
 set -euo pipefail
 
+# At boot ownbox-boot.sh and apply-sources.sh (started by the same boot's change to
+# config.toml) can both run this; two writers of config.txt at once could leave neither's.
+exec 9>/run/ownbox-boot-config.lock
+flock 9
+
 CONFIG_TXT=${CONFIG_TXT:-/boot/firmware/config.txt}
 CONFIG_TOML=${CONFIG_TOML:-/home/@USER@/.config/ownbox/config.toml}
 PREFS_JSON=${PREFS_JSON:-/home/@USER@/.local/state/ownbox/prefs.json}
@@ -89,7 +94,11 @@ $BLOCK"
 if ! cmp -s "$CONFIG_TXT" <(printf '%s\n' "$NEW"); then
   cp "$CONFIG_TXT" "$CONFIG_TXT.ownbox-previous"
   printf '%s\n' "$NEW" > "$CONFIG_TXT.ownbox-new"
+  # FAT has no journal: the new file is on the card before it replaces the old one, and the
+  # rename is on the card before anyone reboots.
+  sync "$CONFIG_TXT.ownbox-new"
   mv "$CONFIG_TXT.ownbox-new" "$CONFIG_TXT"
+  sync
   echo reboot
 fi
 

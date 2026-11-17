@@ -18,6 +18,25 @@ that version's section below as a GitHub Release.
   the Pirate Radio it kept moving to an access point that refused it and dropped the
   network every few seconds for an hour.
 
+### Fixed
+
+- Settings are written whole or not at all: prefs.json goes through a temporary file, is
+  flushed to the card and renamed. A power cut mid-write used to leave a broken file, and
+  then the box started from defaults — without its sign-in, sound card or paired phones. An
+  unreadable file is now kept aside as `prefs.json.bad` instead of being overwritten.
+- config.txt (FAT, no journal) is flushed to the card before it replaces the old one and
+  before the box restarts, and two runs of `boot-config.sh` at boot can no longer write it
+  at once.
+- A few volume steps in quick succession no longer stop AirPlay and Music Assistant
+  settings from ever being written again (systemd's start limit failed their path unit).
+- An update that keeps crashing after it started is put back: five failed starts in two
+  minutes and `ownbox-recover` returns to the previous version if an update came in the
+  last day, once per version, then starts ownbox again — also without an update, after a
+  pause, instead of leaving the box silent. Installing an update checks each step, so a full
+  card cannot leave the box without either version.
+- `ownbox-boot.sh` writes config.toml only when the screen setting changes, and never
+  through a link put in its place.
+
 ### Changed
 
 - A box that knows a network waits five minutes without it before opening its setup Wi-Fi
