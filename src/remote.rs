@@ -79,7 +79,7 @@ impl Remote {
     /// Spends the code (once) and pairs the phone: the token to put in its cookie.
     pub fn pair(&self, code: &str, name: &str, prefs: &PrefsStore) -> Option<String> {
         let mut current = self.code.lock().expect("code lock");
-        let Some(c) = current.as_mut() else { return None };
+        let c = current.as_mut()?;
         if c.expires <= Instant::now() || c.misses >= MAX_TRIES {
             *current = None;
             return None;
@@ -181,6 +181,23 @@ pub fn access(peer: IpAddr, path: &str, token: Option<&str>, paired: &[Paired], 
     }
 }
 
+/// Whether a request's `Host:` names the box: an address, `localhost`, a `.local` name or a
+/// bare host name. Anything else is a page elsewhere that pointed its own name at the box
+/// (DNS rebinding) — its cookies are not the box's, but on a new box the first phone pairs
+/// without a code, so such a page could pair itself.
+pub fn host_allowed(host: &str) -> bool {
+    let name = match host.strip_prefix('[') {
+        Some(v6) => return v6.split_once(']').is_some_and(|(a, _)| a.parse::<std::net::Ipv6Addr>().is_ok()),
+        None => host.rsplit_once(':').map_or(host, |(h, _)| h),
+    };
+    let name = name.trim_end_matches('.').to_ascii_lowercase();
+    name.is_empty()
+        || name.parse::<std::net::Ipv4Addr>().is_ok()
+        || name == "localhost"
+        || name.ends_with(".local")
+        || !name.contains('.')
+}
+
 /// The token from a `Cookie:` header.
 pub fn token_from_cookies(header: &str) -> Option<&str> {
     header.split(';').map(str::trim).find_map(|c| c.strip_prefix(COOKIE)?.strip_prefix('='))
@@ -196,6 +213,16 @@ mod tests {
 
     fn one(token: &str) -> Vec<Paired> {
         vec![Paired { id: "a".into(), name: "phone".into(), token_hash: hash(token), paired_at: String::new() }]
+    }
+
+    #[test]
+    fn only_the_box_s_own_names_are_served() {
+        for ok in ["", "192.168.88.64:8686", "10.42.0.1", "[fe80::1]:8686", "[::1]", "localhost:8686", "pirate-radio-box.local:8686", "ownbox.local.", "ownbox"] {
+            assert!(host_allowed(ok), "{ok}");
+        }
+        for bad in ["evil.example.com", "evil.example.com:8686", "192.168.88.64.nip.io", "[not-an-ip]", "rebind.local.evil.com"] {
+            assert!(!host_allowed(bad), "{bad}");
+        }
     }
 
     #[test]

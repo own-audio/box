@@ -381,14 +381,14 @@ pub async fn recent_albums(auth: &Arc<Auth>) -> anyhow::Result<Vec<Album>> {
 
 pub async fn album_detail(auth: &Auth, album_id: &str) -> anyhow::Result<AlbumDetail> {
     let id = encode(album_id);
-    let answer: V2AlbumAnswer = auth.get(&format!("/api/v2/albums/{id}?include=contributors")).await?;
+    let answer: V2AlbumAnswer = auth.get(&format!("/api/v2/albums/{}?include=contributors", encode(&id))).await?;
     let names = Names::from(&answer.included);
     let album = album(answer.album, &names);
 
     let mut tracks = Vec::new();
     let mut after: Option<String> = None;
     loop {
-        let path = cursor(format!("/api/v2/tracks?album_id={id}&limit=200&include=contributors"), after.as_deref());
+        let path = cursor(format!("/api/v2/tracks?album_id={}&limit=200&include=contributors", encode(&id)), after.as_deref());
         let page: V2Page<V2Track> = auth.get(&path).await?;
         let names = Names::from(&page.included);
         let titles = HashMap::from([(album.id.clone(), album.title.clone())]);

@@ -244,7 +244,7 @@ impl Player {
         if let Some(show_id) = &track.podcast_id {
             return podcasts::stream_url(&self.auth, show_id, &track.id).await;
         }
-        let s: StreamUrl = self.auth.get(&format!("/api/v1/music/tracks/{}/stream", track.id)).await?;
+        let s: StreamUrl = self.auth.get(&format!("/api/v1/music/tracks/{}/stream", crate::library::encode(&track.id))).await?;
         Ok(s.url)
     }
 
@@ -669,7 +669,7 @@ impl Player {
     fn progress_request(track: &Track, position: f64, completed: bool, last_in_queue: bool) -> Option<(String, Value)> {
         Some(if let Some(book_id) = &track.book_id {
             (
-                format!("/api/v1/playback/books/{book_id}/progress"),
+                format!("/api/v1/playback/books/{}/progress", crate::library::encode(book_id)),
                 json!({
                     "file_id": track.id,
                     "position_secs": position.max(0.0),
@@ -679,7 +679,7 @@ impl Player {
             )
         } else if track.podcast_id.is_some() {
             (
-                format!("/api/v1/playback/episodes/{}/progress", track.id),
+                format!("/api/v1/playback/episodes/{}/progress", crate::library::encode(&track.id)),
                 json!({
                     // A played episode starts over next time.
                     "position_secs": if completed { 0.0 } else { position.max(0.0) },

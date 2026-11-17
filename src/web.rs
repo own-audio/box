@@ -349,6 +349,12 @@ async fn guard(
             return axum::response::Redirect::to(&format!("http://{}/", hotspot::ADDRESS)).into_response();
         }
     }
+    if !setup {
+        let host = req.headers().get(header::HOST).and_then(|v| v.to_str().ok()).unwrap_or("");
+        if !remote::host_allowed(host) {
+            return (StatusCode::MISDIRECTED_REQUEST, Json(json!({ "error": "not this box's name" }))).into_response();
+        }
+    }
     match remote::access(peer.ip(), req.uri().path(), token, &paired, s.config.headless, setup) {
         remote::Access::Allowed => next.run(req).await,
         remote::Access::NeedsPairing => (StatusCode::UNAUTHORIZED, Json(json!({ "error": "pair this phone on the box first" }))).into_response(),
@@ -772,7 +778,7 @@ async fn hotspot_apply(State(s): State<Arc<AppState>>, Json(req): Json<HotspotAp
     if let Some(lang) = req.language.filter(|l| matches!(l.as_str(), "cs" | "en")) {
         s.prefs.update(|p| p.language = Some(lang));
     }
-    if let Some(name) = req.name.map(|n| n.trim().chars().take(60).collect::<String>()).filter(|n| !n.is_empty()) {
+    if let Some(name) = req.name.map(|n| clean_name(&n)).filter(|n| !n.is_empty()) {
         s.auth.set_device_name(name.clone());
         s.prefs.update(|p| p.box_name = Some(name));
     }
@@ -827,8 +833,24 @@ struct NameRequest {
     name: String,
 }
 
+/// A name as people type it, without what would break the files it ends up in (AirPlay's and
+/// Squeezelite's settings): no control characters (a new line), quotes or backslashes.
+fn clean_name(raw: &str) -> String {
+    let name: String = raw
+        .chars()
+        .map(|c| match c {
+            c if c.is_control() => ' ',
+            '"' | '`' => '\'',
+            '\\' => '/',
+            '$' => ' ',
+            c => c,
+        })
+        .collect();
+    name.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect()
+}
+
 async fn setup_name(State(s): State<Arc<AppState>>, Json(req): Json<NameRequest>) -> axum::response::Response {
-    let name = req.name.trim().chars().take(60).collect::<String>();
+    let name = clean_name(&req.name);
     if name.is_empty() {
         return (StatusCode::BAD_REQUEST, Json(json!({ "error": "a name is needed" }))).into_response();
     }
@@ -1200,5 +1222,17 @@ async fn test_tone(State(s): State<Arc<AppState>>) -> impl IntoResponse {
     match s.mpv.command(json!(["loadfile", tone, "replace"])).await {
         Ok(_) => (StatusCode::OK, Json(json!({ "ok": true }))),
         Err(e) => (StatusCode::BAD_GATEWAY, Json(json!({ "ok": false, "error": e.to_string() }))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn names_lose_what_would_break_the_settings_files() {
+        assert_eq!(clean_name("  Kuchyň  "), "Kuchyň");
+        assert_eq!(clean_name("a\"b\nc\\d$e`f"), "a'b c/d e'f");
+        assert_eq!(clean_name(&"x".repeat(80)).len(), 60);
     }
 }

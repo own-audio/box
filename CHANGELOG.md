@@ -29,6 +29,13 @@ that version's section below as a GitHub Release.
 - A phone can no longer pair over the setup Wi-Fi. It has no password (the Zero 2 W cannot
   send a WPA3 network), so anyone near a box that lost its network could have paired and
   taken over a box without a screen. Pairing works on the home network only.
+- ownbox answers only to its own names: an address, `localhost`, a `.local` name or a bare
+  host name. A web page elsewhere that points its own name at the box (DNS rebinding) gets
+  421, so it cannot pair itself to a new box, which pairs its first phone without a code.
+- The box's name and sound output are cleaned before they reach AirPlay's and
+  Squeezelite's settings, which a root script writes from what ownbox saved: no new lines,
+  quotes, backslashes or `$`, and the output must be an ALSA name or the best card is used.
+- Ids from the server are percent-encoded in every server path.
 
 ### Documentation
 

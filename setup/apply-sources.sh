@@ -21,7 +21,11 @@ try:
     config = tomllib.load(open(sys.argv[2], "rb"))
 except Exception:
     config = {}
-name = (prefs.get("box_name") or config.get("device_name") or "own.audio box").replace('"', "'")
+import re
+# The name lands in shairport-sync.conf and /etc/default/squeezelite inside quotes, and ownbox
+# (not root) wrote it: control characters, quotes and backslashes go.
+name = str(prefs.get("box_name") or config.get("device_name") or "own.audio box")
+name = re.sub(r"[\x00-\x1f\x7f]+", " ", name).replace('"', "'").replace("\\", "/").replace("$", "").replace("`", "'").strip()[:60] or "own.audio box"
 def best_card():
     # As ownbox picks (src/hardware.rs): an I2S DAC, then USB, then HDMI, then the jack.
     rank = {"i2s": 0, "usb": 1, "hdmi": 2, "jack": 3}
@@ -48,6 +52,9 @@ def best_card():
 # The output chosen in Settings, else config.toml's, else the best one found.
 device = prefs.get("audio_device") or config.get("audio_device") or best_card()
 device = device[len("alsa/"):] if device.startswith("alsa/") else device
+# An ALSA name only (plughw:CARD=sndrpihifiberry,DEV=0): anything else falls back.
+if not re.fullmatch(r"[A-Za-z0-9_:=,.-]{1,80}", device):
+    device = best_card()
 on = lambda key: "yes" if prefs.get(key, True) is not False else "no"
 # The network name from the name given on the box: "own.audio pirate radio" → pirate-radio
 # (pirate-radio.local); "-" until one is given, so Imager's hostname stays until then.
