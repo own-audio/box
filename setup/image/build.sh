@@ -170,9 +170,9 @@ find "$root/usr/share/locale" -mindepth 1 -maxdepth 1 -type d ! -name cs ! -name
 # Packages a box never uses: firmware for Wi-Fi chips no Raspberry Pi carries, the
 # compiler and kernel headers left over from AirPlay's build, Raspberry Pi Connect and
 # mkvtoolnix. apt lists what goes with them, so a removal that takes too much shows.
-# (apt takes no wildcards, hence the names from dpkg.)
+# (apt takes no wildcards, hence the names from dpkg; gcc-14-base stays, libgcc needs it.)
 drop=$(in_root dpkg-query -Wf '${Package}\n' \
-  | grep -E '^(firmware-(atheros|mediatek|realtek)|gcc-14.*|cpp-14.*|linux-headers-.*|rpi-connect-lite|mkvtoolnix)$' || true)
+  | grep -E '^(firmware-(atheros|mediatek|realtek)|(gcc|cpp)-14(-aarch64-linux-gnu|-for-host)?|linux-headers-.*|rpi-connect-lite|mkvtoolnix)$' || true)
 if [ -n "$drop" ]; then
   # shellcheck disable=SC2086
   echo "dropping: $(echo $drop)"
