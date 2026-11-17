@@ -142,14 +142,17 @@ printf 'own.audio box %s (Raspberry Pi OS Lite 2026-10-06, arm64)\n' "$version" 
 
 # Beta images (a version with a pre-release part, 1.0.0-beta.4): a root shell over USB, so
 # a box that never reaches a network can still be looked into. The Zero 2 W's data port
-# (or a Pi 4/5's USB-C) to a computer shows up as a serial port there (/dev/cu.usbmodem…,
+# (or a Pi 4's USB-C) to a computer shows up as a serial port there (/dev/cu.usbmodem…,
 # /dev/ttyACM0). OTG mode, not peripheral: the same port still takes a USB sound card.
+# Only on those two: on a Pi 3 the same USB controller carries its whole hub — the
+# Ethernet and every USB port — and the overlay took them away (the Pi 3 then hung at
+# cloud-init's "pre-network" stage). The Pi 5 is left out until tried.
 # Anyone with the box in hand can read its SD card anyway; a release leaves this out.
 case "$version" in
   *-*)
     echo "== serial console (beta)"
     sed -i '1s/$/ modules-load=dwc2,g_serial systemd.debug_shell=ttyGS0/' "$root/boot/firmware/cmdline.txt"
-    printf '\n# own.audio box beta: a root shell over USB (g_serial on ttyGS0); releases leave it out\n[all]\ndtoverlay=dwc2\n' \
+    printf '\n# own.audio box beta: a root shell over USB (g_serial on ttyGS0); releases leave it out\n[pi02]\ndtoverlay=dwc2\n[pi4]\ndtoverlay=dwc2\n[all]\n' \
       >> "$root/boot/firmware/config.txt"
     ;;
 esac

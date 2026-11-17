@@ -157,8 +157,9 @@ kitchen" → `kitchen.local`). Updates arrive in Settings → Updates.
 ## Serial console (beta images)
 
 Beta images open a root shell over USB, for a box that never reaches a network. Connect
-the Zero 2 W's data port (marked USB, not PWR) — or a Pi 4/5's USB-C — to a computer; the
-box can take its power from it. A minute after power-on a serial port appears:
+the Zero 2 W's data port (marked USB, not PWR) — or a Pi 4's USB-C — to a computer; the
+box can take its power from it. A Pi 3 has no such port (its one USB controller carries the
+Ethernet and all USB ports), so it has no console this way. A minute after power-on a serial port appears:
 
 ```bash
 screen /dev/cu.usbmodem* 115200    # macOS

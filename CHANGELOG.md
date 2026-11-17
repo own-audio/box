@@ -9,6 +9,11 @@ that version's section below as a GitHub Release.
 
 ### Fixed
 
+- A Pi 3 did not start from a beta image: the serial console's USB overlay replaced the
+  driver of the one USB controller that carries the Pi 3's Ethernet and USB ports, and the
+  start hung at cloud-init's "pre-network" stage. The overlay is now only on the Zero 2 W
+  and the Pi 4. Found on the bench Pi 3 with beta.7; releases never had the overlay.
+
 - After choosing a sound card on the pins, Squeezelite (and AirPlay) stayed on HDMI: their
   settings were written before the restart that loads the card, when HDMI was the best one
   there, and nothing wrote them again. They are now written at every start as well, once
