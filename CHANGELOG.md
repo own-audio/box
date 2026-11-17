@@ -25,6 +25,13 @@ that version's section below as a GitHub Release.
 
 ### Changed
 
+- The first-run wizard (on the box's screen and on the phone of a box without one) in the
+  onboarding's look: progress bars instead of "Step 3 of 7", choices as tiles with an icon
+  and a line under them instead of round buttons, the network as a status card, the test
+  tone as a tile. On a phone the way on sits at the bottom, sign-in has a button that opens
+  the server's page in another tab, the code to copy and a note that the page moves on by
+  itself once it is approved, and naming the box offers rooms and shows the `.local`
+  address it becomes.
 - A smaller image to download and to write. The root file system shrinks back to what it
   holds plus 256 MB (Raspberry Pi OS grows it to the whole card at the first boot), so
   Imager writes about half as much; manual pages, package docs and languages other than

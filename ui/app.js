@@ -1775,14 +1775,28 @@ function finishWizard() {
 /** One step: a title, a line of explanation, its content, and the way on. */
 function wizStep(box, { step, title, intro, content, next, greeting }) {
   // The DOM's own append writes null out as text; leave the missing parts out instead.
-  box.append(...[
+  box.append(el('div', { class: greeting ? 'wiz hero' : 'wiz' }, ...[
+    wizProgress(step),
     greeting ? brand(88, { animated: true, big: true }) : null,
-    el('div', { class: 'wiz-step muted', text: t('Step {n} of {m}', { n: step, m: 7 }) }),
     el('h2', { text: title }),
     intro ? el('p', { class: 'wiz-intro', text: intro }) : null,
     content,
     next ? el('div', { class: 'wiz-next' }, next) : null,
-  ].filter(Boolean));
+  ].filter(Boolean)));
+}
+
+/** Seven bars, the steps done and this one lit, with the count for a screen reader. */
+function wizProgress(step) {
+  return el('div', {
+    class: 'ob-progress wiz-progress', role: 'progressbar', 'aria-valuemin': 1, 'aria-valuemax': 7, 'aria-valuenow': step,
+    'aria-label': t('Step {n} of {m}', { n: step, m: 7 }),
+  }, ...Array.from({ length: 7 }, (_, i) => el('span', { class: i < step ? 'on' : '' })));
+}
+
+/** A choice as a tile: an icon, a name and a line under it. */
+function wizChoice(icon, title, sub, onclick) {
+  return el('button', { class: 'choice', onclick }, obIcon(icon, 30),
+    el('span', { class: 'choice-text' }, el('strong', { text: title }), sub ? el('span', { class: 'muted', text: sub }) : null));
 }
 
 function wizLanguage() {
@@ -1800,8 +1814,8 @@ function wizLanguage() {
         greeting: true,
         title: 'Jazyk · Language',
         content: el('div', { class: 'wiz-choices' },
-          el('button', { class: 'choice', onclick: () => choose('cs') }, el('strong', { text: 'Čeština' })),
-          el('button', { class: 'choice', onclick: () => choose('en') }, el('strong', { text: 'English' }))),
+          wizChoice('globe', 'Čeština', 'Česky', () => choose('cs')),
+          wizChoice('globe', 'English', 'In English', () => choose('en'))),
       });
     },
   };
@@ -1821,7 +1835,7 @@ function wizNetwork() {
         title: t('Network'),
         intro: t('The box needs the network to reach your library.'),
         content: el('div', { class: 'settings-group' },
-          el('p', { class: online ? 'ok' : 'warn', text: status }),
+          el('div', { class: online ? 'wiz-status ok' : 'wiz-status warn' }, obIcon(online ? 'check' : 'wifi', 26), el('span', { text: status })),
           w && !w.ethernet ? el('div', {}, el('button', { class: 'secondary', text: t('Wi-Fi networks'), onclick: () => push(wifiView()) })) : null),
         next: el('button', { class: 'primary', text: online ? t('Continue') : t('Continue anyway'), onclick: () => push(wizServer()) }),
       });
@@ -1868,12 +1882,8 @@ function wizServer() {
         intro: t('Where your music, audiobooks and podcasts are.'),
         content: el('div', {},
           el('div', { class: 'wiz-choices' },
-            el('button', { class: 'choice', onclick: hosted },
-              el('strong', { text: 'own.audio' }),
-              el('span', { class: 'muted', text: t('The hosted service at own.audio') })),
-            el('button', { class: 'choice', onclick: () => push(wizServerAddress(st)) },
-              el('strong', { text: t('Your own server at home') }),
-              el('span', { class: 'muted', text: t('own.audio running on your computer or NAS') }))),
+            wizChoice('cloud', 'own.audio', t('The hosted service at own.audio'), hosted),
+            wizChoice('server', t('Your own server at home'), t('own.audio running on your computer or NAS'), () => push(wizServerAddress(st)))),
           msg),
       });
     },
@@ -1901,7 +1911,7 @@ function wizServerAddress(st) {
       };
       document.body.classList.add('typing');
       box.append(el('div', { class: 'search-wrap' },
-        el('div', { class: 'wiz-step muted', text: t('Step {n} of {m}', { n: 3, m: 7 }) }),
+        wizProgress(3),
         el('h2', { text: t('Server address') }),
         el('p', { class: 'muted small', text: t('As in the own.audio app, for example http://192.168.1.10:8099') }),
         el('div', { class: 'searchbar' }, text),
@@ -1929,13 +1939,19 @@ function wizSignIn() {
       const code = el('p', { class: 'code' });
       const where = el('p', { class: 'link' });
       const msg = el('p', { class: 'muted' });
+      // On a phone the page opens in another tab; this one notices the approval by itself.
+      const open = el('a', { class: 'button primary wiz-open', target: '_blank', rel: 'noopener', hidden: true, text: t('Confirm in own.audio') });
+      const copy = el('button', { class: 'secondary', hidden: true, text: t('Copy the code'), onclick: async () => {
+        try { await navigator.clipboard.writeText(code.textContent); copy.textContent = t('Copied'); } catch { copy.hidden = true; }
+      } });
+      const waiting = el('p', { class: 'wiz-waiting muted', hidden: true }, el('span', { class: 'wiz-dot' }), t('Waiting for the approval; this page moves on by itself.'));
       wizStep(box, {
         step: 4,
         title: t('Signing in'),
         intro: HEADLESS
-          ? t('Open the address below and confirm the code in your own.audio account.')
+          ? t('Confirm the code in your own.audio account. No password is typed here.')
           : t('Scan the code with your phone, or open the address below and enter the code.'),
-        content: el('div', { class: 'wiz-signin' }, qr, el('div', {}, where, code, msg)),
+        content: el('div', { class: 'wiz-signin' }, qr, el('div', { class: 'wiz-code' }, where, code, msg, copy), open, waiting),
       });
       await post('/api/sign-in').catch((e) => { msg.textContent = t(e.message); });
       let shown = null;
@@ -1957,6 +1973,7 @@ function wizSignIn() {
           }
           qr.hidden = !s.link || HEADLESS;
           showLink(where, s.link);
+          if (HEADLESS && s.link) { open.href = s.link; open.hidden = false; copy.hidden = false; waiting.hidden = false; }
           code.textContent = s.user_code;
           msg.textContent = t('Valid for {t}', { t: clock(s.expires_in) });
         } else {
@@ -1985,12 +2002,12 @@ function wizSound() {
         title: t('Sound'),
         intro: t("Connect the box's audio output to the speaker's AUX input, then play the test tone."),
         content: el('div', { class: 'settings-group' },
-          el('div', { class: 'buttons' },
-            el('button', { class: 'secondary', text: t('Play test tone'), onclick: async () => {
+          el('div', { class: 'wiz-choices' },
+            wizChoice('speaker', t('Play test tone'), t('A short tone from the box'), async () => {
               msg.textContent = t('Playing…');
               await post('/api/test-tone').then(() => { msg.textContent = t('Test tone sent to the speaker.'); })
                 .catch((e) => { msg.textContent = t('Failed: {e}', { e: t(e.message) }); });
-            } })),
+            })),
           el('div', { class: 'setting' }, el('span', { text: t('Volume') }), slider),
           msg),
         next: el('button', { class: 'primary', text: t('Continue'), onclick: () => push(wizName()) }),
@@ -2018,9 +2035,28 @@ function wizName(fromSettings = false) {
           msg.textContent = t(e.message);
         }
       };
+      if (onPhone()) {
+        const address = el('span', { class: 'ob-addr', text: `${obHostName(field.value)}.local` });
+        const input = el('input', { type: 'text', class: 'ob-input big', value: field.value, maxlength: 60, autocomplete: 'off',
+          oninput: (e) => { field.value = e.target.value; address.textContent = `${obHostName(field.value)}.local`; } });
+        const rooms = LANG === 'cs' ? ['Obývák', 'Kuchyň', 'Ložnice', 'Dětský pokoj', 'Pracovna'] : ['Living room', 'Kitchen', 'Bedroom', 'Kids\' room', 'Study'];
+        const content = el('div', { class: 'wiz-name' }, input,
+          el('div', { class: 'ob-chips' }, ...rooms.map((r) => el('button', { class: 'secondary', text: r,
+            onclick: () => { input.value = r; input.dispatchEvent(new Event('input')); } }))),
+          el('p', { class: 'ob-note' }, t('Address: '), address), msg);
+        if (fromSettings) {
+          box.append(el('div', { class: 'wiz' }, el('h2', { text: t('Name the box') }),
+            el('p', { class: 'wiz-intro', text: t('How it appears in AirPlay and Music Assistant, and among your devices from the next sign-in.') }),
+            content, el('div', { class: 'wiz-next' }, el('button', { class: 'primary', text: t('Save'), onclick: save }))));
+        } else {
+          wizStep(box, { step: 6, title: t('What should we call it?'), intro: t("The name shows in AirPlay and in your own.audio apps, and it becomes the box's address."),
+            content, next: el('button', { class: 'primary', text: t('Continue'), onclick: save }) });
+        }
+        return;
+      }
       document.body.classList.add('typing');
       box.append(el('div', { class: 'search-wrap' },
-        fromSettings ? null : el('div', { class: 'wiz-step muted', text: t('Step {n} of {m}', { n: 6, m: 7 }) }),
+        fromSettings ? null : wizProgress(6),
         el('h2', { text: t('Name the box') }),
         el('p', { class: 'muted small', text: fromSettings
           ? t('How it appears in AirPlay and Music Assistant, and among your devices from the next sign-in.')
@@ -2814,6 +2850,10 @@ const OB_ICON = {
   chip: '<rect x="5" y="5" width="14" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   radio: '<rect x="3" y="8" width="18" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="15.5" cy="14" r="2.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6.5 12.5h4M6.5 15.5h4M7 8l9-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3"/>',
+  globe: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+  cloud: '<path d="M7 18.5h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.5 9.6 4.5 4.5 0 0 0 7 18.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+  server: '<rect x="4" y="3.5" width="16" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="4" y="13.5" width="16" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="7" r="1.2"/><circle cx="8" cy="17" r="1.2"/>',
+  wifi: '<path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.6 15.8a5 5 0 0 1 6.8 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="19" r="1.5"/>',
 };
 const obIcon = (name, size = 24) => {
   const span = el('span', { class: 'ob-icon', 'aria-hidden': 'true' });

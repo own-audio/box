@@ -316,6 +316,11 @@ const CS = {
     'Tam se box zeptá na vaši knihovnu own.audio. Když se box připojit nedokáže, jeho vlastní Wi-Fi se do minuty vrátí i s důvodem.',
   'Joining failed: {e}': 'Připojení se nepovedlo: {e}',
   'Your music, from your own library': 'Vaše hudba z vaší vlastní knihovny',
+  'Confirm in own.audio': 'Potvrdit v own.audio',
+  'Copy the code': 'Kopírovat kód',
+  'Waiting for the approval; this page moves on by itself.': 'Čekám na potvrzení; stránka pak pokračuje sama.',
+  'Confirm the code in your own.audio account. No password is typed here.': 'Potvrďte kód ve svém účtu own.audio. Žádné heslo se tu nezadává.',
+  'A short tone from the box': 'Krátký tón z boxu',
   'Three short steps and this box joins your home Wi-Fi. Then it plays from your own.audio library.':
     'Tři krátké kroky a box se připojí k vaší domácí Wi-Fi. Pak bude hrát z vaší knihovny own.audio.',
   'A name for the box': 'Jméno boxu',
