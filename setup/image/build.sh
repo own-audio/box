@@ -125,6 +125,8 @@ in_root systemctl mask userconfig.service 2>/dev/null || true
 # Nor systemd's own first-boot wizard: on a box with a screen it waited on the console for
 # a keyboard (locale, keymap, time zone, root password), and the kiosk never came.
 in_root systemctl mask systemd-firstboot.service
+# And told so on the kernel's command line too, should a later base image unmask it.
+sed -i '1s/$/ systemd.firstboot=off/' "$root/boot/firmware/cmdline.txt"
 # Fewer writes to the SD card: no daily package-list updates, manual-page index or dpkg
 # backups (the box updates itself from GitHub, not apt), and zram's swap is never written
 # back to the card. The journal already lives in memory (Raspberry Pi OS's default).
