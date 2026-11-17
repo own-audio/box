@@ -167,6 +167,16 @@ rm -rf "$root"/usr/share/man/* "$root"/usr/share/info/*
 find "$root/usr/share/doc" -mindepth 1 ! -name copyright ! -type d -delete 2>/dev/null || true
 find "$root/usr/share/doc" -mindepth 1 -type d -empty -delete 2>/dev/null || true
 find "$root/usr/share/locale" -mindepth 1 -maxdepth 1 -type d ! -name cs ! -name 'en*' -exec rm -rf {} + 2>/dev/null || true
+# Packages a box never uses: firmware for Wi-Fi chips no Raspberry Pi carries, the
+# compiler and kernel headers left over from AirPlay's build, Raspberry Pi Connect and
+# mkvtoolnix. apt lists what goes with them, so a removal that takes too much shows.
+in_root apt-get purge -y -q --autoremove \
+  firmware-atheros firmware-mediatek firmware-realtek \
+  'gcc-14*' 'cpp-14*' 'linux-headers-*' rpi-connect-lite mkvtoolnix 2>&1 \
+  | grep -E '^(Removing|Purging) ' || true
+for must in mpv chromium cage squeezelite avahi-daemon network-manager raspi-firmware; do
+  in_root dpkg -s "$must" >/dev/null 2>&1 || { echo "slimming removed $must"; exit 1; }
+done
 # The 25 biggest packages, so the next one to drop is easy to find.
 in_root dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -rn | head -25 \
   | awk -F'\t' '{printf "  %6.1f MB  %s\n", $1/1024, $2}'

@@ -12,7 +12,9 @@ that version's section below as a GitHub Release.
 - A smaller image to download and to write. The root file system shrinks back to what it
   holds plus 256 MB (Raspberry Pi OS grows it to the whole card at the first boot), so
   Imager writes about half as much; manual pages, package docs and languages other than
-  Czech and English are left out (and stay out through updates), and the image is
+  Czech and English are left out (and stay out through updates), as are firmware for Wi-Fi
+  chips no Raspberry Pi has, the compiler left from the AirPlay build, Raspberry Pi Connect
+  and mkvtoolnix; the image is
   compressed with `xz -9`. The build log lists the 25 biggest packages.
 
 ## [1.0.0-beta.5] — 2026-11-17
