@@ -7,6 +7,13 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- After a restart the Pirate Radio joined a far access point and stayed there: the near
+  one (a MikroTik ax) refused it in the first minutes after boot, and the box then left it
+  alone until ownbox restarted. The box now looks 30 s after start, confirms a stronger
+  access point half a minute later, and tries one that refused it again after 10 minutes.
+
 ### Changed
 
 - A smaller image to download and to write. The root file system shrinks back to what it

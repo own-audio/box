@@ -6,7 +6,10 @@
 //! Arguments go to nmcli as separate arguments, never through a shell, and the password is
 //! never logged.
 
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 use anyhow::{Context, bail};
 use serde::Serialize;
@@ -175,8 +178,13 @@ pub async fn connect(ssid: &str, password: Option<&str>) -> anyhow::Result<()> {
     }
 }
 
-/// How often the box looks for a better access point of the network it is on.
+/// How often the box looks for a better access point of the network it is on, the first
+/// look after start, and the second look that confirms a stronger one.
 const ROAM_EVERY: Duration = Duration::from_secs(120);
+const ROAM_FIRST: Duration = Duration::from_secs(30);
+const ROAM_CONFIRM: Duration = Duration::from_secs(30);
+/// An access point that refused the box is left alone this long.
+const REFUSED_FOR: Duration = Duration::from_secs(10 * 60);
 /// How much stronger (nmcli's 0–100 signal) another access point must be to move to it: a
 /// move drops the network for a second or two, so two equal ones must not ping-pong.
 const ROAM_MARGIN: u8 = 20;
@@ -218,14 +226,20 @@ fn better_access_point(aps: &[AccessPoint]) -> Option<&AccessPoint> {
 /// same name, or a mesh, leaves the box at the far end of the house. The move names the
 /// access point for this one activation only; the saved connection is not touched.
 pub async fn roam() {
-    // One scan can be wrong: a move needs the same stronger access point twice in a row.
+    // One scan can be wrong: a move needs the same stronger access point twice in a row,
+    // the second look half a minute after the first.
     let mut seen_better: Option<String> = None;
-    // Access points that refused the box are not tried again until ownbox restarts: a
-    // router that will not take it (a Wi-Fi chip it does not like, band steering) would
-    // otherwise cost the box its network every few minutes.
-    let mut refused: Vec<String> = Vec::new();
+    // Access points that refused the box rest a while before they are tried again: a router
+    // that will not take it (a chip it does not like, band steering) would otherwise cost the
+    // box its network every few minutes — and one that only refused just after the box
+    // started (seen on MikroTik ax access points) gets another chance.
+    let mut refused: Vec<(String, Instant)> = Vec::new();
+    // The first look soon after start: NetworkManager may well have joined a far one.
+    let mut wait = ROAM_FIRST;
     loop {
-        tokio::time::sleep(ROAM_EVERY).await;
+        tokio::time::sleep(wait).await;
+        wait = ROAM_EVERY;
+        refused.retain(|(_, at)| at.elapsed() < REFUSED_FOR);
         let Ok(Status { connected: Some(connection), ethernet: None, .. }) = status().await else { continue };
         if connection == crate::hotspot::CONNECTION {
             continue;
@@ -234,13 +248,14 @@ pub async fn roam() {
             continue;
         };
         let mut aps = parse_access_points(&text);
-        aps.retain(|a| a.in_use || !refused.contains(&a.bssid));
+        aps.retain(|a| a.in_use || !refused.iter().any(|(b, _)| *b == a.bssid));
         let Some(better) = better_access_point(&aps) else {
             seen_better = None;
             continue;
         };
         if seen_better.as_deref() != Some(better.bssid.as_str()) {
             seen_better = Some(better.bssid.clone());
+            wait = ROAM_CONFIRM;
             continue;
         }
         seen_better = None;
@@ -256,15 +271,16 @@ pub async fn roam() {
             .find(|f| f.first().is_some_and(|c| c == "*"))
             .and_then(|f| f.get(1).cloned());
         if moved.is_err() || on.as_deref() != Some(bssid.as_str()) {
-            tracing::warn!(%bssid, err = ?moved.err(), "the stronger access point refused the box; staying with the old one");
-            refused.push(bssid);
+            tracing::warn!(%bssid, err = ?moved.err(), "the stronger access point refused the box; trying it again in 10 minutes");
+            refused.push((bssid, Instant::now()));
             // Back where it was, by name: NetworkManager may otherwise keep trying the one
             // that refused, as it is the strongest.
             if let Some(old) = aps.iter().find(|a| a.in_use) {
                 let _ = nmcli(&["connection", "up", "id", &connection, "ifname", IFACE, "ap", &old.bssid], CONNECT).await;
             }
+        } else {
+            wait = ROAM_REST;
         }
-        tokio::time::sleep(ROAM_REST).await;
     }
 }
 
