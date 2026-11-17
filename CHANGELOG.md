@@ -16,6 +16,9 @@ that version's section below as a GitHub Release.
 
 ### Fixed
 
+- Play/pause on a phone was an egg, not a circle, when a book's ±30 s buttons were in the
+  row: the row was too tight and the button lost width but not height. It keeps its size
+  now and the gaps give way.
 - Copying the sign-in code and the box's address did nothing: the box is served over plain
   http, where browsers offer no clipboard API, and the button quietly went away. It now
   copies the old way, which works there (Safari on iPhone too), and if that fails as well
