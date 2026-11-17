@@ -2137,8 +2137,30 @@ function serverSettings() {
       el('button', { class: 'secondary', text: t('Run the setup again'), onclick: async () => {
         await post('/api/setup/done', { done: false }).catch(() => null);
         startWizard();
-      } })));
+      } }),
+      resetButton()));
   return group;
+}
+
+/** Sign out and start over: two taps, the second within five seconds, since it forgets the
+ * sign-in, the queue and every paired phone. The Wi-Fi, sound card and name stay. */
+function resetButton() {
+  let armed = null;
+  const button = el('button', { class: 'secondary danger', text: t('Sign out and start over'), onclick: async () => {
+    if (!armed) {
+      button.textContent = t('Sure? Tap again');
+      button.classList.add('armed');
+      armed = setTimeout(() => { armed = null; button.textContent = t('Sign out and start over'); button.classList.remove('armed'); }, 5000);
+      return;
+    }
+    clearTimeout(armed);
+    button.disabled = true;
+    await post('/api/setup/reset').catch(() => null);
+    // The page starts over too: the wizard on the screen; on a phone, pairing first, as
+    // the box has forgotten every phone.
+    location.replace('/');
+  } });
+  return button;
 }
 
 // --- equalizer --------------------------------------------------------------------

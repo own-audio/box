@@ -92,6 +92,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/setup/server", post(setup_server))
         .route("/api/setup/name", post(setup_name))
         .route("/api/setup/done", post(setup_done))
+        .route("/api/setup/reset", post(setup_reset))
         .route("/api/wifi", get(wifi_status))
         .route("/api/wifi/radio", post(wifi_radio))
         .route("/api/wifi/scan", get(wifi_scan))
@@ -868,6 +869,36 @@ struct DoneRequest {
 async fn setup_done(State(s): State<Arc<AppState>>, Json(req): Json<DoneRequest>) -> Json<serde_json::Value> {
     s.prefs.update(|p| p.setup_done = Some(req.done));
     Json(json!({ "done": req.done }))
+}
+
+/// Settings → "Sign out and start over": the box as it came, except what belongs to the
+/// place it stands in — its network (NetworkManager's, untouched), its sound card and
+/// buttons (changing them takes a restart), its name and address (the page stays where it
+/// is) and its language and look. The session ends on the server too, the queue and the
+/// equalizer go, and every paired phone is forgotten: the wizard runs again, and on a box
+/// without a screen the first phone to open the page pairs, as on a new box.
+async fn setup_reset(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    s.player.clear().await;
+    s.auth.sign_out().await;
+    s.auth.set_server(s.config.server_url.clone()).await;
+    let _ = s.mpv.command(json!(["set_property", "af", eq::Eq::default().filter()])).await;
+    s.prefs.update(|p| {
+        *p = crate::prefs::Prefs {
+            language: p.language.take(),
+            theme: p.theme.take(),
+            buttons: p.buttons.take(),
+            audio_hat: p.audio_hat.take(),
+            hat_buttons: p.hat_buttons.take(),
+            audio_device: p.audio_device.take(),
+            box_name: p.box_name.take(),
+            volume: p.volume,
+            screen_brightness: p.screen_brightness,
+            screen_off_after_secs: p.screen_off_after_secs,
+            ..Default::default()
+        };
+    });
+    tracing::info!("signed out and set back to the start; the network, sound card and name stay");
+    Json(json!({ "ok": true }))
 }
 
 fn language(s: &AppState) -> String {

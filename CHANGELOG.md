@@ -7,6 +7,13 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- Settings → Library → "Sign out and start over" (two taps): the box signs out, on the
+  server too, forgets its server, queue, equalizer and every paired phone, and runs the
+  setup again. Its Wi-Fi, sound card, buttons, name and language stay. On a box without a
+  screen the first phone to open the page then pairs, as on a new box.
+
 ### Fixed
 
 - Copying the sign-in code and the box's address did nothing: the box is served over plain

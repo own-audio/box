@@ -270,6 +270,9 @@ mod tests {
     fn without_a_screen_a_paired_phone_runs_the_box() {
         let paired = one("secret");
         assert_eq!(access(lan(), "/api/setup/server", Some("secret"), &paired, true, false), Access::Allowed);
+        assert_eq!(access(lan(), "/api/setup/reset", Some("secret"), &paired, true, false), Access::Allowed);
+        assert_eq!(access(lan(), "/api/setup/reset", Some("wrong"), &paired, true, false), Access::ScreenOnly);
+        assert_eq!(access(lan(), "/api/setup/reset", Some("secret"), &paired, false, false), Access::ScreenOnly, "a box with a screen resets from it");
         assert_eq!(access(lan(), "/api/remote/code", Some("secret"), &paired, true, false), Access::Allowed);
         assert_eq!(access(lan(), "/api/setup/server", Some("wrong"), &paired, true, false), Access::ScreenOnly);
         assert_eq!(access(lan(), "/api/player", None, &paired, true, false), Access::NeedsPairing);

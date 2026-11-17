@@ -814,3 +814,5 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 .ob-link button { min-height: 42px; font-size: 15px; }
 /* The code and the box's address can be selected for a long press, when copying did not. */
 .wiz-code .code, .ob-link a { user-select: text; -webkit-user-select: text; }
+button.danger { color: var(--bad); }
+button.danger.armed { background: var(--bad); color: #fff; }
