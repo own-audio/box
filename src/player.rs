@@ -69,6 +69,10 @@ struct Queue {
     last_position: f64,
     /// When the current pause began (see `release_if_paused_for`).
     paused_since: Option<Instant>,
+    /// The entry after the playing one is not in mpv yet (the server did not answer when it
+    /// was asked): tried again every tick until it is.
+    next_missing: bool,
+    next_tried: Option<Instant>,
 }
 
 /// What survives a restart of ownbox or the Pi: the queue and where in it.
@@ -271,15 +275,9 @@ impl Player {
         }
         self.mpv.command(json!(["set_property", "speed", self.speed_for(&track)])).await?;
         self.mpv.command(json!(["set_property", "pause", false])).await?;
-        if let Some(next) = q.tracks.get(q.index + 1) {
-            // The first track already plays; a failure here only costs the gapless join.
-            match self.stream_url(next).await {
-                Ok(url) => {
-                    let _ = self.mpv.command(json!(["loadfile", url, "append"])).await;
-                }
-                Err(err) => tracing::warn!(%err, "preparing the next track"),
-            }
-        }
+        // The first entry already plays; a failure here is tried again each tick.
+        q.next_missing = q.index + 1 < q.tracks.len();
+        self.prepare_next(q).await;
         q.active = true;
         q.paused = false;
         q.restored = None;
@@ -289,6 +287,27 @@ impl Player {
         self.save_position(q, start_secs, false);
         self.persist(q, start_secs);
         Ok(())
+    }
+
+    /// Puts the entry after the playing one into mpv, for a gapless join; on a failure it
+    /// stays missing and the next tick tries again.
+    async fn prepare_next(&self, q: &mut Queue) {
+        if !q.next_missing {
+            return;
+        }
+        let Some(next) = q.tracks.get(q.index + 1).cloned() else {
+            q.next_missing = false;
+            return;
+        };
+        q.next_tried = Some(Instant::now());
+        match self.stream_url(&next).await {
+            Ok(url) => {
+                if self.mpv.command(json!(["loadfile", url, "append"])).await.is_ok() {
+                    q.next_missing = false;
+                }
+            }
+            Err(err) => tracing::warn!(%err, "preparing the next entry; trying again"),
+        }
     }
 
     /// Before playing something else: keep the place in what was playing, close its session.
@@ -597,10 +616,8 @@ impl Player {
             self.end_listening(&mut q, "completed").await;
             q.index += 1;
             self.mpv.command(json!(["playlist-remove", 0])).await?;
-            if let Some(next) = q.tracks.get(q.index + 1).cloned() {
-                let url = self.stream_url(&next).await?;
-                self.mpv.command(json!(["loadfile", url, "append"])).await?;
-            }
+            q.next_missing = q.index + 1 < q.tracks.len();
+            self.prepare_next(&mut q).await;
             if matches!(q.sleep, Some(Sleep::EndOfPart)) {
                 q.sleep = None;
                 self.mpv.command(json!(["set_property", "pause", true])).await?;
@@ -611,6 +628,23 @@ impl Player {
             // The new file from its start, so another device resumes here and not in the old one.
             self.save_position(&q, 0.0, false);
             self.persist(&q, 0.0);
+        } else if idle && pos < 0 && q.index + 1 < q.tracks.len() {
+            // Ran out with entries left: the next one never reached mpv (the server was out of
+            // reach) or mpv could not open it. Go on to it; if that fails too, the queue waits
+            // there, paused, instead of ending and being forgotten.
+            if let Some(done) = q.tracks.get(q.index).filter(|t| t.podcast_id.is_some()).cloned() {
+                self.save_track(&done, done.duration_secs, true, true);
+            }
+            self.end_listening(&mut q, "completed").await;
+            q.index += 1;
+            if let Err(err) = self.load_from(&mut q, 0.0).await {
+                tracing::warn!(%err, index = q.index, "going on to the next entry; the queue waits there");
+                q.active = false;
+                q.paused = true;
+                q.restored = Some(0.0);
+                q.last_position = 0.0;
+                self.persist(&q, 0.0);
+            }
         } else if idle && pos < 0 {
             // Ran out: the last file ended, so a book is finished.
             if let Some(last) = q.tracks.get(q.index).cloned() {
@@ -621,6 +655,10 @@ impl Player {
             q.sleep = None;
             self.forget_persisted();
         } else {
+            // Not every tick: the queue is locked while the server is asked.
+            if q.next_missing && q.next_tried.is_none_or(|t| t.elapsed() >= Duration::from_secs(15)) {
+                self.prepare_next(&mut q).await;
+            }
             if let Some(Sleep::At(at)) = q.sleep
                 && Instant::now() >= at
             {

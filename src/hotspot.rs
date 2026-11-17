@@ -117,6 +117,15 @@ impl Hotspot {
                 }
                 continue;
             }
+            // Open as far as ownbox knows: NetworkManager may have dropped it meanwhile (the
+            // radio reset, a driver reload). Then it is opened again, not waited on forever.
+            if !matches!(wifi::status().await, Ok(wifi::Status { connected: Some(ref c), .. }) if c == CONNECTION) {
+                tracing::warn!("the setup Wi-Fi is gone; opening it again");
+                self.stop().await;
+                // checked_sub: early after boot the clock may not reach back that far.
+                offline_since = Some(Instant::now().checked_sub(OFFLINE_KNOWN_FOR).unwrap_or_else(Instant::now));
+                continue;
+            }
             // Open: now and then give a known network another chance.
             let (since, used) = {
                 let s = self.lock();

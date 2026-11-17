@@ -113,7 +113,10 @@ pub async fn refresh(http: &Client, server: &str, refresh_token: &str) -> anyhow
         .context("cannot reach the server")?;
     match r.status().as_u16() {
         200..=299 => Ok(Some(r.json().await?)),
-        400 | 401 | 403 => Ok(None),
+        // The server says a refresh token is no good with 401 only. A 400 or 403 can come
+        // from something in between (a proxy, a firewall, a hotel's sign-in page): the box
+        // tries again later instead of forgetting its sign-in for good.
+        401 => Ok(None),
         s => bail!("server error (HTTP {s})"),
     }
 }

@@ -39,7 +39,9 @@ pub struct Status {
 }
 
 pub async fn nmcli(args: &[&str], timeout: Duration) -> anyhow::Result<String> {
-    let out = tokio::time::timeout(timeout, Command::new("nmcli").args(args).output())
+    // kill_on_drop: when the timeout gives up on nmcli, the process goes too instead of
+    // piling up behind a NetworkManager that hangs.
+    let out = tokio::time::timeout(timeout, Command::new("nmcli").args(args).kill_on_drop(true).output())
         .await
         .context("NetworkManager took too long")?
         .context("cannot run nmcli")?;

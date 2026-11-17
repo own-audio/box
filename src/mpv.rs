@@ -86,28 +86,46 @@ impl Mpv {
     pub async fn command(&self, args: Value) -> anyhow::Result<Value> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let stream = self.connect().await?;
-        let (read, mut write) = stream.into_split();
-        let request = json!({ "command": args, "request_id": id });
-        write.write_all(format!("{request}\n").as_bytes()).await?;
-
-        let reply = async {
-            let mut lines = BufReader::new(read).lines();
-            // Events arrive on the same socket; skip them until our reply.
-            while let Some(line) = lines.next_line().await? {
-                let msg: Value = serde_json::from_str(&line)?;
-                if msg.get("request_id").and_then(Value::as_u64) != Some(id) {
-                    continue;
-                }
-                return match msg.get("error").and_then(Value::as_str) {
-                    Some("success") => Ok(msg.get("data").cloned().unwrap_or(Value::Null)),
-                    Some(err) => Err(anyhow!("mpv: {err}")),
-                    None => Err(anyhow!("mpv: reply without a status")),
-                };
-            }
-            bail!("mpv closed the connection")
-        };
-        tokio::time::timeout(IPC_TIMEOUT, reply).await?
+        request(stream, id, args).await
     }
+}
+
+/// One request on a connected socket, its reply's `data`.
+async fn request(stream: UnixStream, id: u64, args: Value) -> anyhow::Result<Value> {
+    let (read, mut write) = stream.into_split();
+    let request = json!({ "command": args, "request_id": id });
+    write.write_all(format!("{request}\n").as_bytes()).await?;
+
+    let reply = async {
+        let mut lines = BufReader::new(read).lines();
+        // Events arrive on the same socket; skip them until our reply.
+        while let Some(line) = lines.next_line().await? {
+            let msg: Value = serde_json::from_str(&line)?;
+            if msg.get("request_id").and_then(Value::as_u64) != Some(id) {
+                continue;
+            }
+            return match msg.get("error").and_then(Value::as_str) {
+                Some("success") => Ok(msg.get("data").cloned().unwrap_or(Value::Null)),
+                Some(err) => Err(anyhow!("mpv: {err}")),
+                None => Err(anyhow!("mpv: reply without a status")),
+            };
+        }
+        bail!("mpv closed the connection")
+    };
+    tokio::time::timeout(IPC_TIMEOUT, reply).await?
+}
+
+/// How often the supervisor asks mpv whether it still answers, and after how many missed
+/// answers in a row it is killed: a process that lives but no longer answers (stuck on a
+/// dead stream, a sound card that went away) would leave the box silent until a reboot.
+const PING_EVERY: Duration = Duration::from_secs(10);
+const PINGS_MISSED: u32 = 3;
+/// Far above the ids `command` hands out, and inside mpv's 64-bit signed range.
+const PING_ID: u64 = 1 << 40;
+
+async fn answers(socket: &std::path::Path) -> bool {
+    let Ok(Ok(stream)) = tokio::time::timeout(IPC_TIMEOUT, UnixStream::connect(socket)).await else { return false };
+    request(stream, PING_ID, json!(["get_property", "mpv-version"])).await.is_ok()
 }
 
 async fn supervise(
@@ -129,6 +147,9 @@ async fn supervise(
             // byte it had reached, for up to 30 s, before mpv gives the file up.
             .arg("--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=30")
             .arg("--network-timeout=30")
+            // mpv reads up to 150 MiB ahead by default; a Zero 2 W has 512 MiB for everything.
+            // A few minutes of audio is plenty to ride out a drop.
+            .args(["--demuxer-max-bytes=24MiB", "--demuxer-max-back-bytes=8MiB"])
             .arg(format!("--audio-device={audio_device}"))
             .args(&audio_options)
             // Read on every start, so an mpv restarted after a crash keeps the chosen volume
@@ -144,11 +165,26 @@ async fn supervise(
             Ok(mut child) => {
                 generation.fetch_add(1, Ordering::Relaxed);
                 let started = Instant::now();
-                tokio::select! {
-                    status = child.wait() => tracing::warn!(?status, "mpv exited"),
-                    _ = stop.changed() => {
-                        let _ = child.kill().await;
-                        return;
+                let mut ping = tokio::time::interval_at(tokio::time::Instant::now() + PING_EVERY, PING_EVERY);
+                let mut missed = 0;
+                loop {
+                    tokio::select! {
+                        status = child.wait() => {
+                            tracing::warn!(?status, "mpv exited");
+                            break;
+                        }
+                        _ = ping.tick() => {
+                            missed = if answers(&socket).await { 0 } else { missed + 1 };
+                            if missed >= PINGS_MISSED {
+                                tracing::warn!("mpv stopped answering; killing it");
+                                let _ = child.kill().await;
+                                break;
+                            }
+                        }
+                        _ = stop.changed() => {
+                            let _ = child.kill().await;
+                            return;
+                        }
                     }
                 }
                 // A crash after a good run starts over quickly; a crash loop backs off.

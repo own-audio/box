@@ -36,6 +36,18 @@ that version's section below as a GitHub Release.
   card cannot leave the box without either version.
 - `ownbox-boot.sh` writes config.toml only when the screen setting changes, and never
   through a link put in its place.
+- A server out of reach while one song ends and the next is prepared no longer ends the
+  queue and forgets it: the next entry is asked for again every 15 s, and if the box runs
+  out before it arrives, the queue waits at that entry, paused. Tried on the Pirate Radio
+  with the server blocked.
+- An mpv that still runs but no longer answers is killed after 30 s and started again; the
+  queue waits at its last position. Before, the box stayed silent until a reboot.
+- mpv reads at most 24 MiB ahead (it was 150 MiB, on a Zero 2 W with 512 MiB in all).
+- A 400 or 403 when the sign-in is renewed (a proxy, a firewall) no longer signs the box
+  out for good; only the server's 401 does.
+- A failed update check is tried again within the hour, not a day later. An nmcli that
+  hangs is killed with its timeout. A setup Wi-Fi that NetworkManager dropped is opened
+  again instead of being counted as open.
 
 ### Changed
 

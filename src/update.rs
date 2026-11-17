@@ -222,12 +222,20 @@ impl Updater {
         }
         tokio::time::sleep(Duration::from_secs(60)).await;
         loop {
-            match self.check(&http).await {
-                Ok(Some(r)) => tracing::info!(version = %r.version, "update available"),
-                Ok(None) => {}
-                Err(err) => tracing::warn!(%err, "update check"),
-            }
-            tokio::time::sleep(Duration::from_secs(24 * 3600)).await;
+            // Daily; after a failed check (no network yet, GitHub busy) again within the hour
+            // rather than a day later.
+            let wait = match self.check(&http).await {
+                Ok(Some(r)) => {
+                    tracing::info!(version = %r.version, "update available");
+                    24 * 3600
+                }
+                Ok(None) => 24 * 3600,
+                Err(err) => {
+                    tracing::warn!(%err, "update check; trying again in an hour");
+                    3600
+                }
+            };
+            tokio::time::sleep(Duration::from_secs(wait)).await;
         }
     }
 
