@@ -819,3 +819,4 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 .wiz-code .code, .ob-link a { user-select: text; -webkit-user-select: text; }
 button.danger { color: var(--bad); }
 button.danger.armed { background: var(--bad); color: #fff; }
+.ob-hidden { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 12px 52px; }

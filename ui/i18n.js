@@ -318,6 +318,9 @@ const CS = {
   'Your music, from your own library': 'Vaše hudba z vaší vlastní knihovny',
   'Confirm in own.audio': 'Potvrdit v own.audio',
   'Copy the code': 'Kopírovat kód',
+  'Another network (hidden)': 'Jiná síť (skrytá)',
+  'Network name': 'Název sítě',
+  'Password, if it has one': 'Heslo, pokud ho má',
   'To keep the box as an app on this iPhone: Share → Add to Home Screen. It pairs itself on its first start, within a day.':
     'Box jako aplikaci na tomto iPhonu: Sdílet → Přidat na plochu. Při prvním spuštění se spáruje sám, do 24 hodin.',
   "To keep the box on this phone's home screen: the browser menu → Add to Home screen.":

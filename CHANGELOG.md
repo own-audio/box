@@ -9,6 +9,8 @@ that version's section below as a GitHub Release.
 
 ### Added
 
+- The setup Wi-Fi's page joins a network that does not send its name: "Another network
+  (hidden)" at the end of the list, with its name and password typed.
 - An update from Settings brings the box's system files too, not only the program: each
   release carries `ownbox-setup.tar.gz` (units, scripts, settings), signed like the
   program. The root unit checks it with the installed ownbox, unpacks it into a folder of
@@ -36,6 +38,13 @@ that version's section below as a GitHub Release.
 
 ### Fixed
 
+- The page no longer waits forever on a box that does not answer: requests give up after
+  15 s (a minute for a server check or sign-in, five for an update), and timed polls are
+  not started again while one is still waiting. One failed poll no longer takes the page
+  away (three in a row do, and never during the setup), and a page that cannot ask the box
+  who it is asks again instead of taking itself for the box's own screen.
+- After installing an update the page reloads when the box answers with the new version,
+  instead of after a blind 15 s.
 - A slow server no longer holds up a pause, a skip or the volume: the player asks it for
   the next entry's address after letting go of the queue, and uses the answer only if the
   queue is still where it was.

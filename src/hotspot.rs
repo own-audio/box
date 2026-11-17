@@ -196,7 +196,7 @@ impl Hotspot {
 
     /// Leaves the box's own Wi-Fi and joins `ssid`; back to its own (with the reason) if
     /// that fails. `then` runs once the home network is joined.
-    pub async fn join(self: Arc<Self>, ssid: String, password: Option<String>, own_ssid: String, then: impl FnOnce() + Send) {
+    pub async fn join(self: Arc<Self>, ssid: String, password: Option<String>, hidden: bool, own_ssid: String, then: impl FnOnce() + Send) {
         {
             let mut s = self.lock();
             s.joining = Some(ssid.clone());
@@ -210,7 +210,7 @@ impl Hotspot {
         let mut joined = Err(anyhow::anyhow!("not tried"));
         for attempt in 1..=3 {
             let _ = wifi::scan().await;
-            joined = wifi::connect(&ssid, password.as_deref()).await;
+            joined = wifi::connect(&ssid, password.as_deref(), hidden).await;
             match &joined {
                 Ok(()) => break,
                 Err(err) => tracing::info!(%ssid, attempt, %err, "joining from the setup Wi-Fi"),

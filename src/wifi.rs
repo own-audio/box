@@ -183,17 +183,20 @@ fn parse_scan(text: &str, saved: &[String]) -> Vec<Network> {
 }
 
 /// Joins a network: a saved one by its stored settings unless a new password is given.
-pub async fn connect(ssid: &str, password: Option<&str>) -> anyhow::Result<()> {
+/// `hidden`: a network that does not send its name, so no scan finds it; NetworkManager
+/// then asks for it by name.
+pub async fn connect(ssid: &str, password: Option<&str>, hidden: bool) -> anyhow::Result<()> {
     let is_saved = saved().await.iter().any(|s| s == ssid);
+    let hide: &[&str] = if hidden { &["hidden", "yes"] } else { &[] };
     match password.filter(|p| !p.is_empty()) {
         None if is_saved => nmcli(&["connection", "up", "id", ssid], CONNECT).await.map(drop),
-        None => nmcli(&["device", "wifi", "connect", ssid, "ifname", IFACE], CONNECT).await.map(drop),
+        None => nmcli(&[&["device", "wifi", "connect", ssid, "ifname", IFACE][..], hide].concat(), CONNECT).await.map(drop),
         Some(pw) => {
             if is_saved {
                 // A new password for a known network: start clean rather than half-edit it.
                 let _ = nmcli(&["connection", "delete", "id", ssid], QUICK).await;
             }
-            nmcli(&["device", "wifi", "connect", ssid, "password", pw, "ifname", IFACE], CONNECT).await.map(drop)
+            nmcli(&[&["device", "wifi", "connect", ssid, "password", pw, "ifname", IFACE][..], hide].concat(), CONNECT).await.map(drop)
         }
     }
 }

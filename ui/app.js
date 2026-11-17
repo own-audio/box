@@ -160,22 +160,46 @@ async function call(method, path, body) {
   }
 }
 
+/** How long a request may take before the page stops waiting: an update downloads the
+ * program, a server check may wait on a slow address, everything else is quick. */
+function requestTimeout(path) {
+  if (path.startsWith('/api/update')) return 300000;
+  if (path.startsWith('/api/setup/server') || path.startsWith('/api/sign-in') || path.startsWith('/api/wifi')) return 60000;
+  return 15000;
+}
+
 async function request(method, path, body) {
   let r;
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), requestTimeout(path));
   try {
     r = await fetch(path, {
       method,
       cache: 'no-store',
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,
+      signal: abort.signal,
     });
   } catch (e) {
     throw new ApiError('ownbox is not answering', 0);
+  } finally {
+    clearTimeout(timer);
   }
   const data = await r.json().catch(() => null);
   if (!r.ok) throw new ApiError((data && data.error) || `HTTP ${r.status}`, r.status);
   return data;
 }
+/** `fn` for a timer: a call still waiting (a slow box, a sleeping phone) is not joined by
+ * another, so they do not pile up. */
+function once(fn) {
+  let running = false;
+  return async (...args) => {
+    if (running) return;
+    running = true;
+    try { await fn(...args); } finally { running = false; }
+  };
+}
+
 const get = (path) => call('GET', path);
 const post = (path, body) => call('POST', path, body || {});
 const del = (path) => call('DELETE', path);
@@ -245,13 +269,20 @@ function showLink(where, link) {
   }
 }
 
+// Failed polls in a row: one is a blip (a phone waking, Wi-Fi roaming), not a reason to
+// take the page away — and never while the wizard is on screen.
+let sessionMisses = 0;
+
 async function refreshSession() {
   try {
     renderSession(await get('/api/session'));
+    sessionMisses = 0;
   } catch (e) {
+    sessionMisses += 1;
+    if (!setup.done || sessionMisses < 3) return;
     $('signin').hidden = false;
     $('app').hidden = true;
-    $('signin-error').textContent = e.message;
+    $('signin-error').textContent = t(e.message);
   }
 }
 
@@ -2255,9 +2286,19 @@ async function updateSettings() {
       try {
         await post(path);
         if (path !== '/api/update/check') {
-          // The box restarts with the other version; the page reloads when it answers again.
+          // The box restarts with the other version: the page waits until the box answers
+          // with a version other than this one (or with a result), then reloads.
           msg.textContent = t('Installing. The box restarts in a moment.');
-          setTimeout(() => location.reload(), 15000);
+          const until = Date.now() + 180000;
+          const wait = async () => {
+            const now = await get('/api/update').catch(() => null);
+            if ((now && (now.current !== u.current || (now.last_result && now.last_result !== u.last_result && !now.state))) || Date.now() > until) {
+              location.reload();
+              return;
+            }
+            setTimeout(wait, 2000);
+          };
+          setTimeout(wait, 3000);
           return;
         }
         redraw();
@@ -2948,6 +2989,8 @@ async function setupWifiPage() {
     password: '',
     name: st.box_name || 'own.audio box',
     hat: st.hats.current != null ? st.hats.current : 0,
+    // A network that does not send its name: typed, not picked.
+    hidden: false,
   };
   // Back from a try that failed: straight to the network, with the reason.
   let step = st.error ? 'wifi' : 'welcome';
@@ -2957,7 +3000,9 @@ async function setupWifiPage() {
   const needsPassword = () => !!(network() && network().secure);
   const canGo = {
     welcome: () => true,
-    wifi: () => !!form.ssid && (!needsPassword() || form.password.length >= 8),
+    wifi: () => (form.hidden
+      ? form.ssid && form.ssid.trim().length > 0 && (form.password.length === 0 || form.password.length >= 8)
+      : !!form.ssid && (!needsPassword() || form.password.length >= 8)),
     name: () => form.name.trim().length > 0,
     sound: () => true,
     check: () => true,
@@ -3005,13 +3050,13 @@ async function setupWifiPage() {
         onclick: () => { showPassword = !showPassword; password.type = showPassword ? 'text' : 'password'; eye.classList.toggle('on', showPassword); },
       }, obIcon('eye'));
       const card = (n) => {
-        const chosen = n.ssid === form.ssid;
+        const chosen = !form.hidden && n.ssid === form.ssid;
         const bars = el('span', { class: 'ob-bars' });
         bars.innerHTML = WIFI_BARS(n.signal);
         return el('div', { class: chosen ? 'ob-net chosen' : 'ob-net' },
           el('button', {
             class: 'ob-net-pick', 'aria-pressed': String(chosen),
-            onclick: () => { if (form.ssid !== n.ssid) { form.ssid = n.ssid; form.password = ''; } draw(); if (n.secure) setTimeout(() => $('ob-pass')?.focus(), 50); },
+            onclick: () => { if (form.ssid !== n.ssid || form.hidden) { form.ssid = n.ssid; form.password = ''; form.hidden = false; } draw(); if (n.secure) setTimeout(() => $('ob-pass')?.focus(), 50); },
           },
           bars,
           el('span', { class: 'ob-net-name ellipsis', text: n.ssid }),
@@ -3022,15 +3067,30 @@ async function setupWifiPage() {
             ? el('p', { class: 'ob-hint', text: t('A Wi-Fi password has at least 8 characters.') }) : null);
       };
       const nextBtn = el('button', { class: 'primary ob-go', text: t('Continue'), disabled: !canGo.wifi(), onclick: next });
+      // The last row: a network not in the list because it does not send its name.
+      function hiddenCard() {
+        const open = form.hidden;
+        const name = el('input', { type: 'text', class: 'ob-input', value: open ? (form.ssid || '') : '', placeholder: t('Network name'),
+          autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false',
+          oninput: (e) => { form.ssid = e.target.value; nextBtn.disabled = !canGo.wifi(); } });
+        const pass = el('input', { type: 'password', class: 'ob-input', value: open ? form.password : '', placeholder: t('Password, if it has one'),
+          autocomplete: 'off', oninput: (e) => { form.password = e.target.value; nextBtn.disabled = !canGo.wifi(); } });
+        return el('div', { class: open ? 'ob-net chosen' : 'ob-net' },
+          el('button', { class: 'ob-net-pick', 'aria-pressed': String(open),
+            onclick: () => { if (!form.hidden) { form.hidden = true; form.ssid = ''; form.password = ''; } draw(); setTimeout(() => name.focus(), 50); } },
+          obIcon('wifi', 22), el('span', { class: 'ob-net-name', text: t('Another network (hidden)') }), open ? obIcon('check', 22) : null),
+          open ? el('div', { class: 'ob-hidden' }, name, pass) : null);
+      }
       return [
         el('h2', { text: t('Which Wi-Fi should the box join?') }),
         el('p', { class: 'ob-lead', text: t('Choose your home network. The box only knows 2.4 GHz networks.') }),
         st.error ? el('div', { class: 'ob-alert', role: 'alert' },
           el('strong', { text: t('The box could not join.') }), ' ', t(st.error)) : null,
         st.networks.length
-          ? el('div', { class: 'ob-nets' }, ...st.networks.map(card))
+          ? el('div', { class: 'ob-nets' }, ...st.networks.map(card), hiddenCard())
           : el('div', { class: 'ob-empty' }, el('p', { text: t('No networks in reach.') }),
-            el('p', { class: 'muted', text: t('Move the box closer to your router; it looks again in a few minutes.') })),
+            el('p', { class: 'muted', text: t('Move the box closer to your router; it looks again in a few minutes.') }),
+            el('div', { class: 'ob-nets' }, hiddenCard())),
         el('footer', { class: 'ob-foot' }, nextBtn),
       ];
     },
@@ -3084,7 +3144,7 @@ async function setupWifiPage() {
           goBtn.classList.add('busy');
           try {
             const r = await post('/api/hotspot/apply', {
-              ssid: form.ssid, password: form.password || null, name: form.name.trim(), language: LANG, hat: form.hat,
+              ssid: form.ssid.trim(), password: form.password || null, name: form.name.trim(), language: LANG, hat: form.hat, hidden: form.hidden,
             });
             done(r);
           } catch (e) {
@@ -3151,7 +3211,18 @@ async function setupWifiPage() {
 
 async function start() {
   document.querySelector('#signin header.brand').replaceChildren(brand(56));
-  const rs = await get('/api/remote/status').catch(() => ({ screen: true, paired: false }));
+  // Who is asking decides the whole page: a box that does not answer yet is asked again,
+  // not taken to mean "this is the box's own screen".
+  let rs = null;
+  for (let i = 0; !rs; i += 1) {
+    rs = await get('/api/remote/status').catch(() => null);
+    if (!rs) {
+      $('signin').hidden = false;
+      $('signin-error').textContent = t('ownbox is not answering');
+      await new Promise((ok) => setTimeout(ok, Math.min(5000, 1000 * (i + 1))));
+    }
+  }
+  $('signin-error').textContent = '';
   if (rs.setup_wifi) {
     document.body.classList.add('phone');
     return setupWifiPage();
@@ -3187,7 +3258,7 @@ async function start() {
   }
   if (!setup.done) startWizard();
   else refreshSession();
-  setInterval(refreshSession, 2000);
+  setInterval(once(refreshSession), 2000);
   // A phone puts a tab in the background to sleep; back in front, it asks at once.
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) return;
@@ -3195,8 +3266,8 @@ async function start() {
     pollNow();
     window.dispatchEvent(new Event('ownbox-wake'));
   });
-  setInterval(pollNow, 1000);
-  setInterval(refreshStatus, 5000);
+  setInterval(once(pollNow), 1000);
+  setInterval(once(refreshStatus), 5000);
   // A theme or button style chosen on another device (a phone) reaches this one too.
   setInterval(() => get('/api/ui').then((u) => {
     if (u.theme !== THEME) applyTheme(u.theme);

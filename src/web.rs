@@ -771,6 +771,9 @@ struct HotspotApply {
     language: Option<String>,
     #[serde(default)]
     hat: Option<usize>,
+    /// A network that does not send its name (typed on the page, not in the list).
+    #[serde(default)]
+    hidden: bool,
 }
 
 /// The setup page's one form: language and name now, the home Wi-Fi next (the box's own
@@ -794,7 +797,7 @@ async fn hotspot_apply(State(s): State<Arc<AppState>>, Json(req): Json<HotspotAp
     let address = box_address(&s);
     let state = Arc::clone(&s);
     let hat = req.hat;
-    tokio::spawn(Arc::clone(&s.hotspot).join(ssid.clone(), req.password, own, move || {
+    tokio::spawn(Arc::clone(&s.hotspot).join(ssid.clone(), req.password, req.hidden, own, move || {
         if let Some((overlay, buttons, _)) = hat.and_then(|i| HATS.get(i)) {
             state.prefs.update(|p| {
                 p.audio_hat = Some((*overlay).to_owned());
@@ -979,7 +982,7 @@ struct ConnectRequest {
 }
 
 async fn wifi_connect(Json(req): Json<ConnectRequest>) -> axum::response::Response {
-    answer(wifi::connect(&req.ssid, req.password.as_deref()).await.map(|()| json!({ "ok": true })))
+    answer(wifi::connect(&req.ssid, req.password.as_deref(), false).await.map(|()| json!({ "ok": true })))
 }
 
 #[derive(Deserialize)]
