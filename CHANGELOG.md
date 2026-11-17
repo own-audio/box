@@ -7,6 +7,11 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.3] — 2026-11-17
+
+The beta.2 image did not open its setup Wi-Fi on a fresh card. Tried from a fresh card on
+the Pirate Radio, all the way to music playing.
+
 ### Fixed
 
 - A box written from the image never opened its setup Wi-Fi: a fresh Raspberry Pi OS
