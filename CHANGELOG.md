@@ -7,6 +7,13 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.7] — 2026-11-17
+
+The rest of the robustness and security pass, and the box on a phone's home screen. From
+this release on, an update brings the box's system files as well as the program; the
+update to this release itself still brings the program only, as the older box does not
+know the files yet.
+
 ### Added
 
 - The setup Wi-Fi's page joins a network that does not send its name: "Another network
