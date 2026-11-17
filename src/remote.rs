@@ -157,12 +157,17 @@ pub fn is_box(peer: IpAddr) -> bool {
 
 /// `headless`: the box has no screen, so a paired phone stands in for it and may run the box.
 /// `setup`: the request comes over the box's own setup Wi-Fi, where whoever joined may set
-/// the box up (the network exists only while the box has no other) and nothing else.
+/// the box up (the network exists only while the box has no other) and nothing else. The
+/// network has no password, so a phone never pairs over it: anyone near the box could, and a
+/// paired phone runs a box without a screen.
 pub fn access(peer: IpAddr, path: &str, token: Option<&str>, paired: &[Paired], headless: bool, setup: bool) -> Access {
     if is_box(peer) {
         return Access::Allowed;
     }
     if setup {
+        if path == "/api/remote/pair" {
+            return Access::ScreenOnly;
+        }
         return if public(path) || path.starts_with("/api/hotspot") { Access::Allowed } else { Access::NeedsPairing };
     }
     let is_paired = token.is_some_and(|t| paired.iter().any(|p| p.token_hash == hash(t)));
@@ -209,6 +214,8 @@ mod tests {
         assert_eq!(access(phone, "/api/hotspot/apply", None, &[], true, true), Access::Allowed);
         assert_eq!(access(phone, "/api/player", None, &[], true, true), Access::NeedsPairing);
         assert_eq!(access(phone, "/api/wifi", None, &[], true, true), Access::NeedsPairing);
+        assert_eq!(access(phone, "/api/remote/pair", None, &[], true, true), Access::ScreenOnly, "no pairing over an open network");
+        assert_eq!(access(phone, "/api/remote/status", None, &[], true, true), Access::Allowed);
         // Not on the setup Wi-Fi: its page is the box's alone.
         assert_eq!(access(lan(), "/api/hotspot", None, &[], true, false), Access::ScreenOnly);
     }

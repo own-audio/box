@@ -123,6 +123,21 @@ and the box joins your network. Then, back on your own Wi-Fi, open
 wizard as the screen and becomes the box's screen. Further phones pair with a QR code
 from Settings → Phone control on one already paired.
 
+### Wi-Fi
+
+**The setup Wi-Fi has no password, on purpose.** The Zero 2 W's Wi-Fi chip cannot send a
+WPA3 network (it refuses to start one), and its Enhanced Open network ends up unencrypted;
+a WPA2 password printed in this README would let anyone in anyway. What protects the box
+instead: the setup Wi-Fi opens only after a minute without any network and closes as soon
+as one is back, and over it a box can only be given a network, a name and a sound card. A
+phone never pairs over it — pairing happens on your own network.
+
+**Your own Wi-Fi** can be WPA2 or WPA2/WPA3 (what most routers send by default). A network
+that is WPA3 only should work — the chip supports it as a client — but has not been tried
+yet. The Zero 2 W and the Pi 3 B know 2.4 GHz only. If two routers send the same network
+name, the box stays with the one it joined until that one goes, even when the other is much
+closer; switch off the Wi-Fi of a router you no longer use.
+
 The box comes as `ownbox.local` until it is named; then the name is its address ("own.audio
 kitchen" → `kitchen.local`). Updates arrive in Settings → Updates.
 

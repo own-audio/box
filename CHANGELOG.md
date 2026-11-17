@@ -7,6 +7,17 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Security
+
+- A phone can no longer pair over the setup Wi-Fi. It has no password (the Zero 2 W cannot
+  send a WPA3 network), so anyone near a box that lost its network could have paired and
+  taken over a box without a screen. Pairing works on the home network only.
+
+### Documentation
+
+- README: why the setup Wi-Fi is open, and what home Wi-Fi the box joins (WPA2, WPA2/WPA3;
+  WPA3 only untried; two routers with one name).
+
 ## [1.0.0-beta.3] — 2026-11-17
 
 The beta.2 image did not open its setup Wi-Fi on a fresh card. Tried from a fresh card on
