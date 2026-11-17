@@ -44,6 +44,8 @@ struct State {
     used: Option<Instant>,
     /// The network being joined right now: the box's own Wi-Fi is down meanwhile.
     joining: Option<String>,
+    /// The box's own network's name, left out of the list.
+    own: String,
 }
 
 #[derive(Serialize)]
@@ -76,6 +78,14 @@ impl Hotspot {
     /// Someone is on the page: the box keeps its own Wi-Fi up for them.
     pub fn touch(&self) {
         self.lock().used = Some(Instant::now());
+    }
+
+    /// Adds what NetworkManager has seen since the box's own Wi-Fi opened, for the page.
+    pub async fn refresh_networks(&self) {
+        let Ok(seen) = wifi::seen().await else { return };
+        let mut s = self.lock();
+        let own = s.own.clone();
+        wifi::merge(&mut s.networks, seen.into_iter().filter(|n| n.ssid != own && n.signal > 0).collect());
     }
 
     pub fn snapshot(&self) -> Snapshot {
@@ -149,8 +159,12 @@ impl Hotspot {
             wifi::set_radio(true).await?;
             tokio::time::sleep(Duration::from_secs(3)).await;
         }
-        // One radio: what is around is listed before it starts sending.
-        let networks = wifi::scan().await.unwrap_or_default();
+        // One radio: what is around is listed before it starts sending. Two scans, since one
+        // often misses a name an access point sends beside others (seen: the home network
+        // missing while the same access point's IoT network was there at full strength).
+        let mut networks = wifi::scan().await.unwrap_or_default();
+        wifi::merge(&mut networks, wifi::scan().await.unwrap_or_default());
+        networks.retain(|n| n.ssid != ssid);
         let _ = wifi::nmcli(&["connection", "delete", "id", CONNECTION], wifi::QUICK).await;
         let address = format!("{ADDRESS}/24");
         wifi::nmcli(
@@ -169,6 +183,7 @@ impl Hotspot {
         s.on = true;
         s.since = Some(Instant::now());
         s.networks = networks;
+        s.own = ssid.to_owned();
         Ok(())
     }
 

@@ -741,6 +741,7 @@ async fn hat_set(State(s): State<Arc<AppState>>, Json(req): Json<HatRequest>) ->
 // --- the setup Wi-Fi --------------------------------------------------------------------
 
 async fn hotspot_state(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    s.hotspot.refresh_networks().await;
     let snap = s.hotspot.snapshot();
     Json(json!({
         "active": snap.active,

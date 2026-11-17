@@ -13,6 +13,10 @@ that version's section below as a GitHub Release.
   one (a MikroTik ax) refused it in the first minutes after boot, and the box then left it
   alone until ownbox restarted. The box now looks 30 s after start, confirms a stronger
   access point half a minute later, and tries one that refused it again after 10 minutes.
+- The setup page showed the home network as weak when the scan before the setup Wi-Fi
+  opened missed it at its near access point (that access point's IoT network was there at
+  full strength). The box now scans twice, adds what NetworkManager sees afterwards, and the
+  page's list fills in every 8 s.
 
 ### Changed
 

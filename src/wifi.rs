@@ -135,6 +135,26 @@ pub async fn scan() -> anyhow::Result<Vec<Network>> {
     Ok(parse_scan(&text, &saved))
 }
 
+/// What NetworkManager last saw, without a new scan: it keeps scanning on its own, and a
+/// network a single scan missed turns up here later.
+pub async fn seen() -> anyhow::Result<Vec<Network>> {
+    let text = nmcli(&["-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "no"], QUICK).await?;
+    let saved = saved().await;
+    Ok(parse_scan(&text, &saved))
+}
+
+/// `into` plus what `more` adds: each name once, at the strongest signal either saw.
+pub fn merge(into: &mut Vec<Network>, more: Vec<Network>) {
+    for n in more {
+        match into.iter_mut().find(|o| o.ssid == n.ssid) {
+            Some(o) if o.signal >= n.signal => {}
+            Some(o) => *o = Network { in_use: o.in_use || n.in_use, ..n },
+            None => into.push(n),
+        }
+    }
+    into.sort_by(|a, b| b.in_use.cmp(&a.in_use).then(b.signal.cmp(&a.signal)).then(a.ssid.cmp(&b.ssid)));
+}
+
 fn parse_scan(text: &str, saved: &[String]) -> Vec<Network> {
     let mut best: HashMap<String, Network> = HashMap::new();
     for f in text.lines().map(fields) {
@@ -320,6 +340,15 @@ mod tests {
         let other_network = parse_access_points("*:A:Home:30\n :B:Neighbour:99\n");
         assert_eq!(better_access_point(&other_network), None);
         assert_eq!(better_access_point(&parse_access_points(" :A:Home:30\n :B:Home:99\n")), None, "not connected");
+    }
+
+    #[test]
+    fn merged_lists_keep_the_strongest_sighting() {
+        let net = |ssid: &str, signal| Network { ssid: ssid.into(), signal, secure: true, in_use: false, saved: false };
+        let mut list = vec![net("Home", 39), net("IoT", 94)];
+        merge(&mut list, vec![net("Home", 92), net("IoT", 60), net("Cafe", 20)]);
+        let got: Vec<(&str, u8)> = list.iter().map(|n| (n.ssid.as_str(), n.signal)).collect();
+        assert_eq!(got, [("IoT", 94), ("Home", 92), ("Cafe", 20)]);
     }
 
     #[test]

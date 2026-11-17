@@ -3034,6 +3034,17 @@ async function setupWifiPage() {
     if (backBtn && backBtn.tagName === 'BUTTON') backBtn.innerHTML = `<svg viewBox="0 0 24 24">${ICONS.back}</svg>`;
   };
   draw();
+  // NetworkManager keeps scanning and the box merges what it sees: while the network list
+  // is on screen, it fills in — but never under a finger typing a password.
+  setInterval(async () => {
+    if (step !== 'wifi' || (document.activeElement && document.activeElement.tagName === 'INPUT')) return;
+    const fresh = await get('/api/hotspot').catch(() => null);
+    if (!fresh || JSON.stringify(fresh.networks) === JSON.stringify(st.networks)) return;
+    st.networks = fresh.networks;
+    const top = page.scrollTop;
+    draw();
+    page.scrollTop = top;
+  }, 8000);
 }
 
 async function start() {
