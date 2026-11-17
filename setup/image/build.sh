@@ -170,16 +170,20 @@ find "$root/usr/share/locale" -mindepth 1 -maxdepth 1 -type d ! -name cs ! -name
 # Packages a box never uses: firmware for Wi-Fi chips no Raspberry Pi carries, the
 # compiler and kernel headers left over from AirPlay's build, Raspberry Pi Connect and
 # mkvtoolnix. apt lists what goes with them, so a removal that takes too much shows.
-in_root apt-get purge -y -q --autoremove \
-  firmware-atheros firmware-mediatek firmware-realtek \
-  'gcc-14*' 'cpp-14*' 'linux-headers-*' rpi-connect-lite mkvtoolnix 2>&1 \
-  | grep -E '^(Removing|Purging) ' || true
+# (apt takes no wildcards, hence the names from dpkg.)
+drop=$(in_root dpkg-query -Wf '${Package}\n' \
+  | grep -E '^(firmware-(atheros|mediatek|realtek)|gcc-14.*|cpp-14.*|linux-headers-.*|rpi-connect-lite|mkvtoolnix)$' || true)
+if [ -n "$drop" ]; then
+  # shellcheck disable=SC2086
+  in_root apt-get purge -y -q --autoremove $drop 2>&1 | grep -E '^(Removing|Purging) ' || true
+fi
 for must in mpv chromium cage squeezelite avahi-daemon network-manager raspi-firmware; do
   in_root dpkg -s "$must" >/dev/null 2>&1 || { echo "slimming removed $must"; exit 1; }
 done
 # The 25 biggest packages, so the next one to drop is easy to find.
-in_root dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -rn | head -25 \
-  | awk -F'\t' '{printf "  %6.1f MB  %s\n", $1/1024, $2}'
+# (awk, not head: head closing the pipe early fails the build under pipefail.)
+in_root dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -rn \
+  | awk -F'\t' 'NR <= 25 {printf "  %6.1f MB  %s\n", $1/1024, $2}'
 
 echo "== cleaning up"
 in_root apt-get clean
