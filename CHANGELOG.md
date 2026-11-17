@@ -7,6 +7,13 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.4] — 2026-11-17
+
+A robustness and security pass, every part tried on the Pirate Radio: a box that keeps its
+settings through a power cut, its queue through a server outage and its network next to an
+access point it cannot join; a broken update that puts itself back; and a setup Wi-Fi
+nobody can use to take a box over.
+
 ### Added
 
 - The box moves to a clearly stronger access point of its network. NetworkManager stays
