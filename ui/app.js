@@ -1810,7 +1810,7 @@ function languageSettings() {
   });
   return el('div', { class: 'settings-group' },
     el('div', { class: 'setting' }, el('span', { text: t('Language') }),
-      el('div', { class: 'buttons' }, choice('cs', 'Čeština'), choice('en', 'English'))));
+      el('div', { class: 'buttons' }, choice('cs', 'Čeština'), choice('sk', 'Slovenčina'), choice('hu', 'Magyar'), choice('en', 'English'))));
 }
 
 // --- network ----------------------------------------------------------------------
@@ -2022,9 +2022,11 @@ function wizLanguage() {
       wizStep(box, {
         step: 1,
         greeting: true,
-        title: 'Jazyk · Language',
+        title: 'Jazyk · Nyelv · Language',
         content: el('div', { class: 'wiz-choices' },
           wizChoice('globe', 'Čeština', 'Česky', () => choose('cs')),
+          wizChoice('globe', 'Slovenčina', 'Po slovensky', () => choose('sk')),
+          wizChoice('globe', 'Magyar', 'Magyarul', () => choose('hu')),
           wizChoice('globe', 'English', 'In English', () => choose('en'))),
       });
     },
@@ -2250,7 +2252,7 @@ function wizName(fromSettings = false) {
         const address = el('span', { class: 'ob-addr', text: `${obHostName(field.value)}.local` });
         const input = el('input', { type: 'text', class: 'ob-input big', value: field.value, maxlength: 60, autocomplete: 'off',
           oninput: (e) => { field.value = e.target.value; address.textContent = `${obHostName(field.value)}.local`; } });
-        const rooms = LANG === 'cs' ? ['Obývák', 'Kuchyň', 'Ložnice', 'Dětský pokoj', 'Pracovna'] : ['Living room', 'Kitchen', 'Bedroom', 'Kids\' room', 'Study'];
+        const rooms = ROOMS[LANG] || ROOMS.en;
         const content = el('div', { class: 'wiz-name' }, input,
           el('div', { class: 'ob-chips' }, ...rooms.map((r) => el('button', { class: 'secondary', text: r,
             onclick: () => { input.value = r; input.dispatchEvent(new Event('input')); } }))),
@@ -3230,7 +3232,7 @@ async function setupWifiPage() {
   const page = el('section', { id: 'setup', class: 'setup ob' });
   document.body.append(page);
   const st = await get('/api/hotspot');
-  if (st.language === 'cs' || st.language === 'en') LANG = st.language;
+  if (LANGS.includes(st.language)) LANG = st.language;
 
   const STEPS = ['welcome', 'wifi', 'name', 'sound', 'check'];
   const form = {
@@ -3267,7 +3269,7 @@ async function setupWifiPage() {
       el('div', { class: 'ob-progress', role: 'progressbar', 'aria-valuemin': 1, 'aria-valuemax': STEPS.length, 'aria-valuenow': i + 1 },
         ...STEPS.map((_, j) => el('span', { class: j <= i ? 'on' : '' }))),
       el('div', { class: 'ob-lang' },
-        ...[['cs', 'CZ'], ['en', 'EN']].map(([code, label]) => el('button', {
+        ...[['cs', 'CZ'], ['sk', 'SK'], ['hu', 'HU'], ['en', 'EN']].map(([code, label]) => el('button', {
           class: LANG === code ? 'on' : '', text: label, 'aria-pressed': String(LANG === code),
           onclick: () => { LANG = code; draw(); },
         }))));
@@ -3351,7 +3353,7 @@ async function setupWifiPage() {
         oninput: (e) => { form.name = e.target.value; address.textContent = `${obHostName(form.name)}.local`; nextBtn.disabled = !canGo.name(); },
         onkeydown: (e) => { if (e.key === 'Enter' && canGo.name()) next(); },
       });
-      const rooms = LANG === 'cs' ? ['Obývák', 'Kuchyň', 'Ložnice', 'Dětský pokoj', 'Pracovna'] : ['Living room', 'Kitchen', 'Bedroom', 'Kids\' room', 'Study'];
+      const rooms = ROOMS[LANG] || ROOMS.en;
       const nextBtn = el('button', { class: 'primary ob-go', text: t('Continue'), disabled: !canGo.name(), onclick: next });
       return [
         el('h2', { text: t('What should we call it?') }),

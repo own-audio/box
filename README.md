@@ -52,7 +52,7 @@ boxes below, and installs from an SD card image.
   ±30 s, speed per book, sleep timer, positions saved to the server.
 - **Podcasts:** continue listening, shows with unplayed counts, new episodes, mark as
   played; the same controls as books.
-- **Box:** sign-in with a QR code, Czech and English, Wi-Fi from the screen, brightness
+- **Box:** sign-in with a QR code, Czech, Slovak, Hungarian and English, Wi-Fi from the screen, brightness
   and screen-off, volume, queue, a server-down notice; the queue and position survive a
   restart. A first-run wizard, and the same equalizer as the own.audio Music apps.
   Dark or light, or as each device is set (Settings → Appearance). Buttons with text or
@@ -242,7 +242,7 @@ GPIO17 (pin 11) with wake kept on GPIO3 — see HARDWARE.md.
 - `src/` — `ownbox`: config, sign-in, the own.audio API (music, books, podcasts), the
   play queue around mpv, screen, Wi-Fi and the setup Wi-Fi, prefs, the equalizer,
   hardware detection, outside sources, phone pairing, hardware buttons, the web server
-- `ui/` — the touch UI (HTML, CSS, JS, Czech words in `i18n.js`), built into the binary
+- `ui/` — the touch UI (HTML, CSS, JS, Czech, Slovak and Hungarian words in `i18n.js`), built into the binary
 - `setup/` — systemd units, kiosk, polkit rules, journal settings, `boot-config.sh`,
   the AirPlay build and `apply-sources.sh`, cloud-init template, the blank cursor;
   `setup/image/` — the SD card image's build, config and per-boot check;
@@ -261,7 +261,8 @@ builds ownbox for the Pi, signs it with minisign and publishes it as a GitHub Re
 section of the [changelog](CHANGELOG.md) as its notes. Boxes install it at night by
 themselves (Settings → Updates can leave it to a tap instead) and put the previous
 version back if the new one does not start. The night is the box's local time:
-Settings → Time zone, set to Europe/Prague by itself when Czech is chosen on a box still
+Settings → Time zone, set by itself from the language (Czech: Europe/Prague, Slovak: Europe/Bratislava,
+Hungarian: Europe/Budapest) on a box still
 on the default zone.
 Settings shows the running version.
 

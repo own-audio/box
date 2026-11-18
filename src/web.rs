@@ -808,7 +808,7 @@ async fn hotspot_apply(State(s): State<Arc<AppState>>, Json(req): Json<HotspotAp
     if req.hat.is_some_and(|i| i >= HATS.len()) {
         return (StatusCode::BAD_REQUEST, Json(json!({ "error": "no such sound card" }))).into_response();
     }
-    if let Some(lang) = req.language.filter(|l| matches!(l.as_str(), "cs" | "en")) {
+    if let Some(lang) = req.language.filter(|l| crate::config::LANGUAGES.contains(&l.as_str())) {
         crate::timezone::follow_language(&lang).await;
         s.prefs.update(|p| p.language = Some(lang));
     }
@@ -962,7 +962,7 @@ async fn radio_search(State(s): State<Arc<AppState>>, Query(req): Query<RadioSea
     let country = match req.country.as_deref() {
         Some("all") => None,
         Some(c) => Some(c.to_owned()),
-        None if req.q.trim().is_empty() => (language(&s) == "cs").then(|| "CZ".to_owned()),
+        None if req.q.trim().is_empty() => crate::config::home_country(&language(&s)).map(str::to_owned),
         None => None,
     };
     answer(crate::radio::search(&s.http, &req.q, country.as_deref()).await)
@@ -1051,8 +1051,8 @@ struct UiRequest {
 }
 
 async fn ui_set(State(s): State<Arc<AppState>>, Json(req): Json<UiRequest>) -> axum::response::Response {
-    if req.language.as_deref().is_some_and(|l| !matches!(l, "cs" | "en")) {
-        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "cs or en" }))).into_response();
+    if req.language.as_deref().is_some_and(|l| !crate::config::LANGUAGES.contains(&l)) {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "cs, sk, hu or en" }))).into_response();
     }
     if req.theme.as_deref().is_some_and(|t| !matches!(t, "dark" | "light" | "auto")) {
         return (StatusCode::BAD_REQUEST, Json(json!({ "error": "dark, light or auto" }))).into_response();

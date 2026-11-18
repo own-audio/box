@@ -35,10 +35,12 @@ pub async fn set(zone: &str) -> anyhow::Result<()> {
     timedatectl(&["set-timezone", zone]).await.map(drop)
 }
 
-/// The zone a language suggests, for a box still on the default: Czech is spoken in one.
+/// The zone a language suggests, for a box still on the default: each is spoken in one.
 pub fn suggested(language: &str) -> Option<&'static str> {
-    match language {
-        "cs" => Some("Europe/Prague"),
+    match crate::config::home_country(language)? {
+        "CZ" => Some("Europe/Prague"),
+        "SK" => Some("Europe/Bratislava"),
+        "HU" => Some("Europe/Budapest"),
         _ => None,
     }
 }
@@ -58,6 +60,8 @@ mod tests {
     #[test]
     fn czech_suggests_prague_and_english_nothing() {
         assert_eq!(super::suggested("cs"), Some("Europe/Prague"));
+        assert_eq!(super::suggested("sk"), Some("Europe/Bratislava"));
+        assert_eq!(super::suggested("hu"), Some("Europe/Budapest"));
         assert_eq!(super::suggested("en"), None);
     }
 }

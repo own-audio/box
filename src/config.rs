@@ -107,3 +107,16 @@ pub fn load() -> anyhow::Result<Config> {
     let text = fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
     toml::from_str(&text).with_context(|| format!("parsing {}", path.display()))
 }
+
+/// The screen's languages: Czech, Slovak, Hungarian, English.
+pub const LANGUAGES: [&str; 4] = ["cs", "sk", "hu", "en"];
+
+/// The country a language is mostly spoken in: radio's first list and the time zone.
+pub fn home_country(language: &str) -> Option<&'static str> {
+    match language {
+        "cs" => Some("CZ"),
+        "sk" => Some("SK"),
+        "hu" => Some("HU"),
+        _ => None,
+    }
+}

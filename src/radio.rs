@@ -118,7 +118,7 @@ pub async fn countries(http: &reqwest::Client) -> anyhow::Result<Vec<Country>> {
             Ok(r) => {
                 let mut list: Vec<Country> = r.json().await.context("the radio directory's countries")?;
                 list.retain(|c| c.code.len() == 2 && c.stationcount >= 5);
-                list.sort_by(|a, b| b.stationcount.cmp(&a.stationcount));
+                list.sort_by_key(|c| std::cmp::Reverse(c.stationcount));
                 return Ok(list);
             }
             Err(err) => last = Some(err),

@@ -9,6 +9,9 @@ that version's section below as a GitHub Release.
 
 ### Added
 
+- Slovak and Hungarian, beside Czech and English: on the screen, in the first-run steps
+  and on the setup Wi-Fi's page. Each language brings its country to the radio's first list
+  and, on a box still on the default zone, its time zone (Bratislava, Budapest).
 - Radio: a Radio tab finds stations in radio-browser.info's open directory (Czech ones
   first, any country when a name is typed or chosen), and plays them with what the
   station says it plays. A heart keeps a station as a favourite; favourites lead the Radio
