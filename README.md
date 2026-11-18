@@ -89,13 +89,18 @@ Phones: Safari on iPhone, as the remote control. Servers: the open-source own.au
 server (1.0) and the hosted service. The Pi 3 runs the kiosk and the player in about
 420 MB with the CPU capped at 800 MHz.
 
-Meant to work, not yet tested on hardware:
+The real box, tested since 1.0.0-beta.7 (2026-11-18), written from the SD image and
+updated through Settings since:
 
 | | |
 |---|---|
-| Board | Raspberry Pi 4 (a build with Touch Display 2 and the DAC+ is being put together: [docs/HARDWARE.md](docs/HARDWARE.md)) |
-| Screen | Touch Display 2, 7" and 5" (720 × 1280, turned to landscape). No other screens. |
-| Sound | Raspberry Pi DAC+; other I²S HATs through their overlay (`audio_hat` in `config.toml`) |
+| Board | Raspberry Pi 4 Model B (Rev 1.5) — parts and assembly in [docs/HARDWARE.md](docs/HARDWARE.md) |
+| Screen | Touch Display 2, 7" (720 × 1280), used upright: the page zoomed 1.55 times |
+| Sound | Raspberry Pi DAC+ |
+
+Meant to work, not yet tested: the 5" Touch Display 2, the display turned to landscape,
+and I²S HATs other than those above (through their overlay, `audio_hat` in
+`config.toml`).
 
 **64-bit only.** The box runs on 64-bit Raspberry Pi OS (arm64) and is built for it
 alone: Raspberry Pi Zero 2 W, 3, 4 and 5. Boards that can only run 32-bit — the first
