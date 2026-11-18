@@ -7,6 +7,11 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.11] — 2026-11-18
+
+Radio, Slovak and Hungarian, and a tidier Settings. Boxes on beta.10 install it by
+themselves at night; the page on the screen loads the new version a minute after.
+
 ### Added
 
 - Slovak and Hungarian, beside Czech and English: on the screen, in the first-run steps
@@ -16,8 +21,7 @@ that version's section below as a GitHub Release.
   first, any country when a name is typed or chosen), and plays them with what the
   station says it plays. A heart keeps a station as a favourite; favourites lead the Radio
   tab and the music home screen, one tap to play; Edit there puts a cross on each to take
-  it off. Stations play without seeking or a next
-  track, with the sleep timer. The box asks the directory for a station by its id and
+  it off. Stations play without seeking or a next track, with the sleep timer. The box asks the directory for a station by its id and
   plays the address it gives; a page cannot hand the player an address of its own.
 
 ### Changed
