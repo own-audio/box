@@ -199,6 +199,16 @@ p { margin: 0; }
 .tab-icon { display: none; }
 .tab-icon svg { width: 22px; height: 22px; fill: currentColor; display: block; }
 @media (orientation: landscape) and (min-width: 700px) { .tab-icon { display: inline-flex; } }
+/* Upright, the bar is narrow: icons, and the name beside the open tab's only (Slovak and
+   Hungarian names do not fit five abreast). */
+@media (orientation: portrait) {
+  .tab-icon { display: inline-flex; }
+  #tabs { gap: 2px; }
+  #tabs button { padding: 0 12px; min-height: 46px; font-size: 16px; }
+  #tabs button:not(.active) > span:last-child { display: none; }
+  #tabs button.active { flex: 1; justify-content: center; min-width: 0; }
+  #tabs button.active > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
 #tabs button.active, #topbar [data-tab="settings"].active { color: var(--fg); }
 #tabs button.active { background: var(--chip); font-weight: 600; }
 
