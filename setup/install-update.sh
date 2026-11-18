@@ -7,6 +7,10 @@
 set -uo pipefail
 
 BOX_USER=@USER@
+# The placeholder in the files of an update, spelled so that filling in this script (the
+# image, deploy.sh) does not fill it too: beta.7 shipped with it filled, so its updates put
+# the files in with the placeholder left in them and the box did not start.
+PLACEHOLDER='@''USER@'
 DIR=/home/@USER@/.local/state/ownbox/update
 OPT=/opt/ownbox
 STATE=/var/lib/ownbox
@@ -51,7 +55,9 @@ install_setup() {
   while read -r src dest mode always; do
     [ -f "$work/files/$src" ] && [ ! -L "$work/files/$src" ] || continue
     [ -e "$dest" ] || [ "$always" = new ] || continue
-    sed "s/@USER@/$BOX_USER/g" "$work/files/$src" > "$work/next"
+    sed "s/$PLACEHOLDER/$BOX_USER/g" "$work/files/$src" > "$work/next"
+    # A file still holding the placeholder would name a user that does not exist.
+    if grep -q "$PLACEHOLDER" "$work/next" || [ -z "$BOX_USER" ]; then echo "  $dest: kept (no user to fill in)"; continue; fi
     install -D -m "$mode" "$work/next" "$dest"
     echo "  $dest"
   done <<'FILES'

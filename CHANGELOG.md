@@ -7,12 +7,25 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.9] — 2026-11-18
+
+Replaces beta.8, which was withdrawn: on a box running beta.7 the update to it left the
+system files naming a user that does not exist, ownbox did not start, and the box went
+back to beta.7 with its services broken. This release installs cleanly from beta.7 and
+brings everything listed under beta.8; switch the box off and on once after the update,
+so the new kiosk zoom and config.txt take effect.
+
 ### Fixed
+
+- Updates put the system files in with the box's user filled in. The image filled in the
+  installer's own placeholder too, so beta.7's installer copied the files unfilled; the
+  release now ships them filled for the image's user, and the installer keeps any file
+  where a placeholder is left instead of installing it.
 
 - The brightness slider moves in the panel's own steps: Touch Display 2 has 31, and the
   slider's 245 positions changed it only every eighth one.
 
-## [1.0.0-beta.8] — 2026-11-18
+## [1.0.0-beta.8] — 2026-11-18 (withdrawn)
 
 The Pi 4 with Touch Display 2 and the DAC+, the first build of the real box, and fixes for
 the Pi 3 and fresh cards. The update from beta.7 brings the system files, but beta.7's
