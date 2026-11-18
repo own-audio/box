@@ -7,6 +7,18 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.8] — 2026-11-18
+
+The Pi 4 with Touch Display 2 and the DAC+, the first build of the real box, and fixes for
+the Pi 3 and fresh cards. The update from beta.7 brings the system files, but beta.7's
+installer does not apply them outside ownbox: switch the box off and on once after it,
+so the new kiosk zoom and config.txt take effect. Later updates do that themselves.
+
+### Changed
+
+- After an update the box applies what its new system files change outside ownbox: when
+  `config.txt` changed, the Pi restarts; when the kiosk's unit changed, the kiosk restarts.
+
 ### Fixed
 
 - On Touch Display 2 the page filled only the top-left quarter of the screen and touches

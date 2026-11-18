@@ -129,6 +129,7 @@ case "$ACTION" in
     rm -f "$OPT/ownbox.incoming.minisig"
     # The system files first, so the new program starts under its own units.
     echo "system files:"
+    cp /etc/systemd/system/ownbox-kiosk.service "$STATE/kiosk-unit-before" 2>/dev/null || : > "$STATE/kiosk-unit-before"
     install_setup || echo "system files left as they were"
     chmod 755 "$OPT/ownbox.incoming"
     # A full card must not leave the box without either version.
@@ -141,6 +142,16 @@ case "$ACTION" in
     systemctl restart ownbox.service
     if answers; then
       result "installed $("$OPT/ownbox" --version 2>/dev/null || echo "${VERSION:-?}")"
+      # What the new system files change outside ownbox: config.txt takes a restart of the
+      # Pi, the kiosk's unit and zoom a restart of the kiosk.
+      if [ "$("$OPT/boot-config.sh" 2>/dev/null)" = reboot ]; then
+        echo "config.txt changed; restarting the Pi"
+        sync
+        systemctl reboot
+      elif ! cmp -s "$STATE/kiosk-unit-before" /etc/systemd/system/ownbox-kiosk.service \
+           && systemctl is-active --quiet ownbox-kiosk.service; then
+        systemctl restart ownbox-kiosk.service
+      fi
     else
       swap_back
       answers
