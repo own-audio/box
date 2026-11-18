@@ -39,6 +39,9 @@ pub struct ScreenState {
     pub on: bool,
     pub brightness: u8,
     pub min_brightness: u8,
+    /// How many steps the panel has (31 on Touch Display 2, 255 on the 7" display): the
+    /// slider moves in those, not in 255 values the panel cannot show.
+    pub levels: u32,
     pub off_after_secs: u64,
     pub controllable: bool,
 }
@@ -129,6 +132,7 @@ impl Screen {
             on: self.on.load(Ordering::Relaxed),
             brightness: self.brightness.load(Ordering::Relaxed),
             min_brightness: MIN_BRIGHTNESS,
+            levels: self.max,
             off_after_secs: self.off_after_secs.load(Ordering::Relaxed),
             controllable: self.path.is_some(),
         }

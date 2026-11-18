@@ -2507,13 +2507,16 @@ const OFF_AFTER = [[15, '15 s'], [30, '30 s'], [60, '1 min'], [300, '5 min'], [0
 function screenSettings(s) {
   const pct = (b) => `${Math.round((b / 255) * 100)} %`;
   const value = el('span', { class: 'muted', text: pct(s.brightness) });
-  const slider = el('input', { type: 'range', min: s.min_brightness, max: 255, value: s.brightness, class: 'slider' });
+  // One slider step per step of the panel (Touch Display 2 has 31), so every move shows.
+  const step = s.levels && s.levels < 255 ? 255 / s.levels : 1;
+  const min = s.levels && s.levels < 255 ? step * Math.max(1, Math.round(s.min_brightness / step)) : s.min_brightness;
+  const slider = el('input', { type: 'range', min, max: 255, step, value: s.brightness, class: 'slider' });
   let pending = null;
   // Applied while dragging, at most a few times a second, so the panel follows the finger.
   slider.addEventListener('input', () => {
     value.textContent = pct(Number(slider.value));
     clearTimeout(pending);
-    pending = setTimeout(() => post('/api/screen/settings', { brightness: Number(slider.value) }).catch(() => null), 120);
+    pending = setTimeout(() => post('/api/screen/settings', { brightness: Math.round(Number(slider.value)) }).catch(() => null), 120);
   });
 
   const choices = el('div', { class: 'buttons' });

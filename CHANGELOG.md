@@ -7,6 +7,11 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- The brightness slider moves in the panel's own steps: Touch Display 2 has 31, and the
+  slider's 245 positions changed it only every eighth one.
+
 ## [1.0.0-beta.8] — 2026-11-18
 
 The Pi 4 with Touch Display 2 and the DAC+, the first build of the real box, and fixes for
