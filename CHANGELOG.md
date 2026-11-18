@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- Updates install themselves at night, between 3 and 5 and only when nothing plays (the
+  box's queue, AirPlay or Music Assistant). Settings → Updates can leave them to a tap on
+  Install instead. A release from the evening is found and installed the same night.
+
 ## [1.0.0-beta.9] — 2026-11-18
 
 Replaces beta.8, which was withdrawn: on a box running beta.7 the update to it left the

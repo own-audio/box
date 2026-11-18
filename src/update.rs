@@ -50,6 +50,8 @@ pub struct View {
     pub last_result: Option<String>,
     /// The version kept for going back by hand.
     pub previous: Option<String>,
+    /// Updates install themselves at night (filled in from the settings).
+    pub auto: bool,
 }
 
 pub struct Updater {
@@ -57,6 +59,14 @@ pub struct Updater {
     dir: PathBuf,
     available: Mutex<Option<Release>>,
     state: Mutex<Option<String>>,
+}
+
+/// The hours (local time, from–to) when a box installs an update by itself: nobody is
+/// listening, and a restart of the Pi goes unseen.
+pub const NIGHT: (u32, u32) = (3, 5);
+
+pub fn at_night(hour: u32) -> bool {
+    (NIGHT.0..NIGHT.1).contains(&hour)
 }
 
 /// A version as semver orders it: `v1.2.3`, `1.0.0-beta.2`; build metadata (`+…`) is
@@ -200,6 +210,7 @@ impl Updater {
             previous: Path::new("/opt/ownbox/ownbox.previous")
                 .exists()
                 .then(|| read_trimmed(PREVIOUS_VERSION_FILE).unwrap_or_else(|| "?".into())),
+            auto: false,
         }
     }
 
@@ -318,6 +329,15 @@ RUR3l11h/7sRicuFIWZpZhxJ/3mHjjocJphedVjB2XTCRjo+E1/hlA5mdm8VYz3QcmSFVljnfRBOPfK8
 trusted comment: timestamp:1794701022\tfile:data.txt\thashed
 5mc/HnOpDo5gj+kAIcBXoa71ISXfXNC90ZjZ38lV5Q/BREvSPmj+tNJeI4SiYhBm0ZlEeF1SHgSwI8OEneHuBg==
 ";
+
+    #[test]
+    fn the_night_is_three_to_five() {
+        assert!(!at_night(2));
+        assert!(at_night(3));
+        assert!(at_night(4));
+        assert!(!at_night(5));
+        assert!(!at_night(15));
+    }
 
     #[test]
     fn a_good_signature_passes_and_anything_else_does_not() {

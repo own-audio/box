@@ -2321,6 +2321,18 @@ async function updateSettings() {
     buttons.append(act(t('Check now'), '/api/update/check'));
   }
   if (u.previous) buttons.append(act(t('Go back to {v}', { v: u.previous }), '/api/update/rollback'));
+  if (u.enabled) {
+    const auto = (on) => el('button', {
+      class: u.auto === on ? 'on' : 'secondary',
+      text: on ? t('At night by itself') : t('Only when I tap Install'),
+      onclick: async () => { await post('/api/update/auto', { on }).catch(() => null); redraw(); },
+    });
+    group.append(
+      el('div', { class: 'setting' }, el('span', { text: t('Install updates') })),
+      el('div', { class: 'buttons' }, auto(true), auto(false)),
+      el('p', { class: 'muted small', text: t('Between 3 and 5 at night, when nothing is playing. The box may restart.') }),
+    );
+  }
   if (buttons.childElementCount) group.append(buttons);
   if (u.last_result) group.append(el('p', { class: 'muted small', text: t('Last: {r}', { r: u.last_result }) }));
   group.append(msg);

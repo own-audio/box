@@ -66,8 +66,9 @@ boxes below, and installs from an SD card image.
   card go and shows what plays, and playing own.audio takes it back. AirPlay needs
   `setup/airplay/build.sh` run once on the Pi.
 - **Sound output:** Settings lists the cards found (an I²S DAC, USB, HDMI, the jack).
-- **Updates:** signed releases from this repository, betas included, installed from
-  Settings with an automatic way back.
+- **Updates:** signed releases from this repository, betas included, installed by
+  themselves between 3 and 5 at night when nothing plays (or only from Settings, if you
+  choose so), with an automatic way back.
 
 ## Tested on
 
@@ -249,8 +250,10 @@ GPIO17 (pin 11) with wake kept on GPIO3 — see HARDWARE.md.
 release is a tag `vX.Y.Z` (a beta is published as a pre-release): GitHub Actions
 builds ownbox for the Pi, signs it with minisign and publishes it as a GitHub Release
 ([.github/workflows/release.yml](.github/workflows/release.yml)), with that version's
-section of the [changelog](CHANGELOG.md) as its notes. Boxes offer the update in
-Settings → Updates and put the previous version back if the new one does not start.
+section of the [changelog](CHANGELOG.md) as its notes. Boxes install it at night by
+themselves (Settings → Updates can leave it to a tap instead) and put the previous
+version back if the new one does not start. The night is the box's local time, and
+images run on UTC until a time zone is set.
 Settings shows the running version.
 
 Each release carries the SD card image as well. Next: own.audio box in Raspberry Pi

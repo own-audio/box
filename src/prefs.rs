@@ -45,6 +45,8 @@ pub struct Prefs {
     pub music_assistant_enabled: Option<bool>,
     /// The sound output chosen in Settings (mpv's `--audio-device`).
     pub audio_device: Option<String>,
+    /// Updates install themselves at night (missing = yes).
+    pub auto_update: Option<bool>,
 }
 
 /// Writes `path` so that a power cut leaves the old file or the new one, never half of it:

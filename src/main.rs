@@ -148,6 +148,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::spawn(Arc::clone(&state.hotspot).run(move || named.auth.device_name()));
     }
     tokio::spawn(updater.run(http));
+    tokio::spawn(night_updates(Arc::clone(&state)));
     tokio::spawn(wifi::roam());
     tokio::spawn(buttons::run(Arc::clone(&state)));
 
@@ -241,4 +242,43 @@ async fn shutdown_signal() {
         _ = term.recv() => {}
     }
     tracing::info!("stopping");
+}
+
+/// Installs an available update at night, when the settings allow it and nothing plays:
+/// not the box's own queue, not AirPlay or Music Assistant. Checks first if the day's check
+/// found nothing, so a release from the evening is installed the same night.
+async fn night_updates(state: Arc<AppState>) {
+    if !state.updater.enabled() {
+        return;
+    }
+    let mut checked_night = None;
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(10 * 60)).await;
+        let now = chrono::Local::now();
+        if !update::at_night(chrono::Timelike::hour(&now)) || state.prefs.get().auto_update == Some(false) {
+            continue;
+        }
+        if state.player.now().await.state == "playing" || state.outside.view().is_some() {
+            continue;
+        }
+        let view = state.updater.view();
+        if view.state.is_some() {
+            continue;
+        }
+        if view.available.is_none() {
+            let night = now.date_naive();
+            if checked_night == Some(night) {
+                continue;
+            }
+            checked_night = Some(night);
+            if !matches!(state.updater.check(&state.http).await, Ok(Some(_))) {
+                continue;
+            }
+        }
+        tracing::info!("installing the update at night");
+        state.player.release().await;
+        if let Err(err) = state.updater.install(&state.http).await {
+            tracing::warn!(%err, "night update");
+        }
+    }
 }

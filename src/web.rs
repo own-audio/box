@@ -86,6 +86,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/update/check", post(update_check))
         .route("/api/update/install", post(update_install))
         .route("/api/update/rollback", post(update_rollback))
+        .route("/api/update/auto", post(update_auto))
         .route("/api/audio", get(audio_state))
         .route("/api/audio/output", post(audio_set))
         .route("/api/audio/hats", get(hats_state))
@@ -562,13 +563,27 @@ async fn sources_set(State(s): State<Arc<AppState>>, Json(req): Json<SourcesRequ
 
 // --- updates ---------------------------------------------------------------------------
 
+fn update_view(s: &AppState) -> update::View {
+    update::View { auto: s.prefs.get().auto_update != Some(false), ..s.updater.view() }
+}
+
 async fn update_state(State(s): State<Arc<AppState>>) -> Json<update::View> {
-    Json(s.updater.view())
+    Json(update_view(&s))
+}
+
+#[derive(Deserialize)]
+struct AutoUpdateRequest {
+    on: bool,
+}
+
+async fn update_auto(State(s): State<Arc<AppState>>, Json(req): Json<AutoUpdateRequest>) -> Json<update::View> {
+    s.prefs.update(|p| p.auto_update = Some(req.on));
+    Json(update_view(&s))
 }
 
 fn update_reply(s: &AppState, result: anyhow::Result<()>) -> axum::response::Response {
     match result {
-        Ok(()) => Json(s.updater.view()).into_response(),
+        Ok(()) => Json(update_view(s)).into_response(),
         Err(e) => (StatusCode::BAD_GATEWAY, Json(json!({ "error": e.to_string() }))).into_response(),
     }
 }
@@ -903,6 +918,7 @@ async fn setup_reset(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> 
             volume: p.volume,
             screen_brightness: p.screen_brightness,
             screen_off_after_secs: p.screen_off_after_secs,
+            auto_update: p.auto_update,
             ..Default::default()
         };
     });
