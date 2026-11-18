@@ -53,8 +53,9 @@ Kept for the bench: the Pi 3 B+ with the official 7" display and the Jabra SPEAK
 - **Display orientation.** Touch Display 2 is portrait (720 × 1280) and the box uses it
   that way for now: the page takes its phone layout, zoomed 1.55 times with Chromium's own
   page zoom (`boot-config.sh`). Not `--force-device-scale-factor`: on Wayland Chromium
-  rounds it up to 2 and cage shows the page in a quarter of the panel. A setting for
-  landscape is planned (rotation with `wlr-randr`, touch rotated with it).
+  rounds it up to 2 and cage shows the page in a quarter of the panel. Settings → Screen
+  turns it (0/90/180/270°: `wlr-randr` for the picture, a libinput calibration matrix in
+  `/etc/udev/rules.d/99-ownbox-touch.rules` for touch; 270° checked on the device).
 - **Audio.** `dtparam=audio=off` and `dtoverlay=iqaudio-dacplus` in `config.txt`;
   `audio_device` for the DAC in `config.toml`, and no forced 48 kHz (that was for the
   Jabra).
