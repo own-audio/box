@@ -856,3 +856,10 @@ button.danger.armed { background: var(--bad); color: #fff; }
 .tile.station.editing img, .tile.station.editing .noimg { opacity: .75; }
 .tile-remove { position: absolute; top: 4px; right: 4px; width: 34px; height: 34px; min-height: 0; padding: 0; border-radius: 50%;
   background: var(--fg); color: var(--bg); font-size: 16px; line-height: 34px; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+
+/* No picture: the kind's icon, centred on the picture's ground. */
+.noimg.ph { display: flex; align-items: center; justify-content: center; color: var(--muted); }
+.noimg.ph svg { width: 46%; height: 46%; fill: currentColor; }
+.row .noimg.ph { width: 44px; height: 44px; border-radius: 8px; background: var(--img); flex: none; }
+.row .noimg.ph.round { border-radius: 50%; }
+.tile.station .noimg.ph { background: color-mix(in srgb, var(--accent) 14%, var(--panel)); color: var(--accent); }

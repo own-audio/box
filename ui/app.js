@@ -49,6 +49,10 @@ function brand(size, { animated = false, big = false } = {}) {
 
 const ICONS = {
   play: '<path d="M8 5v14l11-7z"/>',
+  note: '<path d="M10 3.5v11.1a3.4 3.4 0 1 0 2 3.1V8h6V3.5z"/>',
+  radio: '<path d="M5.2 7.6 16.6 3l.7 1.8-7 2.8H19a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9.6a2 2 0 0 1 2.2-2zM8 11.5a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4zm6 .5v1.6h5V12zm0 3.4V17h5v-1.6z"/>',
+  book: '<path d="M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6.5A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3zM7 17a1 1 0 0 0 0 2h10v-2z"/>',
+  mic: '<path d="M12 2.5a3.5 3.5 0 0 1 3.5 3.5v5a3.5 3.5 0 0 1-7 0V6A3.5 3.5 0 0 1 12 2.5zM6 10.5h1.8a4.2 4.2 0 0 0 8.4 0H18a6 6 0 0 1-5.1 5.9V19H16v2H8v-2h3.1v-2.6A6 6 0 0 1 6 10.5z"/>',
   heart: '<path d="M12 20.5 4.6 13.3a4.6 4.6 0 0 1 6.5-6.5l.9.9.9-.9a4.6 4.6 0 0 1 6.5 6.5z"/>',
   heartline: '<path d="M12 20.5 4.6 13.3a4.6 4.6 0 0 1 6.5-6.5l.9.9.9-.9a4.6 4.6 0 0 1 6.5 6.5z" fill="none" stroke="currentColor" stroke-width="2"/>',
   pause: '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>',
@@ -117,8 +121,29 @@ function clock(secs) {
   return h ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
 }
 
-function cover(src, cls) {
-  return src ? el('img', { src, class: cls, loading: 'lazy', alt: '' }) : el('div', { class: cls ? `${cls} noimg` : 'noimg' });
+/** Where there is no picture: the kind's own icon (a note, a radio, a book, a microphone). */
+function placeholder(kind, cls) {
+  const node = el('div', { class: `${cls ? `${cls} ` : ''}noimg ph`, 'aria-hidden': 'true' });
+  node.innerHTML = icon(kind || 'note');
+  return node;
+}
+
+/** A picture, or the kind's icon when there is none or it does not load. */
+function cover(src, cls, kind = 'note') {
+  if (!src) return placeholder(kind, cls);
+  const img = el('img', { src, class: cls, loading: 'lazy', alt: '' });
+  img.addEventListener('error', () => img.replaceWith(placeholder(kind, cls)), { once: true });
+  return img;
+}
+
+/** The same icon as an image address, for the now-playing pictures (<img> elements). */
+function placeholderSrc(kind) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 36 36"><rect x="-6" y="-6" width="36" height="36" fill="#3a3a3f"/><g fill="#a1a1a6">${ICONS[kind] || ICONS.note}</g></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function kindOf(tk) {
+  return tk.stream ? 'radio' : tk.book_id ? 'book' : tk.podcast_id ? 'mic' : 'note';
 }
 
 class ApiError extends Error {
@@ -385,7 +410,7 @@ function musicHome() {
 /** A playlist as a tile: its cover (or its first track's), or the music tint with a mark. */
 function playlistTile(p) {
   return el('div', { class: 'tile', onclick: () => push(p.smart ? smartPlaylistView(p) : playlistView(p)) },
-    p.image ? cover(p.image) : el('div', { class: 'noimg tint', text: p.smart ? '✦' : '♪' }),
+    p.image ? cover(p.image, undefined, 'playlist') : p.smart ? el('div', { class: 'noimg tint', text: '✦' }) : placeholder('playlist', 'tint'),
     el('div', { class: 't ellipsis', text: p.name }),
     el('div', { class: 'a ellipsis muted', text: p.smart ? t('Smart playlist') : tn(p.track_count, 'tracks') }));
 }
@@ -524,9 +549,7 @@ async function countryPicker(onPick) {
 let radioTimer = null;
 
 function stationArt(st, cls) {
-  if (st.logo) return el('img', { src: st.logo, class: cls, loading: 'lazy', alt: '' });
-  const initials = st.name.replace(/[^\p{L}\p{N} ]/gu, '').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-  return el('div', { class: `${cls ? `${cls} ` : ''}noimg tint station-mark`, text: initials || '♪' });
+  return cover(st.logo, cls, 'radio');
 }
 
 function playStation(st) {
@@ -821,9 +844,7 @@ function albumsView(sort, from) {
 function trackRow(t, n, onTap, sub, more) {
   // Each song with its small cover, as the web app lists them; an album's own page leaves
   // them out (`image: false`), since they would all be the same.
-  const thumb = t.image === false ? null
-    : t.image ? el('img', { class: 'thumb', src: t.image, loading: 'lazy', alt: '' })
-      : el('div', { class: 'thumb', text: '♪' });
+  const thumb = t.image === false ? null : cover(t.image, 'thumb', kindOf(t));
   const row = el('div', { class: 'row', 'data-id': t.id },
     el('div', { class: 'n', text: n }),
     thumb,
@@ -1507,7 +1528,7 @@ function progressBar(b) {
 
 function bookTile(b) {
   return el('div', { class: 'tile', onclick: () => push(bookView(b.id)) },
-    cover(b.image),
+    cover(b.image, undefined, 'book'),
     progressBar(b),
     el('div', { class: 't ellipsis', text: b.title }),
     el('div', { class: 'a ellipsis muted', text: b.author || bookState(b) }));
@@ -1604,7 +1625,7 @@ function bookView(id) {
       const started = p && !p.completed && p.position_secs > 0;
       const facts = [d.year, ...d.series.map((s) => `${s.name} ${s.position}`), hours(b.duration_secs)].filter(Boolean).join(' · ');
       box.append(el('div', { class: 'book-head' },
-        cover(b.image),
+        cover(b.image, undefined, 'book'),
         el('div', { class: 'info' },
           el('div', { class: 'title clamp2', text: b.title }),
           el('div', { class: 'ellipsis', text: b.author }),
@@ -1677,7 +1698,7 @@ function episodeRow(e, onTap, showName) {
 
 function showTile(sh) {
   return el('div', { class: 'tile', onclick: () => push(showView(sh.id)) },
-    cover(sh.image),
+    cover(sh.image, undefined, 'mic'),
     el('div', { class: 't clamp2', text: sh.title }),
     el('div', { class: 'a ellipsis muted', text: sh.unplayed ? tn(sh.unplayed, 'unplayed') : (sh.host || '') }));
 }
@@ -1739,7 +1760,7 @@ function showView(id) {
       const sh = first.show;
       const episodes = first.episodes;
       box.append(el('div', { class: 'book-head' },
-        cover(sh.image),
+        cover(sh.image, undefined, 'mic'),
         el('div', { class: 'info' },
           el('div', { class: 'title clamp2', text: sh.title }),
           sh.host ? el('div', { class: 'ellipsis', text: sh.host }) : null,
@@ -1783,7 +1804,7 @@ function episodeView(list, index) {
         render();
       });
       box.append(el('div', { class: 'book-head' },
-        cover(e.image),
+        cover(e.image, undefined, 'mic'),
         el('div', { class: 'info' },
           el('div', { class: 'title clamp2', text: e.title }),
           el('div', { class: 'ellipsis', text: e.show_title }),
@@ -2933,8 +2954,9 @@ function renderNow(n, o) {
   if (tk.id !== prevId) {
     // No src at all rather than an empty one: an empty src draws a broken-image icon.
     for (const img of [$('nb-cover'), $('np-cover'), $('np-glow-img')]) {
-      if (tk.image) img.src = tk.image;
-      else img.removeAttribute('src');
+      const fallback = placeholderSrc(kindOf(tk));
+      img.onerror = () => { img.onerror = null; img.src = fallback; };
+      img.src = tk.image || fallback;
     }
     $('nb-title').textContent = tk.book_id ? (tk.album || tk.title) : tk.title;
     $('nb-artist').textContent = tk.book_id && n.queue_length > 1 ? `${tk.artist} · ${t('part {i} of {n}', { i: n.index + 1, n: n.queue_length })}` : tk.artist;

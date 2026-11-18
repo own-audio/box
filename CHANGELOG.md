@@ -9,6 +9,9 @@ that version's section below as a GitHub Release.
 
 ### Changed
 
+- Where there is no picture (or it does not load), a fitting icon shows instead of an
+  empty square: a note for music, a radio for a station, a book, a microphone for a
+  podcast, a list for a playlist; now playing too.
 - Radio keeps to its own tab: the music home screen no longer shows favourite stations,
   and the Radio tab shows the stations played lately above the favourites.
 
