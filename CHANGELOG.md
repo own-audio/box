@@ -10,7 +10,8 @@ that version's section below as a GitHub Release.
 ## [1.0.0-beta.11] — 2026-11-18
 
 Radio, Slovak and Hungarian, and a tidier Settings. Boxes on beta.10 install it by
-themselves at night; the page on the screen loads the new version a minute after.
+themselves at night, but their screen keeps the old page until the box is switched off
+and on (or the page loaded again); from this release on the page does that itself.
 
 ### Added
 
