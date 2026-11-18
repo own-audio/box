@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- After an update the screen (and an open phone) kept the old page until someone loaded it
+  again, so a night update showed nothing new by morning. The page now loads again within a
+  minute of the box's version changing.
+
 ## [1.0.0-beta.10] — 2026-11-18
 
 Updates that look after themselves: the box installs new versions at night, takes

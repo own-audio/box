@@ -2603,8 +2603,18 @@ function uptime(secs) {
 // version on each screen or phone (remembered there; a page that cannot remember shows it
 // at every load, which is still only when a version waits).
 let noticedUpdate = null;
+let loadedVersion = null;
 async function noticeUpdate() {
   const u = await get('/api/update').catch(() => null);
+  // The box was updated under this page (at night, or from another device): the page is
+  // part of ownbox, so it loads again to be the new one.
+  if (u && u.current) {
+    if (loadedVersion && u.current !== loadedVersion) {
+      location.reload();
+      return;
+    }
+    loadedVersion = u.current;
+  }
   const version = u && u.enabled && !u.state && u.available ? u.available.version : null;
   document.querySelector('[data-tab="settings"]')?.classList.toggle('has-update', !!version);
   if (!version || noticedUpdate === version) return;
@@ -3323,8 +3333,8 @@ async function start() {
   });
   setInterval(once(pollNow), 1000);
   setInterval(once(refreshStatus), 5000);
-  setTimeout(noticeUpdate, 20000);
-  setInterval(once(noticeUpdate), 10 * 60 * 1000);
+  setTimeout(noticeUpdate, 3000);
+  setInterval(once(noticeUpdate), 60 * 1000);
   // A theme or button style chosen on another device (a phone) reaches this one too.
   setInterval(() => get('/api/ui').then((u) => {
     if (u.theme !== THEME) applyTheme(u.theme);
