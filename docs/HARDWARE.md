@@ -50,11 +50,11 @@ Kept for the bench: the Pi 3 B+ with the official 7" display and the Jabra SPEAK
   (start around 1.2 GHz) with `setup/boot-config.sh`, show temperature and clock in
   Settings next to the power flags, and tune the cap from measurements. Less heat and
   less current, which is also why no cooler is bought.
-- **Display orientation.** Touch Display 2 is portrait (720 × 1280). Landscape for the
-  box: `video=DSI-1:720x1280M@60,rotate=270` in `cmdline.txt` (rpishop's own answer on
-  the product page); touch has to rotate with it — check on the device. The UI then
-  sees 1280 × 720 instead of 800 × 480 and its layout needs a pass (or Chromium's
-  scale factor).
+- **Display orientation.** Touch Display 2 is portrait (720 × 1280) and the box uses it
+  that way for now: the page takes its phone layout, zoomed 1.55 times with Chromium's own
+  page zoom (`boot-config.sh`). Not `--force-device-scale-factor`: on Wayland Chromium
+  rounds it up to 2 and cage shows the page in a quarter of the panel. A setting for
+  landscape is planned (rotation with `wlr-randr`, touch rotated with it).
 - **Audio.** `dtparam=audio=off` and `dtoverlay=iqaudio-dacplus` in `config.txt`;
   `audio_device` for the DAC in `config.toml`, and no forced 48 kHz (that was for the
   Jabra).
