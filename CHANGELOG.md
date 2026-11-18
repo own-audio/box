@@ -9,6 +9,12 @@ that version's section below as a GitHub Release.
 
 ### Fixed
 
+- On Touch Display 2 the page filled only the top-left quarter of the screen and touches
+  outside it did nothing: Chromium on Wayland rounds its scale factor (1.6) up to 2 and
+  reports a window half the panel's size. The page is now zoomed with Chromium's own page
+  zoom instead (1.55 on Touch Display 2, 1 on the 7" display), and the panel shows it in
+  full. Found on the Pi 4 with beta.7.
+
 - On Touch Display 2 the screen went dark after its timer and never lit again, and every
   touch only tried to wake it: the box wrote brightness on a 0–255 scale, and this panel
   takes 0–31 and refuses the rest. Brightness is now put on the panel's own scale. Found on

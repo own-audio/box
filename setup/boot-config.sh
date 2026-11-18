@@ -3,7 +3,7 @@
 #   - config.txt: one marked block (power button, Bluetooth off, an audio HAT's overlay),
 #     replaced on every deploy, never edited by hand; takes effect at the next boot;
 #   - the CPU cap for this board (tmpfiles, applied now);
-#   - the kiosk's scale factor for this panel.
+#   - the kiosk's page zoom for this panel.
 # Run as root by scripts/deploy.sh. Prints "reboot" when config.txt changed.
 set -euo pipefail
 
@@ -119,11 +119,35 @@ else
   rm -f /etc/tmpfiles.d/ownbox-cpu.conf
 fi
 
-# The UI is laid out for 800 × 480 points. Touch Display 2 (720 × 1280, landscape) gets a
-# scale factor so the same layout fills it at finger size.
-SCALE=1
+# The UI is laid out for the 7" display's 800 × 480 points (5.2 px/mm). Touch Display 2
+# packs 8 px/mm (720 × 1280 on 90 × 151 mm), so the page is zoomed 1.55 times there to
+# keep the same finger size. Chromium's own page zoom (its Preferences) and not
+# --force-device-scale-factor: on Wayland Chromium rounds that up to 2, reports a window
+# half the panel's size, and cage shows the page in a quarter of the screen.
+ZOOM=1
 for c in /sys/class/drm/card*-DSI-*; do
   [ "$(cat "$c/status" 2>/dev/null)" = connected ] || continue
-  case "$(head -1 "$c/modes" 2>/dev/null)" in 720x1280|1280x720) SCALE=1.6 ;; esac
+  case "$(head -1 "$c/modes" 2>/dev/null)" in 720x1280|1280x720) ZOOM=1.55 ;; esac
 done
-write /etc/default/ownbox-kiosk "$(printf 'KIOSK_URL=http://localhost:8686\nKIOSK_SCALE=%s' "$SCALE")"
+# As the kiosk's user: its home is not root's to write in (a link put there would be
+# followed).
+CHROMIUM_PREFS=${CHROMIUM_PREFS:-/home/@USER@/.config/chromium/Default/Preferences}
+as_box() { if [ "$(id -u)" = 0 ]; then runuser -u @USER@ -- "$@"; else "$@"; fi; }
+as_box python3 - "$CHROMIUM_PREFS" "$ZOOM" <<'PY' || echo "the kiosk's zoom was not written" >&2
+import json, math, os, sys
+path, zoom = sys.argv[1], float(sys.argv[2])
+level = math.log(zoom) / math.log(1.2)
+try:
+    with open(path) as f:
+        prefs = json.load(f)
+except (OSError, ValueError):
+    prefs = {}
+zoom_prefs = prefs.setdefault("partition", {}).setdefault("default_zoom_level", {})
+if abs(zoom_prefs.get("x", 0.0) - level) > 1e-6:
+    zoom_prefs["x"] = level
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path + ".tmp", "w") as f:
+        json.dump(prefs, f)
+    os.replace(path + ".tmp", path)
+PY
+write /etc/default/ownbox-kiosk 'KIOSK_URL=http://localhost:8686'

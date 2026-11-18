@@ -111,8 +111,8 @@ install -D -m 644 "$setup/dnsmasq-ownbox-setup.conf" "$root/etc/NetworkManager/d
 install -D -o 0 -g 0 -m 644 "$here/config.toml" "$root/home/$BOX_USER/.config/ownbox/config.toml"
 in_root chown -R "$BOX_USER:$BOX_USER" "/home/$BOX_USER"
 in_root python3 /dev/stdin /opt/ownbox/cursors < "$setup/blank-cursor.py"
-# The kiosk's address and scale; ownbox-boot.sh rewrites it for the panel at every boot.
-printf 'KIOSK_URL=http://localhost:8686\nKIOSK_SCALE=1\n' > "$root/etc/default/ownbox-kiosk"
+# The kiosk's address; ownbox-boot.sh rewrites it at every boot.
+printf 'KIOSK_URL=http://localhost:8686\n' > "$root/etc/default/ownbox-kiosk"
 
 echo "== services"
 in_root systemctl enable ownbox-boot.service ownbox.service ownbox-kiosk.service \
