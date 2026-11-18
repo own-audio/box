@@ -820,3 +820,10 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 button.danger { color: var(--bad); }
 button.danger.armed { background: var(--bad); color: #fff; }
 .ob-hidden { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 12px 52px; }
+
+/* A version waits: a dot on the Settings tab. */
+[data-tab="settings"] { position: relative; }
+[data-tab="settings"].has-update::after {
+  content: ""; position: absolute; top: 6px; right: 6px; width: 9px; height: 9px;
+  border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg, #000);
+}

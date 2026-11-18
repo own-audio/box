@@ -177,7 +177,8 @@ fn screen_only(path: &str) -> bool {
         "/api/audio/output",
         "/api/audio/hat",
         "/api/hotspot",
-        "/api/update",
+        // Its actions; reading what waits (`/api/update`) is fine from a phone.
+        "/api/update/",
     ];
     PREFIXES.iter().any(|p| path.starts_with(p)) || path == "/api/player/release"
 }
@@ -328,6 +329,8 @@ mod tests {
         let paired = one("secret");
         assert_eq!(access(lan(), "/api/setup/server", Some("secret"), &paired, true, false), Access::Allowed);
         assert_eq!(access(lan(), "/api/setup/reset", Some("secret"), &paired, true, false), Access::Allowed);
+        assert_eq!(access(lan(), "/api/update", Some("secret"), &paired, false, false), Access::Allowed, "a phone sees that a version waits");
+        assert_eq!(access(lan(), "/api/update/install", Some("secret"), &paired, false, false), Access::ScreenOnly, "and only the screen installs it");
         assert_eq!(access(lan(), "/api/setup/reset", Some("wrong"), &paired, true, false), Access::ScreenOnly);
         assert_eq!(access(lan(), "/api/setup/reset", Some("secret"), &paired, false, false), Access::ScreenOnly, "a box with a screen resets from it");
         assert_eq!(access(lan(), "/api/remote/code", Some("secret"), &paired, true, false), Access::Allowed);

@@ -16,6 +16,9 @@ that version's section below as a GitHub Release.
   security archive only), and a restart of the Pi when any came; Settings → Updates shows
   the last run. A box without the package gets it at the first run. Tried on the Pi 4:
   15 packages, about three minutes, back up after the restart.
+- A waiting version shows: a dot on the Settings tab and, once per version, a note saying
+  whether it installs itself tonight or waits for a tap. Phones see it too (they may read
+  what waits; installing stays with the screen, or a paired phone on a box without one).
 
 ## [1.0.0-beta.9] — 2026-11-18
 

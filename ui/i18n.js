@@ -284,6 +284,8 @@ const CS = {
   'Only when I tap Install': 'Jen když klepnu na Instalovat',
   'Between 3 and 5 at night, when nothing is playing; Debian\'s security updates once a week as well. The box may restart.': 'Mezi 3. a 5. hodinou v noci, když nic nehraje; jednou týdně i bezpečnostní aktualizace systému. Box se přitom může restartovat.',
   'System: {r}': 'Systém: {r}',
+  'Version {v} installs itself tonight.': 'Verze {v} se v noci nainstaluje sama.',
+  'Version {v} is ready: Settings → Updates.': 'Je připravená verze {v}: Nastavení → Aktualizace.',
   'Go back to {v}': 'Vrátit verzi {v}',
   'Last: {r}': 'Naposledy: {r}',
   'no update available': 'žádná aktualizace není k dispozici',

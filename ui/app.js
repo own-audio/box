@@ -2577,6 +2577,23 @@ function uptime(secs) {
   return h ? `${h} h ${m} min` : `${m} min ${secs % 60} s`;
 }
 
+// A new version: a dot on the Settings tab for as long as it waits, and a note once per
+// version on each screen or phone (remembered there; a page that cannot remember shows it
+// at every load, which is still only when a version waits).
+let noticedUpdate = null;
+async function noticeUpdate() {
+  const u = await get('/api/update').catch(() => null);
+  const version = u && u.enabled && !u.state && u.available ? u.available.version : null;
+  document.querySelector('[data-tab="settings"]')?.classList.toggle('has-update', !!version);
+  if (!version || noticedUpdate === version) return;
+  noticedUpdate = version;
+  const key = 'ownbox-update-noticed';
+  try { if (localStorage.getItem(key) === version) return; localStorage.setItem(key, version); } catch { /* not remembered */ }
+  toast(u.auto
+    ? t('Version {v} installs itself tonight.', { v: version })
+    : t('Version {v} is ready: Settings → Updates.', { v: version }));
+}
+
 async function refreshStatus() {
   if (!$('mpv')) return;
   try {
@@ -3284,6 +3301,8 @@ async function start() {
   });
   setInterval(once(pollNow), 1000);
   setInterval(once(refreshStatus), 5000);
+  setTimeout(noticeUpdate, 20000);
+  setInterval(once(noticeUpdate), 10 * 60 * 1000);
   // A theme or button style chosen on another device (a phone) reaches this one too.
   setInterval(() => get('/api/ui').then((u) => {
     if (u.theme !== THEME) applyTheme(u.theme);
