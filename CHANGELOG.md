@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.10] — 2026-11-18
+
+Updates that look after themselves: the box installs new versions at night, takes
+Debian's security updates once a week and says when a version waits. The update to this
+release itself still needs a tap on Install; the ones after it come on their own.
+
 ### Added
 
 - Updates install themselves at night, between 3 and 5 and only when nothing plays (the
@@ -14,8 +20,9 @@ that version's section below as a GitHub Release.
   Install instead. A release from the evening is found and installed the same night.
 - Debian's security updates once a week on such a night (unattended-upgrades, the
   security archive only), also on a box that leaves its own updates to a tap, and a
-  restart of the Pi when any came; Settings → Updates shows the last run. A box without the package gets it at the first run. Tried on the Pi 4:
-  15 packages, about three minutes, back up after the restart.
+  restart of the Pi when any came; Settings → Updates shows the last run. A box without
+  the package gets it at the first run. Tried on the Pi 4: 15 packages, about three
+  minutes, back up after the restart.
 - Settings → Time zone. The night of the updates follows it; a box still on the default
   (Europe/London, UTC) takes Europe/Prague when Czech is chosen.
 - A waiting version shows: a dot on the Settings tab and, once per version, a note saying

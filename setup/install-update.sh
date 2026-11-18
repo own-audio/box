@@ -80,7 +80,6 @@ ownbox-journald.conf /etc/systemd/journald.conf.d/ownbox.conf 644 -
 ownbox-wifi-powersave.conf /etc/NetworkManager/conf.d/ownbox-wifi-powersave.conf 644 -
 dnsmasq-ownbox-setup.conf /etc/NetworkManager/dnsmasq-shared.d/ownbox-setup.conf 644 -
 ownbox-brcmfmac.conf /etc/modprobe.d/ownbox-brcmfmac.conf 644 new
-ownbox-unattended-upgrades.conf /etc/apt/apt.conf.d/52ownbox-unattended-upgrades 644 new
 FILES
   rm -rf "$work"
   systemctl daemon-reload
@@ -186,7 +185,22 @@ case "$ACTION" in
        && ! timeout 900 apt-get install -y -q --no-install-recommends unattended-upgrades; then
       system_result "could not install unattended-upgrades"; exit 1
     fi
-    [ -f /etc/apt/apt.conf.d/52ownbox-unattended-upgrades ] || { system_result "the box's apt settings are missing"; exit 1; }
+    # Written here, not shipped as a file: an older installer would not know a new file.
+    cat > /etc/apt/apt.conf.d/52ownbox-unattended-upgrades <<'APT'
+// own.audio box: Debian's security updates only, and only when ownbox asks for them at
+// night (apt's own timers are masked in the image); ownbox restarts the Pi afterwards.
+#clear Unattended-Upgrade::Origins-Pattern;
+Unattended-Upgrade::Origins-Pattern {
+  "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+};
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Dpkg::Options {
+  "--force-confdef";
+  "--force-confold";
+};
+APT
     before=$(grep -c ' upgrade ' /var/log/dpkg.log 2>/dev/null || echo 0)
     timeout 3600 unattended-upgrade || true
     after=$(grep -c ' upgrade ' /var/log/dpkg.log 2>/dev/null || echo 0)

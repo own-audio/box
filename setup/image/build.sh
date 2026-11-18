@@ -107,7 +107,6 @@ fill "$setup/51-ownbox-sources.rules" > "$root/etc/polkit-1/rules.d/51-ownbox-so
 install -D -m 644 "$setup/ownbox-journald.conf" "$root/etc/systemd/journald.conf.d/ownbox.conf"
 install -D -m 644 "$setup/ownbox-wifi-powersave.conf" "$root/etc/NetworkManager/conf.d/ownbox-wifi-powersave.conf"
 install -D -m 644 "$setup/ownbox-brcmfmac.conf" "$root/etc/modprobe.d/ownbox-brcmfmac.conf"
-install -D -m 644 "$setup/ownbox-unattended-upgrades.conf" "$root/etc/apt/apt.conf.d/52ownbox-unattended-upgrades"
 install -D -m 644 "$setup/dnsmasq-ownbox-setup.conf" "$root/etc/NetworkManager/dnsmasq-shared.d/ownbox-setup.conf"
 install -D -o 0 -g 0 -m 644 "$here/config.toml" "$root/home/$BOX_USER/.config/ownbox/config.toml"
 in_root chown -R "$BOX_USER:$BOX_USER" "/home/$BOX_USER"
