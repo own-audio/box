@@ -41,7 +41,7 @@ jobs:
             ownbox.service ownbox-kiosk.service ownbox-update.path ownbox-update.service ownbox-recover.service \
             ownbox-sources.path ownbox-sources.service squeezelite.service \
             50-ownbox-network.rules 51-ownbox-sources.rules ownbox-journald.conf ownbox-wifi-powersave.conf \
-            dnsmasq-ownbox-setup.conf ownbox-brcmfmac.conf; do
+            dnsmasq-ownbox-setup.conf ownbox-brcmfmac.conf ownbox-unattended-upgrades.conf; do
             sed "s/@USER@/ownbox/g" "$f" > "../staged/$f"; chmod --reference="$f" "../staged/$f"
           done)
           if grep -rl '@USER@' staged; then echo 'placeholder left in the system files'; exit 1; fi
@@ -50,7 +50,7 @@ jobs:
             ownbox.service ownbox-kiosk.service ownbox-update.path ownbox-update.service ownbox-recover.service \
             ownbox-sources.path ownbox-sources.service squeezelite.service \
             50-ownbox-network.rules 51-ownbox-sources.rules ownbox-journald.conf ownbox-wifi-powersave.conf \
-            dnsmasq-ownbox-setup.conf ownbox-brcmfmac.conf
+            dnsmasq-ownbox-setup.conf ownbox-brcmfmac.conf ownbox-unattended-upgrades.conf
       - name: Sign
         env:
           MINISIGN_KEY: ${{ secrets.MINISIGN_KEY }}

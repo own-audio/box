@@ -68,7 +68,8 @@ boxes below, and installs from an SD card image.
 - **Sound output:** Settings lists the cards found (an I²S DAC, USB, HDMI, the jack).
 - **Updates:** signed releases from this repository, betas included, installed by
   themselves between 3 and 5 at night when nothing plays (or only from Settings, if you
-  choose so), with an automatic way back.
+  choose so), with an automatic way back; Debian's security updates once a week on such a
+  night.
 
 ## Tested on
 

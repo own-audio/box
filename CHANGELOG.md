@@ -12,6 +12,10 @@ that version's section below as a GitHub Release.
 - Updates install themselves at night, between 3 and 5 and only when nothing plays (the
   box's queue, AirPlay or Music Assistant). Settings → Updates can leave them to a tap on
   Install instead. A release from the evening is found and installed the same night.
+- Debian's security updates once a week on such a night (unattended-upgrades, the
+  security archive only), and a restart of the Pi when any came; Settings → Updates shows
+  the last run. A box without the package gets it at the first run. Tried on the Pi 4:
+  15 packages, about three minutes, back up after the restart.
 
 ## [1.0.0-beta.9] — 2026-11-18
 

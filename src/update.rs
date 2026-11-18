@@ -22,6 +22,10 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 const BINARY_ASSET: &str = "ownbox-aarch64";
 /// Where the root unit reports (ownbox cannot write there, so it cannot fake a result).
 const RESULT_FILE: &str = "/var/lib/ownbox/update-result";
+/// What the root unit reported after Debian's security updates, and when (its mtime).
+const SYSTEM_RESULT_FILE: &str = "/var/lib/ownbox/system-result";
+/// How often the box asks for Debian's security updates.
+pub const SYSTEM_EVERY: Duration = Duration::from_secs(7 * 24 * 3600);
 const PREVIOUS_VERSION_FILE: &str = "/var/lib/ownbox/previous-version";
 
 #[derive(Debug, Clone, Serialize)]
@@ -52,6 +56,8 @@ pub struct View {
     pub previous: Option<String>,
     /// Updates install themselves at night (filled in from the settings).
     pub auto: bool,
+    /// The last run of Debian's security updates ("… security updates: nothing new").
+    pub system_result: Option<String>,
 }
 
 pub struct Updater {
@@ -211,6 +217,7 @@ impl Updater {
                 .exists()
                 .then(|| read_trimmed(PREVIOUS_VERSION_FILE).unwrap_or_else(|| "?".into())),
             auto: false,
+            system_result: read_trimmed(SYSTEM_RESULT_FILE),
         }
     }
 
@@ -305,6 +312,22 @@ impl Updater {
         tokio::fs::write(self.dir.join("ownbox.new.minisig"), signature.as_bytes()).await?;
         // The root unit's path unit watches for this file.
         tokio::fs::write(self.dir.join("request"), format!("install {}\n", release.version)).await?;
+        Ok(())
+    }
+
+    /// Whether Debian's security updates are due: never run, last run a week ago, or the
+    /// last try failed (no network that night) a day ago.
+    pub fn system_due(&self) -> bool {
+        let Ok(age) = std::fs::metadata(SYSTEM_RESULT_FILE).and_then(|m| m.modified()) else { return true };
+        let age = age.elapsed().unwrap_or_default();
+        let ran = read_trimmed(SYSTEM_RESULT_FILE).is_some_and(|r| r.contains("security updates:"));
+        age >= if ran { SYSTEM_EVERY } else { Duration::from_secs(20 * 3600) }
+    }
+
+    /// Asks the root unit for Debian's security updates; it restarts the Pi if any came.
+    pub async fn request_system(&self) -> anyhow::Result<()> {
+        tokio::fs::create_dir_all(&self.dir).await?;
+        tokio::fs::write(self.dir.join("request"), "system\n").await?;
         Ok(())
     }
 

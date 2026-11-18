@@ -2330,11 +2330,12 @@ async function updateSettings() {
     group.append(
       el('div', { class: 'setting' }, el('span', { text: t('Install updates') })),
       el('div', { class: 'buttons' }, auto(true), auto(false)),
-      el('p', { class: 'muted small', text: t('Between 3 and 5 at night, when nothing is playing. The box may restart.') }),
+      el('p', { class: 'muted small', text: t('Between 3 and 5 at night, when nothing is playing; Debian\'s security updates once a week as well. The box may restart.') }),
     );
   }
   if (buttons.childElementCount) group.append(buttons);
   if (u.last_result) group.append(el('p', { class: 'muted small', text: t('Last: {r}', { r: u.last_result }) }));
+  if (u.system_result) group.append(el('p', { class: 'muted small', text: t('System: {r}', { r: u.system_result }) }));
   group.append(msg);
   return group;
 }

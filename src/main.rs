@@ -246,7 +246,8 @@ async fn shutdown_signal() {
 
 /// Installs an available update at night, when the settings allow it and nothing plays:
 /// not the box's own queue, not AirPlay or Music Assistant. Checks first if the day's check
-/// found nothing, so a release from the evening is installed the same night.
+/// found nothing, so a release from the evening is installed the same night. With nothing
+/// to install, asks for Debian's security updates once a week.
 async fn night_updates(state: Arc<AppState>) {
     if !state.updater.enabled() {
         return;
@@ -263,6 +264,18 @@ async fn night_updates(state: Arc<AppState>) {
         }
         let view = state.updater.view();
         if view.state.is_some() {
+            continue;
+        }
+        // Debian's security updates once a week, on a night with no update of ownbox.
+        if view.available.is_none() && checked_night == Some(now.date_naive()) && state.updater.system_due() {
+            tracing::info!("asking for Debian's security updates");
+            state.player.release().await;
+            if let Err(err) = state.updater.request_system().await {
+                tracing::warn!(%err, "security updates");
+            }
+            // The root unit writes its result (its mtime keeps the next run a week away);
+            // give it the night's first hour before asking again.
+            tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
             continue;
         }
         if view.available.is_none() {

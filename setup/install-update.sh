@@ -80,6 +80,7 @@ ownbox-journald.conf /etc/systemd/journald.conf.d/ownbox.conf 644 -
 ownbox-wifi-powersave.conf /etc/NetworkManager/conf.d/ownbox-wifi-powersave.conf 644 -
 dnsmasq-ownbox-setup.conf /etc/NetworkManager/dnsmasq-shared.d/ownbox-setup.conf 644 -
 ownbox-brcmfmac.conf /etc/modprobe.d/ownbox-brcmfmac.conf 644 new
+ownbox-unattended-upgrades.conf /etc/apt/apt.conf.d/52ownbox-unattended-upgrades 644 new
 FILES
   rm -rf "$work"
   systemctl daemon-reload
@@ -174,6 +175,30 @@ case "$ACTION" in
     echo "$CURRENT" > "$STATE/previous-version"
     answers
     result "went back from $CURRENT to $PREVIOUS"
+    ;;
+  system)
+    # Debian's security updates (ownbox asks at night, when nothing plays). The package
+    # list is fetched each time: the image leaves none behind.
+    system_result() { printf '%s %s\n' "$(date -Iseconds)" "$*" > "$STATE/system-result"; echo "$*"; }
+    export DEBIAN_FRONTEND=noninteractive
+    if ! timeout 900 apt-get update -q; then system_result "no package lists (no network?)"; exit 1; fi
+    if ! dpkg -s unattended-upgrades >/dev/null 2>&1 \
+       && ! timeout 900 apt-get install -y -q --no-install-recommends unattended-upgrades; then
+      system_result "could not install unattended-upgrades"; exit 1
+    fi
+    [ -f /etc/apt/apt.conf.d/52ownbox-unattended-upgrades ] || { system_result "the box's apt settings are missing"; exit 1; }
+    before=$(grep -c ' upgrade ' /var/log/dpkg.log 2>/dev/null || echo 0)
+    timeout 3600 unattended-upgrade || true
+    after=$(grep -c ' upgrade ' /var/log/dpkg.log 2>/dev/null || echo 0)
+    apt-get clean
+    count=$(( after - before ))
+    if [ "$count" -gt 0 ]; then
+      system_result "security updates: $count packages; restarting"
+      sync
+      systemctl reboot
+    else
+      system_result "security updates: nothing new"
+    fi
     ;;
   *) result "unknown request: $ACTION" ;;
 esac
