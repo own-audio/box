@@ -95,8 +95,11 @@ pub struct Player {
 #[derive(Debug, Serialize)]
 pub struct NowPlaying {
     pub state: &'static str,
-    /// `music`, `book` or `podcast`: spoken word gets ±30 s, speed and the sleep timer.
+    /// `music`, `book`, `podcast` or `radio`: spoken word gets ±30 s, speed and the sleep
+    /// timer; a station has no length, no seeking and no next.
     pub kind: &'static str,
+    /// What a station says it plays now (its stream's title), when it says anything.
+    pub stream_title: Option<String>,
     pub track: Option<Track>,
     pub index: usize,
     pub queue_length: usize,
@@ -242,6 +245,10 @@ impl Player {
     }
 
     async fn stream_url(&self, track: &Track) -> anyhow::Result<String> {
+        if let Some(stream) = &track.stream {
+            anyhow::ensure!(stream.starts_with("https://") || stream.starts_with("http://"), "not a web address");
+            return Ok(stream.clone());
+        }
         if let Some(book_id) = &track.book_id {
             return books::stream_url(&self.auth, book_id, &track.id).await;
         }
@@ -267,6 +274,8 @@ impl Player {
     async fn load_from(&self, q: &mut Queue, start_secs: f64) -> anyhow::Result<()> {
         let track = q.tracks[q.index].clone();
         let url = self.stream_url(&track).await?;
+        // A station is live: no place to start from.
+        let start_secs = if track.stream.is_some() { 0.0 } else { start_secs };
         if start_secs > 0.0 {
             // loadfile <url> <flags> <index> <options>: start inside the file, not at 0.
             self.mpv.command(json!(["loadfile", url, "replace", -1, format!("start={start_secs:.1}")])).await?;
@@ -541,6 +550,14 @@ impl Player {
         let duration = if restored.is_some() { None } else { self.property_f64("duration").await }
             .or_else(|| track.as_ref().map(|t| t.duration_secs))
             .unwrap_or(0.0);
+        let stream_title = match &track {
+            Some(t) if t.stream.is_some() && restored.is_none() => self
+                .property("metadata/by-key/icy-title")
+                .await
+                .and_then(|v| v.as_str().map(|s| s.trim().to_owned()))
+                .filter(|s| !s.is_empty()),
+            _ => None,
+        };
         NowPlaying {
             state: match (&track, paused) {
                 (None, _) => "stopped",
@@ -548,6 +565,7 @@ impl Player {
                 (Some(_), false) => "playing",
             },
             kind: match &track {
+                Some(t) if t.stream.is_some() => "radio",
                 Some(t) if t.book_id.is_some() => "book",
                 Some(t) if t.podcast_id.is_some() => "podcast",
                 _ => "music",
@@ -564,6 +582,7 @@ impl Player {
                 _ => None,
             },
             sleep_end_of_part: matches!(q.sleep, Some(Sleep::EndOfPart)),
+            stream_title,
         }
     }
 
@@ -799,7 +818,8 @@ impl Player {
 
     async fn listening_report(&self, q: &mut Queue, reason: &str) -> Option<Value> {
         let l = q.listening.take()?;
-        if l.listened_secs < MIN_SESSION_SECS {
+        // The server keeps no stations: radio is listened to, not reported.
+        if l.listened_secs < MIN_SESSION_SECS || l.track.stream.is_some() {
             return None;
         }
         let speed = self.property_f64("speed").await.unwrap_or(1.0);

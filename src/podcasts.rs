@@ -261,6 +261,7 @@ pub fn queue(list: &[Episode], start: usize) -> (Vec<Track>, f64) {
             number: None,
             book_id: None,
             podcast_id: Some(e.show_id.clone()),
+            stream: None,
         })
         .collect();
     let first = &list[start];

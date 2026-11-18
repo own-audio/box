@@ -277,6 +277,7 @@ pub fn queue(detail: &BookDetail, from_start: bool) -> (Vec<Track>, usize, f64) 
             number: Some(p.position),
             book_id: Some(b.id.clone()),
             podcast_id: None,
+            stream: None,
         })
         .collect();
     let resume = (!from_start)

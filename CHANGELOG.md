@@ -7,6 +7,21 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- Radio: a Radio tab finds stations in radio-browser.info's open directory (Czech ones
+  first, any country when a name is typed or chosen), and plays them with what the
+  station says it plays. A heart keeps a station as a favourite; favourites lead the Radio
+  tab and the music home screen, one tap to play. Stations play without seeking or a next
+  track, with the sleep timer. The box asks the directory for a station by its id and
+  plays the address it gives; a page cannot hand the player an address of its own.
+
+### Changed
+
+- Settings is a short list of pages (General, Sound, Screen, Network, Phones, AirPlay and
+  Music Assistant, Library, Updates, About the box) instead of one long page; a waiting
+  version shows on the Updates row.
+
 ### Fixed
 
 - After an update the screen (and an open phone) kept the old page until someone loaded it

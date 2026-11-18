@@ -47,6 +47,9 @@ pub struct Prefs {
     pub audio_device: Option<String>,
     /// Updates install themselves at night (missing = yes).
     pub auto_update: Option<bool>,
+    /// Favourite radio stations, in the order they were added.
+    #[serde(default)]
+    pub radios: Vec<crate::radio::Station>,
 }
 
 /// Writes `path` so that a power cut leaves the old file or the new one, never half of it:

@@ -49,6 +49,8 @@ function brand(size, { animated = false, big = false } = {}) {
 
 const ICONS = {
   play: '<path d="M8 5v14l11-7z"/>',
+  heart: '<path d="M12 20.5 4.6 13.3a4.6 4.6 0 0 1 6.5-6.5l.9.9.9-.9a4.6 4.6 0 0 1 6.5 6.5z"/>',
+  heartline: '<path d="M12 20.5 4.6 13.3a4.6 4.6 0 0 1 6.5-6.5l.9.9.9-.9a4.6 4.6 0 0 1 6.5 6.5z" fill="none" stroke="currentColor" stroke-width="2"/>',
   pause: '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>',
   prev: '<path d="M6 6h2v12H6zM9.5 12l8.5 6V6z"/>',
   next: '<path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/>',
@@ -311,6 +313,7 @@ const ROOTS = {
   music: () => musicSection('home'),
   books: () => booksSection('home'),
   podcasts: () => podcastsSection('home'),
+  radio: () => radioView(),
   search: () => searchView(),
   settings: () => settingsView(),
 };
@@ -352,12 +355,17 @@ function shelf(title, onAll, content) {
 function musicHome() {
   return {
     async render(box) {
-      const [recent, favourites, lists, played] = await Promise.all([
+      const [recent, favourites, lists, played, radios] = await Promise.all([
         get('/api/library/albums?sort=added'),
         get('/api/library/favourites').catch(() => []),
         get('/api/library/playlists').catch(() => []),
         get('/api/library/recent-albums').catch(() => []),
+        get('/api/radio/favourites').catch(() => []),
       ]);
+      // Favourite stations first: one tap and the radio plays.
+      if (radios.length) {
+        box.append(shelf(t('Favourite radios'), () => go('radio'), el('div', { class: 'hscroll' }, radios.map(stationTile))));
+      }
       // Playlists first: the ones played on this box latest, then smart, then by name.
       const ordered = [...lists].sort((a, b) => (b.played_at || 0) - (a.played_at || 0)
         || Number(b.smart) - Number(a.smart) || a.name.localeCompare(b.name));
@@ -496,6 +504,122 @@ async function play(body) {
 }
 
 // --- views ------------------------------------------------------------------------
+
+// --- radio ---------------------------------------------------------------------------
+
+// country: '' = this box's own (Czech: CZ) until a name is typed, then everywhere.
+const radioState = { query: '', keyboard: false, results: null, seq: 0, country: '', countries: null };
+
+function countryName(code) {
+  try { return new Intl.DisplayNames([LANG], { type: 'region' }).of(code) || code; } catch { return code; }
+}
+
+async function countryPicker(onPick) {
+  if (!radioState.countries) radioState.countries = await get('/api/radio/countries').catch(() => []);
+  const select = el('select', { class: 'country' },
+    el('option', { value: '', text: t('Here, or anywhere when searching') }),
+    el('option', { value: 'all', text: t('All countries') }),
+    ...radioState.countries.map((c) => ({ code: c.code, name: countryName(c.code) }))
+      .sort((a, b) => a.name.localeCompare(b.name, LANG))
+      .map((c) => el('option', { value: c.code, text: c.name })));
+  select.value = radioState.country;
+  select.addEventListener('change', () => { radioState.country = select.value; onPick(); });
+  return select;
+}
+let radioTimer = null;
+
+function stationArt(st, cls) {
+  if (st.logo) return el('img', { src: st.logo, class: cls, loading: 'lazy', alt: '' });
+  const initials = st.name.replace(/[^\p{L}\p{N} ]/gu, '').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  return el('div', { class: `${cls ? `${cls} ` : ''}noimg tint station-mark`, text: initials || '♪' });
+}
+
+function playStation(st) {
+  post('/api/radio/play', { id: st.id }).then(() => pollNow())
+    .catch((e) => toast(t("Can't play: {e}", { e: t(e.message) })));
+}
+
+function stationTile(st) {
+  return el('div', { class: 'tile station', onclick: () => playStation(st) },
+    stationArt(st),
+    el('div', { class: 't ellipsis', text: st.name }));
+}
+
+function stationRow(st, favourites, redraw) {
+  const fav = favourites.some((f) => f.id === st.id);
+  const heart = el('button', {
+    class: `icon heart${fav ? ' on' : ''}`,
+    'aria-label': fav ? t('Remove from favourites') : t('Add to favourites'),
+    onclick: async (ev) => {
+      ev.stopPropagation();
+      const list = await post('/api/radio/favourite', { id: st.id, on: !fav }).catch(() => null);
+      if (list) { favourites.splice(0, favourites.length, ...list); redraw(); }
+      else toast(t('The radio directory does not answer.'));
+    },
+  });
+  setIcon(heart, fav ? 'heart' : 'heartline');
+  const detail = [st.country, st.codec, st.bitrate ? `${st.bitrate} kb/s` : null].filter(Boolean).join(' · ');
+  return el('div', { class: 'row', onclick: () => playStation(st) },
+    stationArt(st, 'round'),
+    el('div', { class: 'main' }, el('div', { class: 'ellipsis', text: st.name }), el('div', { class: 'muted small ellipsis', text: detail })),
+    heart);
+}
+
+function radioView() {
+  return {
+    async render(box) {
+      const favourites = await get('/api/radio/favourites').catch(() => []);
+      const typing = radioState.keyboard || onPhone();
+      document.body.classList.toggle('typing', radioState.keyboard && !onPhone());
+      const favBox = el('div');
+      const area = el('div', { class: 'search-results' });
+      const drawFavourites = () => favBox.replaceChildren(favourites.length
+        ? shelf(t('Favourite radios'), null, el('div', { class: 'hscroll' }, favourites.map(stationTile)))
+        : el('div', { class: 'message', text: t('Tap the heart by a station to keep it here and on the home screen.') }));
+      const drawResults = () => {
+        const r = radioState.results;
+        if (!r) { area.replaceChildren(el('div', { class: 'message', text: t('Loading…') })); return; }
+        if (r.error) { area.replaceChildren(el('div', { class: 'message bad', text: t('The radio directory does not answer.') })); return; }
+        if (!r.length) { area.replaceChildren(el('div', { class: 'message', text: t('No station of that name.') })); return; }
+        area.replaceChildren(el('div', { class: 'rows' }, r.map((st) => stationRow(st, favourites, redraw))));
+      };
+      const redraw = () => { drawFavourites(); drawResults(); };
+      const find = () => {
+        clearTimeout(radioTimer);
+        radioTimer = setTimeout(async () => {
+          const seq = ++radioState.seq;
+          const country = radioState.country ? `&country=${radioState.country}` : '';
+          const r = await get(`/api/radio/search?q=${encodeURIComponent(radioState.query.trim())}${country}`).catch((e) => ({ error: e.message }));
+          if (seq !== radioState.seq) return;
+          radioState.results = r;
+          drawResults();
+        }, radioState.query ? 450 : 0);
+      };
+      const q = el('div', { class: 'q', text: radioState.query, 'data-placeholder': t('Find a station') });
+      const field = {
+        get value() { return radioState.query; },
+        set value(v) { radioState.query = v; },
+        placeholder: t('Find a station'),
+      };
+      const keyboard = typing ? textKeyboard(field, {
+        onChange: () => { q.textContent = radioState.query; find(); },
+        onDone: () => { if (!onPhone()) { radioState.keyboard = false; render(); } },
+        doneLabel: onPhone() ? t('Search') : t('Hide'),
+      }) : null;
+      const picker = radioState.keyboard ? null : await countryPicker(() => { radioState.results = null; drawResults(); find(); });
+      box.append(el('div', { class: 'search-wrap' },
+        radioState.keyboard ? null : favBox,
+        el('div', { class: 'radio-find' },
+          el('div', { class: 'searchbar', onclick: () => { radioState.keyboard = true; render(); } }, q),
+          picker),
+        area,
+        keyboard));
+      drawFavourites();
+      drawResults();
+      if (!radioState.results) find();
+    },
+  };
+}
 
 function albumTile(a) {
   return el('div', { class: 'tile', onclick: () => push(albumView(a.id)) },
@@ -2485,54 +2609,81 @@ function pairView() {
   };
 }
 
+// Settings: a short list of pages, each with one subject, instead of one long page.
+function settingsPages() {
+  const eqRow = () => el('div', { class: 'settings-group' },
+    el('div', { class: 'setting' }, el('span', { text: t('Equalizer') }),
+      el('button', { class: 'secondary', text: t('Open'), onclick: () => push(eqView()) })));
+  const toneRow = () => el('div', { class: 'settings-group' },
+    el('div', { class: 'setting' }, el('span', { text: t('Test tone') }),
+      el('button', { id: 'tone', class: 'secondary', text: t('Play test tone'), onclick: testTone })),
+    el('p', { id: 'message', class: 'muted small' }));
+  const about = () => {
+    const dd = (id) => el('dd', { id });
+    setTimeout(refreshStatus, 0);
+    return el('dl', {},
+      el('dt', { text: t('Account') }), dd('account'),
+      el('dt', { text: t('Player') }), dd('mpv'),
+      el('dt', { text: t('Audio') }), dd('audio'),
+      el('dt', { text: t('Server') }), dd('server'),
+      el('dt', { text: t('Power') }), dd('power'),
+      el('dt', { text: t('Board') }), dd('board'),
+      el('dt', { text: t('Display') }), dd('display'),
+      el('dt', { text: t('Version') }), dd('version'),
+      el('dt', { text: t('Running for') }), dd('uptime'));
+  };
+  const account = () => el('div', { class: 'settings-group' },
+    el('div', { class: 'buttons' }, el('button', { id: 'signout', class: 'secondary', text: t('Sign out'), onclick: signOut })));
+  if (REMOTE) {
+    // From a phone: how it sounds and looks; the box's own settings stay on its screen.
+    return [
+      { title: 'Sound', hint: 'Equalizer', parts: async () => [eqRow()] },
+      { title: 'Appearance', hint: 'Theme, buttons', parts: async () => [appearanceSettings()] },
+      { title: 'About the box', hint: 'Version, player, power', parts: async () => [about()] },
+    ];
+  }
+  return [
+    { title: 'General', hint: 'Name, language, look, time zone', parts: async () => [nameSettings(), languageSettings(), appearanceSettings(), await timeSettings()] },
+    { title: 'Sound', hint: 'Equalizer, output, sound card', parts: async () => [eqRow(), await outputSettings(), await hatSettings(), toneRow()] },
+    { title: 'Screen', hint: 'Brightness, switching off', screen: true, parts: async () => {
+      const sc = await get('/api/screen').catch(() => null);
+      return sc && sc.controllable ? [screenSettings(sc)] : [el('div', { class: 'message', text: t('This box has no screen to set.') })];
+    } },
+    { title: 'Network', hint: 'Wi-Fi', parts: async () => [await networkSettings()] },
+    { title: 'Phones', hint: 'Phone control, pairing', parts: async () => [phoneSettings()] },
+    { title: 'AirPlay and Music Assistant', hint: 'Other apps playing to the box', parts: async () => [await sourcesSettings()] },
+    { title: 'Library', hint: 'Server, account, start over', parts: async () => [serverSettings(), account()] },
+    { title: 'Updates', hint: 'Version, night updates', update: true, parts: async () => [await updateSettings()] },
+    { title: 'About the box', hint: 'Player, power, board, display', parts: async () => [about()] },
+  ];
+}
+
+function settingsPage(page) {
+  return {
+    async render(box) {
+      const title = t(page.title);
+      box.append(el('h2', { class: 'settings-title', text: title }));
+      for (const part of await page.parts()) {
+        // A group named like its page does not say it twice.
+        for (const head of part.querySelectorAll?.('.section-title') || []) if (head.textContent === title) head.remove();
+        box.append(part);
+      }
+    },
+  };
+}
+
 function settingsView() {
   return {
     async render(box) {
-      const dd = (id) => el('dd', { id });
-      box.append(
-        brand(44),
-        el('dl', {},
-          el('dt', { text: t('Account') }), dd('account'),
-          el('dt', { text: t('Player') }), dd('mpv'),
-          el('dt', { text: t('Audio') }), dd('audio'),
-          el('dt', { text: t('Server') }), dd('server'),
-          el('dt', { text: t('Power') }), dd('power'),
-          el('dt', { text: t('Board') }), dd('board'),
-          el('dt', { text: t('Display') }), dd('display'),
-          el('dt', { text: t('Version') }), dd('version'),
-          el('dt', { text: t('Running for') }), dd('uptime')),
-        el('div', { class: 'buttons' },
-          el('button', { id: 'tone', text: t('Play test tone'), onclick: testTone }),
-          el('button', { id: 'signout', class: 'secondary', text: t('Sign out'), onclick: signOut })),
-        el('p', { id: 'message' }));
-      if (REMOTE) {
-        // From a phone: what plays and how it sounds; the box's own settings stay on its screen.
-        box.querySelector('#signout').remove();
-        box.append(el('div', { class: 'settings-group' },
-          el('div', { class: 'setting' }, el('span', { text: t('Sound') }),
-            el('button', { class: 'secondary', text: t('Equalizer'), onclick: () => push(eqView()) }))));
-        box.append(appearanceSettings());
-        setTimeout(refreshStatus, 0);
-        return;
-      }
-      box.append(nameSettings());
-      box.append(languageSettings());
-      box.append(appearanceSettings());
-      box.append(phoneSettings());
-      box.append(el('div', { class: 'settings-group' },
-        el('div', { class: 'setting' }, el('span', { text: t('Sound') }),
-          el('button', { class: 'secondary', text: t('Equalizer'), onclick: () => push(eqView()) }))));
-      box.append(await outputSettings());
-      box.append(await hatSettings());
-      box.append(await sourcesSettings());
-      box.append(serverSettings());
-      box.append(await networkSettings());
-      box.append(await updateSettings());
-      box.append(await timeSettings());
-      const s = await get('/api/screen');
-      if (s.controllable) box.append(screenSettings(s));
-      // The rows are filled once the page is on screen, not 5 s later at the next refresh.
-      setTimeout(refreshStatus, 0);
+      const u = REMOTE ? null : await get('/api/update').catch(() => null);
+      const waiting = !!(u && u.enabled && u.available && !u.state);
+      box.append(brand(44), el('div', { class: 'settings-list' }, settingsPages().map((page) =>
+        el('button', { class: 'settings-row', onclick: () => push(settingsPage(page)) },
+          el('span', { class: 'settings-row-text' },
+            el('span', { class: 'settings-row-title', text: t(page.title) }),
+            el('span', { class: 'settings-row-hint muted', text: t(page.hint) })),
+          page.update && waiting ? el('span', { class: 'settings-row-badge', text: u.available.version }) : null,
+          el('span', { class: 'settings-row-chevron', 'aria-hidden': 'true', text: '›' })))));
     },
   };
 }
@@ -2739,7 +2890,16 @@ function renderNow(n, o) {
     return;
   }
   const playing = n.state === 'playing';
-  $('np-add').hidden = !!(tk.book_id || tk.podcast_id);
+  const radio = n.kind === 'radio';
+  $('np-add').hidden = !!(tk.book_id || tk.podcast_id) || radio;
+  // A station: live, so no bar, no times, no previous or next; what it plays underneath.
+  for (const id of ['np-bar', 'np-prev', 'np-next', 'nb-prev', 'nb-next', 'nb-progress', 'np-queue']) $(id).hidden = radio;
+  document.querySelector('.np-times').hidden = radio;
+  if (radio) {
+    const playing = n.stream_title || t('Live radio');
+    $('np-artist').textContent = playing;
+    $('nb-artist').textContent = playing;
+  }
   const frac = n.duration_secs ? Math.min(1, n.position_secs / n.duration_secs) : 0;
   if (tk.id !== prevId) {
     // No src at all rather than an empty one: an empty src draws a broken-image icon.
@@ -2766,11 +2926,12 @@ function renderNow(n, o) {
   actify($('np-queue'), 'queue', n.queue_length > 1 ? t('Queue · {i} of {n}', { i: n.index + 1, n: n.queue_length }) : t('Queue'));
   // Don't move the slider under a finger that is dragging it.
   if (!volumeDragging) $('np-volume').value = Math.round(n.volume);
-  // Books and podcasts: ±30 s, speed and the sleep timer.
-  const spoken = n.kind !== 'music';
+  // Books and podcasts: ±30 s, speed and the sleep timer; a station: the sleep timer.
+  const spoken = n.kind === 'book' || n.kind === 'podcast';
   $('np-back30').hidden = !spoken;
   $('np-fwd30').hidden = !spoken;
-  document.querySelector('.np-book').hidden = !spoken;
+  document.querySelector('.np-book').hidden = !spoken && !radio;
+  $('np-speed').hidden = !spoken;
   const sp = Math.round(n.speed * 100) / 100;
   $('np-speed').textContent = `${Number.isInteger(sp) ? sp.toFixed(1) : sp}×`;
   const sleeping = n.sleep_end_of_part || n.sleep_in_secs != null;

@@ -65,6 +65,8 @@ boxes below, and installs from an SD card image.
   Squeezelite player for Music Assistant; while one of them plays, ownbox lets the sound
   card go and shows what plays, and playing own.audio takes it back. AirPlay needs
   `setup/airplay/build.sh` run once on the Pi.
+- **Radio:** stations from radio-browser.info's open directory, searched on the box (any
+  country), favourites on the home screen.
 - **Sound output:** Settings lists the cards found (an I²S DAC, USB, HDMI, the jack).
 - **Updates:** signed releases from this repository, betas included, installed by
   themselves between 3 and 5 at night when nothing plays (or only from Settings, if you

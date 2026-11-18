@@ -30,6 +30,10 @@ pub struct Track {
     /// Set when this is a podcast episode: the show it belongs to.
     #[serde(default)]
     pub podcast_id: Option<String>,
+    /// A radio station's stream (see `radio.rs`). Only the box sets it: a page's tracks
+    /// come without it.
+    #[serde(default)]
+    pub stream: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -279,6 +283,7 @@ fn track(t: V2Track, names: &Names, albums: &HashMap<String, String>) -> Track {
         number: t.track_number,
         book_id: None,
         podcast_id: None,
+        stream: None,
     }
 }
 
@@ -553,6 +558,7 @@ pub async fn playlist_tracks(auth: &Arc<Auth>, playlist_id: &str) -> anyhow::Res
                 number: t.track_number,
                 book_id: None,
                 podcast_id: None,
+                stream: None,
             }
         })
         .collect();

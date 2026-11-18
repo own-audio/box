@@ -717,7 +717,7 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 /* Its own scrolling: the app's layout keeps the page itself still. */
 .setup { position: fixed; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg); z-index: 5;
   padding: 24px max(16px, calc((100% - 560px) / 2)) calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; }
-.setup input, .setup select, .settings-group select {
+.setup input, .setup select, .settings-group select, .radio-find select {
   font: inherit; color: var(--fg); background: var(--chip); border: 0; border-radius: 12px;
   min-height: 48px; padding: 0 14px; width: 100%; box-sizing: border-box;
 }
@@ -827,3 +827,26 @@ button.danger.armed { background: var(--bad); color: #fff; }
   content: ""; position: absolute; top: 6px; right: 6px; width: 9px; height: 9px;
   border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg, #000);
 }
+
+/* Radio: a station's logo on a light ground (most are drawn for one), initials without one. */
+.tile.station img { object-fit: contain; background: #fff; padding: 10%; box-sizing: border-box; }
+.station-mark { font-weight: 700; letter-spacing: .02em; }
+.row .station-mark { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; flex: none; }
+.row img.round { object-fit: contain; background: #fff; }
+.row .heart { margin-left: auto; color: var(--muted, #888); }
+.row .heart.on { color: var(--accent); }
+
+/* Settings: one list of pages. */
+.settings-list { display: flex; flex-direction: column; margin-top: 12px; border-radius: 14px; overflow: hidden; background: var(--panel); }
+.settings-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border: 0; border-radius: 0; background: transparent; color: var(--fg, inherit); text-align: left; font: inherit; min-height: 60px; }
+.settings-row + .settings-row { border-top: 1px solid color-mix(in srgb, var(--muted) 22%, transparent); }
+.settings-row:active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.settings-row-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.settings-row-title { font-weight: 600; }
+.settings-row-hint { font-size: 14px; }
+.settings-row-badge { font-size: 13px; padding: 3px 9px; border-radius: 999px; background: var(--accent); color: #fff; white-space: nowrap; }
+.settings-row-chevron { font-size: 26px; line-height: 1; color: var(--muted); }
+.settings-title { margin: 4px 0 6px; }
+.radio-find { display: flex; gap: 10px; align-items: center; }
+.radio-find .searchbar { flex: 1; min-width: 0; }
+.radio-find select.country { flex: none; max-width: 42%; }

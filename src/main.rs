@@ -13,6 +13,7 @@ mod player;
 mod podcasts;
 mod power;
 mod prefs;
+mod radio;
 mod remote;
 mod screen;
 mod session;

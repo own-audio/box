@@ -87,6 +87,11 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/update/install", post(update_install))
         .route("/api/update/rollback", post(update_rollback))
         .route("/api/update/auto", post(update_auto))
+        .route("/api/radio/search", get(radio_search))
+        .route("/api/radio/countries", get(radio_countries))
+        .route("/api/radio/favourites", get(radio_favourites))
+        .route("/api/radio/favourite", post(radio_favourite))
+        .route("/api/radio/play", post(radio_play))
         .route("/api/time", get(time_state))
         .route("/api/time/zone", post(time_set))
         .route("/api/audio", get(audio_state))
@@ -941,6 +946,81 @@ fn buttons(s: &AppState) -> String {
     s.prefs.get().buttons.unwrap_or_else(|| "text".into())
 }
 
+// --- radio -----------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+struct RadioSearch {
+    #[serde(default)]
+    q: String,
+    /// A two-letter country (`CZ`), `all` for anywhere; missing: the screen's language's.
+    country: Option<String>,
+}
+
+async fn radio_search(State(s): State<Arc<AppState>>, Query(req): Query<RadioSearch>) -> axum::response::Response {
+    // Without a name: the most liked in the screen's language's country. With a name:
+    // everywhere (a Hungarian station is found from a Czech box).
+    let country = match req.country.as_deref() {
+        Some("all") => None,
+        Some(c) => Some(c.to_owned()),
+        None if req.q.trim().is_empty() => (language(&s) == "cs").then(|| "CZ".to_owned()),
+        None => None,
+    };
+    answer(crate::radio::search(&s.http, &req.q, country.as_deref()).await)
+}
+
+async fn radio_countries(State(s): State<Arc<AppState>>) -> axum::response::Response {
+    answer(crate::radio::countries(&s.http).await)
+}
+
+async fn radio_favourites(State(s): State<Arc<AppState>>) -> Json<Vec<crate::radio::Station>> {
+    Json(s.prefs.get().radios)
+}
+
+#[derive(Deserialize)]
+struct RadioFavourite {
+    id: String,
+    on: bool,
+}
+
+/// Adds a station (as the directory has it now) or takes it off the favourites.
+async fn radio_favourite(State(s): State<Arc<AppState>>, Json(req): Json<RadioFavourite>) -> axum::response::Response {
+    if req.on {
+        if s.prefs.get().radios.iter().any(|r| r.id == req.id) {
+            return Json(s.prefs.get().radios).into_response();
+        }
+        match crate::radio::by_id(&s.http, &req.id).await {
+            Ok(station) => s.prefs.update(|p| p.radios.push(station)),
+            Err(e) => return (StatusCode::BAD_GATEWAY, Json(json!({ "error": e.to_string() }))).into_response(),
+        }
+    } else {
+        s.prefs.update(|p| p.radios.retain(|r| r.id != req.id));
+    }
+    Json(s.prefs.get().radios).into_response()
+}
+
+#[derive(Deserialize)]
+struct RadioPlay {
+    id: String,
+}
+
+/// A favourite plays from what the box keeps (no directory needed); any other station is
+/// looked up by its id first.
+async fn radio_play(State(s): State<Arc<AppState>>, Json(req): Json<RadioPlay>) -> axum::response::Response {
+    let saved = s.prefs.get().radios.into_iter().find(|r| r.id == req.id);
+    let station = match saved {
+        Some(st) => st,
+        None => match crate::radio::by_id(&s.http, &req.id).await {
+            Ok(st) => st,
+            Err(e) => return (StatusCode::BAD_GATEWAY, Json(json!({ "error": e.to_string() }))).into_response(),
+        },
+    };
+    s.outside.take_back().await;
+    match s.player.play(vec![crate::radio::track(&station)], 0, 0.0).await {
+        Ok(()) => Json(json!({ "ok": true })).into_response(),
+        Err(e) => (StatusCode::BAD_GATEWAY, Json(json!({ "error": e.to_string() }))).into_response(),
+    }
+}
+
 async fn time_state() -> Json<serde_json::Value> {
     let (zone, zones) = tokio::join!(crate::timezone::current(), crate::timezone::zones());
     Json(json!({ "zone": zone, "zones": zones, "now": chrono::Local::now().format("%H:%M").to_string() }))
@@ -1129,7 +1209,7 @@ async fn player_play(State(s): State<Arc<AppState>>, Json(req): Json<PlayRequest
         } else if let Some(id) = &req.artist_id {
             library::artist_tracks(&s.auth, id).await?
         } else {
-            req.tracks.clone().ok_or_else(|| anyhow::anyhow!("nothing to play"))?
+            from_page(req.tracks.clone().ok_or_else(|| anyhow::anyhow!("nothing to play"))?)
         };
         Ok::<_, anyhow::Error>((tracks, req.start, 0.0))
     };
@@ -1182,11 +1262,20 @@ struct EnqueueRequest {
     next: bool,
 }
 
+/// Tracks a page sends: a stream address is the box's own to set (`radio.rs`); from a
+/// page it could point mpv at a file on the box.
+fn from_page(mut tracks: Vec<library::Track>) -> Vec<library::Track> {
+    for t in &mut tracks {
+        t.stream = None;
+    }
+    tracks
+}
+
 async fn player_enqueue(State(s): State<Arc<AppState>>, Json(req): Json<EnqueueRequest>) -> axum::response::Response {
     let r = async {
         let tracks = match (&req.album_id, req.tracks) {
             (Some(id), _) => library::album_detail(&s.auth, id).await?.tracks,
-            (None, Some(t)) => t,
+            (None, Some(t)) => from_page(t),
             (None, None) => anyhow::bail!("nothing to add"),
         };
         if s.player.has_queue().await {
