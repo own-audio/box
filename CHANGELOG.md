@@ -14,6 +14,7 @@ that version's section below as a GitHub Release.
   turns at once (wlr-randr, which an update installs where it is missing); touch follows
   when the kiosk starts again a moment later.
 - Search finds radio stations too, beside songs, albums, audiobooks and artists.
+- On a wide screen (the box turned to landscape) the tabs show an icon beside each name.
 
 ### Changed
 

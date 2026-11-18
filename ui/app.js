@@ -50,6 +50,7 @@ function brand(size, { animated = false, big = false } = {}) {
 const ICONS = {
   play: '<path d="M8 5v14l11-7z"/>',
   note: '<path d="M10 3.5v11.1a3.4 3.4 0 1 0 2 3.1V8h6V3.5z"/>',
+  search: '<circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15 15l5.5 5.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
   radio: '<path d="M5.2 7.6 16.6 3l.7 1.8-7 2.8H19a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9.6a2 2 0 0 1 2.2-2zM8 11.5a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4zm6 .5v1.6h5V12zm0 3.4V17h5v-1.6z"/>',
   book: '<path d="M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6.5A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3zM7 17a1 1 0 0 0 0 2h10v-2z"/>',
   mic: '<path d="M12 2.5a3.5 3.5 0 0 1 3.5 3.5v5a3.5 3.5 0 0 1-7 0V6A3.5 3.5 0 0 1 12 2.5zM6 10.5h1.8a4.2 4.2 0 0 0 8.4 0H18a6 6 0 0 1-5.1 5.9V19H16v2H8v-2h3.1v-2.6A6 6 0 0 1 6 10.5z"/>',
@@ -487,6 +488,9 @@ $('view').addEventListener('scroll', () => {
 setIcon($('back'), 'back');
 $('back').addEventListener('click', back);
 setIcon(document.querySelector('[data-tab="settings"]'), 'settings');
+// The tabs' icons: shown beside the names when the screen is wide (style.css).
+const TAB_ICONS = { music: 'note', books: 'book', podcasts: 'mic', radio: 'radio', search: 'search' };
+document.querySelectorAll('.tab-icon').forEach((node) => { node.innerHTML = icon(TAB_ICONS[node.dataset.iconKind]); });
 document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
 
 /** Loads the next page when the sentinel scrolls into view. */

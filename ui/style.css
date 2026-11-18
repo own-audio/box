@@ -194,7 +194,11 @@ p { margin: 0; }
   border-bottom: 1px solid var(--line);
 }
 #tabs { display: flex; gap: 4px; flex: 1; }
-#tabs button { background: transparent; color: var(--muted); font-size: 19px; padding: 0 16px; min-height: 42px; }
+#tabs button { background: transparent; color: var(--muted); font-size: 19px; padding: 0 16px; min-height: 42px; display: inline-flex; align-items: center; gap: 8px; }
+/* Icons beside the tab names only where the bar has room for both. */
+.tab-icon { display: none; }
+.tab-icon svg { width: 22px; height: 22px; fill: currentColor; display: block; }
+@media (orientation: landscape) and (min-width: 700px) { .tab-icon { display: inline-flex; } }
 #tabs button.active, #topbar [data-tab="settings"].active { color: var(--fg); }
 #tabs button.active { background: var(--chip); font-weight: 600; }
 
