@@ -229,7 +229,8 @@ pub async fn keep_rotation(prefs: Arc<PrefsStore>) {
         if let Some(r) = prefs.get().screen_rotation.filter(|r| *r != 0) {
             apply_rotation(r).await;
         }
-        tokio::time::sleep(Duration::from_secs(10)).await;
+        // Soon after the kiosk starts again, since touch is already turned by then.
+        tokio::time::sleep(Duration::from_secs(2)).await;
     }
 }
 
