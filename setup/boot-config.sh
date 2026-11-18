@@ -124,9 +124,11 @@ fi
 # so the kiosk starts again when it changes.
 ROTATION=$(pref screen_rotation)
 case "$ROTATION" in
-  90)  MATRIX="0 1 0 -1 0 1" ;;
+  # Measured on Touch Display 2 at 270°: the picture's top-left corner is the panel's
+  # top-right, its top-right the panel's bottom-right. 90° is the opposite turn.
+  90)  MATRIX="0 -1 1 1 0 0" ;;
   180) MATRIX="-1 0 1 0 -1 1" ;;
-  270) MATRIX="0 -1 1 1 0 0" ;;
+  270) MATRIX="0 1 0 -1 0 1" ;;
   *)   MATRIX="" ;;
 esac
 TOUCH_RULE=/etc/udev/rules.d/99-ownbox-touch.rules
