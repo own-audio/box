@@ -253,8 +253,9 @@ builds ownbox for the Pi, signs it with minisign and publishes it as a GitHub Re
 ([.github/workflows/release.yml](.github/workflows/release.yml)), with that version's
 section of the [changelog](CHANGELOG.md) as its notes. Boxes install it at night by
 themselves (Settings → Updates can leave it to a tap instead) and put the previous
-version back if the new one does not start. The night is the box's local time, and
-images run on UTC until a time zone is set.
+version back if the new one does not start. The night is the box's local time:
+Settings → Time zone, set to Europe/Prague by itself when Czech is chosen on a box still
+on the default zone.
 Settings shows the running version.
 
 Each release carries the SD card image as well. Next: own.audio box in Raspberry Pi

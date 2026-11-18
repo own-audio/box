@@ -2330,7 +2330,7 @@ async function updateSettings() {
     group.append(
       el('div', { class: 'setting' }, el('span', { text: t('Install updates') })),
       el('div', { class: 'buttons' }, auto(true), auto(false)),
-      el('p', { class: 'muted small', text: t('Between 3 and 5 at night, when nothing is playing; Debian\'s security updates once a week as well. The box may restart.') }),
+      el('p', { class: 'muted small', text: t('Between 3 and 5 at night by the box\'s time zone, when nothing is playing. Debian\'s security updates come once a week either way. The box may restart.') }),
     );
   }
   if (buttons.childElementCount) group.append(buttons);
@@ -2374,6 +2374,27 @@ async function hatSettings() {
     if (r) toast(t('Saved. The box restarts if the card changed.'));
   });
   group.append(select, el('p', { class: 'muted small', text: t('Only for a card on the pins that the box does not find itself. A new card restarts the box.') }));
+  return group;
+}
+
+/** The time zone: night updates and the clock go by it. */
+async function timeSettings() {
+  const z = await get('/api/time').catch(() => null);
+  if (!z || !z.zones.length) return el('div');
+  const group = el('div', { class: 'settings-group' }, el('div', { class: 'section-title', text: t('Time zone') }));
+  const select = el('select', {}, ...z.zones.map((name) => el('option', { value: name, text: name.replaceAll('_', ' ') })));
+  select.value = z.zone;
+  const note = el('p', { class: 'muted small', text: t('Time on the box: {t}', { t: z.now }) });
+  select.addEventListener('change', async () => {
+    const r = await post('/api/time/zone', { zone: select.value }).catch(() => null);
+    if (r) {
+      note.textContent = t('Time on the box: {t}', { t: r.now });
+      toast(t('Saved.'));
+    } else {
+      select.value = z.zone;
+    }
+  });
+  group.append(select, note);
   return group;
 }
 
@@ -2507,6 +2528,7 @@ function settingsView() {
       box.append(serverSettings());
       box.append(await networkSettings());
       box.append(await updateSettings());
+      box.append(await timeSettings());
       const s = await get('/api/screen');
       if (s.controllable) box.append(screenSettings(s));
       // The rows are filled once the page is on screen, not 5 s later at the next refresh.

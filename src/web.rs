@@ -87,6 +87,8 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/update/install", post(update_install))
         .route("/api/update/rollback", post(update_rollback))
         .route("/api/update/auto", post(update_auto))
+        .route("/api/time", get(time_state))
+        .route("/api/time/zone", post(time_set))
         .route("/api/audio", get(audio_state))
         .route("/api/audio/output", post(audio_set))
         .route("/api/audio/hats", get(hats_state))
@@ -802,6 +804,7 @@ async fn hotspot_apply(State(s): State<Arc<AppState>>, Json(req): Json<HotspotAp
         return (StatusCode::BAD_REQUEST, Json(json!({ "error": "no such sound card" }))).into_response();
     }
     if let Some(lang) = req.language.filter(|l| matches!(l.as_str(), "cs" | "en")) {
+        crate::timezone::follow_language(&lang).await;
         s.prefs.update(|p| p.language = Some(lang));
     }
     if let Some(name) = req.name.map(|n| clean_name(&n)).filter(|n| !n.is_empty()) {
@@ -938,6 +941,23 @@ fn buttons(s: &AppState) -> String {
     s.prefs.get().buttons.unwrap_or_else(|| "text".into())
 }
 
+async fn time_state() -> Json<serde_json::Value> {
+    let (zone, zones) = tokio::join!(crate::timezone::current(), crate::timezone::zones());
+    Json(json!({ "zone": zone, "zones": zones, "now": chrono::Local::now().format("%H:%M").to_string() }))
+}
+
+#[derive(Deserialize)]
+struct TimeZoneRequest {
+    zone: String,
+}
+
+async fn time_set(Json(req): Json<TimeZoneRequest>) -> axum::response::Response {
+    match crate::timezone::set(&req.zone).await {
+        Ok(()) => time_state().await.into_response(),
+        Err(e) => (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))).into_response(),
+    }
+}
+
 async fn ui_settings(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
     Json(json!({ "language": language(&s), "theme": theme(&s), "buttons": buttons(&s) }))
 }
@@ -959,6 +979,9 @@ async fn ui_set(State(s): State<Arc<AppState>>, Json(req): Json<UiRequest>) -> a
     }
     if req.buttons.as_deref().is_some_and(|b| !matches!(b, "text" | "icons")) {
         return (StatusCode::BAD_REQUEST, Json(json!({ "error": "text or icons" }))).into_response();
+    }
+    if let Some(lang) = req.language.clone() {
+        tokio::spawn(async move { crate::timezone::follow_language(&lang).await });
     }
     s.prefs.update(|p| {
         if req.language.is_some() {

@@ -13,9 +13,11 @@ that version's section below as a GitHub Release.
   box's queue, AirPlay or Music Assistant). Settings → Updates can leave them to a tap on
   Install instead. A release from the evening is found and installed the same night.
 - Debian's security updates once a week on such a night (unattended-upgrades, the
-  security archive only), and a restart of the Pi when any came; Settings → Updates shows
-  the last run. A box without the package gets it at the first run. Tried on the Pi 4:
+  security archive only), also on a box that leaves its own updates to a tap, and a
+  restart of the Pi when any came; Settings → Updates shows the last run. A box without the package gets it at the first run. Tried on the Pi 4:
   15 packages, about three minutes, back up after the restart.
+- Settings → Time zone. The night of the updates follows it; a box still on the default
+  (Europe/London, UTC) takes Europe/Prague when Czech is chosen.
 - A waiting version shows: a dot on the Settings tab and, once per version, a note saying
   whether it installs itself tonight or waits for a tap. Phones see it too (they may read
   what waits; installing stays with the screen, or a paired phone on a box without one).

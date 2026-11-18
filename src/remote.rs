@@ -161,7 +161,7 @@ fn box_only(path: &str) -> bool {
 /// Paths a phone may never use: they run the box itself (sign-in, server, network, screen,
 /// pairing) or are hooks for programs on the box.
 fn screen_only(path: &str) -> bool {
-    const PREFIXES: [&str; 16] = [
+    const PREFIXES: [&str; 17] = [
         "/api/setup",
         "/api/sign-in",
         "/api/sign-out",
@@ -179,6 +179,7 @@ fn screen_only(path: &str) -> bool {
         "/api/hotspot",
         // Its actions; reading what waits (`/api/update`) is fine from a phone.
         "/api/update/",
+        "/api/time/",
     ];
     PREFIXES.iter().any(|p| path.starts_with(p)) || path == "/api/player/release"
 }

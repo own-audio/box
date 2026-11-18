@@ -1,8 +1,12 @@
 // own.audio box: ownbox runs as the box's user (@USER@, filled in at install) and sets
-// up Wi-Fi from the screen through NetworkManager (nmcli). Without this, every scan or
-// connect would ask for a password nobody can type on the box. Installed to /etc/polkit-1/rules.d/.
+// up Wi-Fi from the screen through NetworkManager (nmcli), and the time zone through
+// systemd-timedated. Without this, every scan, connect or zone change would ask for a
+// password nobody can type on the box. Installed to /etc/polkit-1/rules.d/.
 polkit.addRule(function (action, subject) {
   if (action.id.indexOf("org.freedesktop.NetworkManager.") === 0 && subject.user === "@USER@") {
+    return polkit.Result.YES;
+  }
+  if (action.id === "org.freedesktop.timedate1.set-timezone" && subject.user === "@USER@") {
     return polkit.Result.YES;
   }
 });
