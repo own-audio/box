@@ -372,6 +372,8 @@ dd { margin: 0; overflow-wrap: anywhere; }
 #np-close { position: absolute; top: 8px; right: 8px; }
 #np-cover { width: 300px; height: 300px; border-radius: 16px; object-fit: cover; background: var(--img); flex: none; box-shadow: var(--shadow-pop); }
 .np-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+/* Title, artist (or what a station plays) and album: centred over the controls. */
+#np-title, #np-artist, #np-album { text-align: center; }
 #np-title { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
 #np-artist { font-size: 20px; color: var(--muted); }
 #np-album { font-size: 17px; }

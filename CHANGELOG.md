@@ -19,6 +19,7 @@ that version's section below as a GitHub Release.
 
 ### Changed
 
+- Now playing centres the title, the artist (a station: what it plays) and the album.
 - Settings is a short list of pages (General, Sound, Screen, Network, Phones, AirPlay and
   Music Assistant, Library, Updates, About the box) instead of one long page; a waiting
   version shows on the Updates row.
