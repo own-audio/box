@@ -9,6 +9,11 @@ that version's section below as a GitHub Release.
 
 ### Fixed
 
+- On Touch Display 2 the screen went dark after its timer and never lit again, and every
+  touch only tried to wake it: the box wrote brightness on a 0–255 scale, and this panel
+  takes 0–31 and refuses the rest. Brightness is now put on the panel's own scale. Found on
+  the Pi 4 with beta.7.
+
 - A Pi 3 did not start from a beta image: the serial console's USB overlay replaced the
   driver of the one USB controller that carries the Pi 3's Ethernet and USB ports, and the
   start hung at cloud-init's "pre-network" stage. The overlay is now only on the Zero 2 W

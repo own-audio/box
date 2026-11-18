@@ -23,6 +23,9 @@ const GRACE: Duration = Duration::from_secs(15);
 pub struct Screen {
     /// `/sys/class/backlight/<panel>/brightness`; `None` where there is no backlight to drive.
     path: Option<PathBuf>,
+    /// The panel's own top value: 255 on the 7" display, 31 on Touch Display 2, which
+    /// refuses anything above it.
+    max: u32,
     prefs: Arc<PrefsStore>,
     brightness: AtomicU8,
     off_after_secs: AtomicU64,
@@ -49,13 +52,16 @@ pub struct Settings {
 impl Screen {
     pub fn new(brightness: u8, off_after_secs: u64, prefs: Arc<PrefsStore>) -> Self {
         let saved = prefs.get();
-        let path = std::fs::read_dir("/sys/class/backlight")
-            .ok()
-            .and_then(|mut dir| dir.next())
-            .and_then(Result::ok)
-            .map(|entry| entry.path().join("brightness"));
+        let panel = std::fs::read_dir("/sys/class/backlight").ok().and_then(|mut dir| dir.next()).and_then(Result::ok).map(|e| e.path());
+        let max = panel
+            .as_ref()
+            .and_then(|p| std::fs::read_to_string(p.join("max_brightness")).ok())
+            .and_then(|t| t.trim().parse().ok())
+            .filter(|&m: &u32| m > 0)
+            .unwrap_or(255);
         let screen = Self {
-            path,
+            path: panel.map(|p| p.join("brightness")),
+            max,
             brightness: AtomicU8::new(saved.screen_brightness.unwrap_or(brightness).max(MIN_BRIGHTNESS)),
             off_after_secs: AtomicU64::new(saved.screen_off_after_secs.unwrap_or(off_after_secs)),
             on: AtomicBool::new(true),
@@ -70,7 +76,7 @@ impl Screen {
 
     pub fn set(&self, on: bool) {
         let Some(path) = &self.path else { return };
-        let value = if on { self.brightness.load(Ordering::Relaxed) } else { 0 };
+        let value = if on { panel_value(self.brightness.load(Ordering::Relaxed), self.max) } else { 0 };
         if on {
             self.touch();
         }
@@ -126,5 +132,23 @@ impl Screen {
             off_after_secs: self.off_after_secs.load(Ordering::Relaxed),
             controllable: self.path.is_some(),
         }
+    }
+}
+
+/// Brightness as the box keeps it (0–255) on the panel's own scale; a lit screen never at 0.
+fn panel_value(brightness: u8, max: u32) -> u32 {
+    ((u32::from(brightness) * max + 127) / 255).max(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::panel_value;
+
+    #[test]
+    fn brightness_fits_the_panels_scale() {
+        assert_eq!(panel_value(255, 255), 255);
+        assert_eq!(panel_value(255, 31), 31);
+        assert_eq!(panel_value(128, 31), 16);
+        assert_eq!(panel_value(10, 31), 1);
     }
 }
