@@ -12,7 +12,8 @@ that version's section below as a GitHub Release.
 - Radio: a Radio tab finds stations in radio-browser.info's open directory (Czech ones
   first, any country when a name is typed or chosen), and plays them with what the
   station says it plays. A heart keeps a station as a favourite; favourites lead the Radio
-  tab and the music home screen, one tap to play. Stations play without seeking or a next
+  tab and the music home screen, one tap to play; Edit there puts a cross on each to take
+  it off. Stations play without seeking or a next
   track, with the sleep timer. The box asks the directory for a station by its id and
   plays the address it gives; a page cannot hand the player an address of its own.
 

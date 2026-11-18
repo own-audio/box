@@ -573,9 +573,32 @@ function radioView() {
       document.body.classList.toggle('typing', radioState.keyboard && !onPhone());
       const favBox = el('div');
       const area = el('div', { class: 'search-results' });
-      const drawFavourites = () => favBox.replaceChildren(favourites.length
-        ? shelf(t('Favourite radios'), null, el('div', { class: 'hscroll' }, favourites.map(stationTile)))
-        : el('div', { class: 'message', text: t('Tap the heart by a station to keep it here and on the home screen.') }));
+      // Editing: a cross on each tile takes it off the favourites; a tap elsewhere plays.
+      const drawFavourites = () => {
+        if (!favourites.length) {
+          radioState.editing = false;
+          favBox.replaceChildren(el('div', { class: 'message', text: t('Tap the heart by a station to keep it here and on the home screen.') }));
+          return;
+        }
+        const tiles = favourites.map((st) => {
+          const tile = stationTile(st);
+          if (radioState.editing) {
+            tile.classList.add('editing');
+            tile.append(el('button', { class: 'tile-remove', 'aria-label': t('Remove from favourites'), text: '✕', onclick: async (ev) => {
+              ev.stopPropagation();
+              const list = await post('/api/radio/favourite', { id: st.id, on: false }).catch(() => null);
+              if (list) { favourites.splice(0, favourites.length, ...list); redraw(); }
+            } }));
+          }
+          return tile;
+        });
+        favBox.replaceChildren(el('div', {},
+          el('div', { class: 'shelf-head' },
+            el('h3', { text: t('Favourite radios') }),
+            el('button', { class: radioState.editing ? 'on' : 'secondary', text: radioState.editing ? t('Done') : t('Edit'),
+              onclick: () => { radioState.editing = !radioState.editing; drawFavourites(); } })),
+          el('div', { class: 'hscroll' }, tiles)));
+      };
       const drawResults = () => {
         const r = radioState.results;
         if (!r) { area.replaceChildren(el('div', { class: 'message', text: t('Loading…') })); return; }

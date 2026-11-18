@@ -304,6 +304,8 @@ const CS = {
   'This box has no screen to set.': 'Tento box nemá obrazovku k nastavení.',
   'Favourite radios': 'Oblíbená rádia',
   'Find a station': 'Najít stanici',
+  Done: 'Hotovo',
+  Edit: 'Upravit',
   'Here, or anywhere when searching': 'Česko, při hledání celý svět',
   'All countries': 'Všechny země',
   'Tap the heart by a station to keep it here and on the home screen.': 'Klepnutím na srdíčko u stanice si ji uložíte sem a na úvodní obrazovku.',

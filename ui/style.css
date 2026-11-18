@@ -850,3 +850,7 @@ button.danger.armed { background: var(--bad); color: #fff; }
 .radio-find { display: flex; gap: 10px; align-items: center; }
 .radio-find .searchbar { flex: 1; min-width: 0; }
 .radio-find select.country { flex: none; max-width: 42%; }
+.tile.station { position: relative; }
+.tile.station.editing img, .tile.station.editing .noimg { opacity: .75; }
+.tile-remove { position: absolute; top: 4px; right: 4px; width: 34px; height: 34px; min-height: 0; padding: 0; border-radius: 50%;
+  background: var(--fg); color: var(--bg); font-size: 16px; line-height: 34px; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
