@@ -135,6 +135,16 @@ pub async fn by_id(http: &reqwest::Client, id: &str) -> anyhow::Result<Station> 
     ask(http, &format!("/json/stations/byuuid/{id}")).await?.into_iter().next().context("no such station")
 }
 
+/// How many stations "Recently played" keeps.
+pub const RECENT: usize = 12;
+
+/// `station` first in the list of stations played lately, once.
+pub fn remember(recent: &mut Vec<Station>, station: &Station) {
+    recent.retain(|r| r.id != station.id);
+    recent.insert(0, station.clone());
+    recent.truncate(RECENT);
+}
+
 /// A station as the player's queue keeps it: no length, no album; the address in `stream`.
 pub fn track(s: &Station) -> crate::library::Track {
     crate::library::Track {
@@ -156,6 +166,19 @@ pub fn track(s: &Station) -> crate::library::Track {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_latest_station_comes_first_once() {
+        let st = |id: &str| Station { id: id.into(), name: id.into(), url: "https://a/b".into(), logo: None, country: None, codec: None, bitrate: None };
+        let mut recent = vec![st("a"), st("b")];
+        remember(&mut recent, &st("b"));
+        assert_eq!(recent.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(), ["b", "a"]);
+        for i in 0..20 {
+            remember(&mut recent, &st(&i.to_string()));
+        }
+        assert_eq!(recent.len(), RECENT);
+        assert_eq!(recent[0].id, "19");
+    }
 
     #[test]
     fn a_station_needs_a_name_and_a_web_address() {

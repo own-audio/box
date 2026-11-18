@@ -90,6 +90,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/radio/search", get(radio_search))
         .route("/api/radio/countries", get(radio_countries))
         .route("/api/radio/favourites", get(radio_favourites))
+        .route("/api/radio/recent", get(radio_recent))
         .route("/api/radio/favourite", post(radio_favourite))
         .route("/api/radio/play", post(radio_play))
         .route("/api/time", get(time_state))
@@ -972,6 +973,10 @@ async fn radio_countries(State(s): State<Arc<AppState>>) -> axum::response::Resp
     answer(crate::radio::countries(&s.http).await)
 }
 
+async fn radio_recent(State(s): State<Arc<AppState>>) -> Json<Vec<crate::radio::Station>> {
+    Json(s.prefs.get().radios_recent)
+}
+
 async fn radio_favourites(State(s): State<Arc<AppState>>) -> Json<Vec<crate::radio::Station>> {
     Json(s.prefs.get().radios)
 }
@@ -1016,7 +1021,10 @@ async fn radio_play(State(s): State<Arc<AppState>>, Json(req): Json<RadioPlay>) 
     };
     s.outside.take_back().await;
     match s.player.play(vec![crate::radio::track(&station)], 0, 0.0).await {
-        Ok(()) => Json(json!({ "ok": true })).into_response(),
+        Ok(()) => {
+            s.prefs.update(|p| crate::radio::remember(&mut p.radios_recent, &station));
+            Json(json!({ "ok": true })).into_response()
+        }
         Err(e) => (StatusCode::BAD_GATEWAY, Json(json!({ "error": e.to_string() }))).into_response(),
     }
 }

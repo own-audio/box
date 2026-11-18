@@ -355,17 +355,12 @@ function shelf(title, onAll, content) {
 function musicHome() {
   return {
     async render(box) {
-      const [recent, favourites, lists, played, radios] = await Promise.all([
+      const [recent, favourites, lists, played] = await Promise.all([
         get('/api/library/albums?sort=added'),
         get('/api/library/favourites').catch(() => []),
         get('/api/library/playlists').catch(() => []),
         get('/api/library/recent-albums').catch(() => []),
-        get('/api/radio/favourites').catch(() => []),
       ]);
-      // Favourite stations first: one tap and the radio plays.
-      if (radios.length) {
-        box.append(shelf(t('Favourite radios'), () => go('radio'), el('div', { class: 'hscroll' }, radios.map(stationTile))));
-      }
       // Playlists first: the ones played on this box latest, then smart, then by name.
       const ordered = [...lists].sort((a, b) => (b.played_at || 0) - (a.played_at || 0)
         || Number(b.smart) - Number(a.smart) || a.name.localeCompare(b.name));
@@ -568,16 +563,24 @@ function stationRow(st, favourites, redraw) {
 function radioView() {
   return {
     async render(box) {
-      const favourites = await get('/api/radio/favourites').catch(() => []);
+      const [favourites, played] = await Promise.all([
+        get('/api/radio/favourites').catch(() => []),
+        get('/api/radio/recent').catch(() => []),
+      ]);
       const typing = radioState.keyboard || onPhone();
       document.body.classList.toggle('typing', radioState.keyboard && !onPhone());
       const favBox = el('div');
       const area = el('div', { class: 'search-results' });
+      // Played lately, the latest first: above the favourites, as the one tap back to it.
+      const recentShelf = () => (played.length && !radioState.editing
+        ? shelf(t('Recently played'), null, el('div', { class: 'hscroll' }, played.map(stationTile)))
+        : null);
       // Editing: a cross on each tile takes it off the favourites; a tap elsewhere plays.
       const drawFavourites = () => {
         if (!favourites.length) {
           radioState.editing = false;
-          favBox.replaceChildren(el('div', { class: 'message', text: t('Tap the heart by a station to keep it here and on the home screen.') }));
+          favBox.replaceChildren(el('div', {}, recentShelf(),
+            el('div', { class: 'message', text: t('Tap the heart by a station to keep it here.') })));
           return;
         }
         const tiles = favourites.map((st) => {
@@ -593,6 +596,7 @@ function radioView() {
           return tile;
         });
         favBox.replaceChildren(el('div', {},
+          recentShelf(),
           el('div', { class: 'shelf-head' },
             el('h3', { text: t('Favourite radios') }),
             el('button', { class: radioState.editing ? 'on' : 'secondary', text: radioState.editing ? t('Done') : t('Edit'),
