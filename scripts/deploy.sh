@@ -60,6 +60,7 @@ ssh "$host" 'set -e
   fi
   # Music Assistant: the Debian package, run by our own unit (see the comment in it).
   dpkg -s squeezelite >/dev/null 2>&1 || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends squeezelite
+  dpkg -s wlr-randr >/dev/null 2>&1 || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends wlr-randr
   squeezelite_new=no
   cmp -s /tmp/squeezelite.service /etc/systemd/system/squeezelite.service || squeezelite_new=yes
   sudo install -m 644 /tmp/squeezelite.service /etc/systemd/system/squeezelite.service

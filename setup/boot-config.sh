@@ -119,6 +119,29 @@ else
   rm -f /etc/tmpfiles.d/ownbox-cpu.conf
 fi
 
+# The screen turned in Settings (ownbox turns the picture with wlr-randr): touch turns with
+# it through libinput's calibration matrix, which is read when the touch device appears,
+# so the kiosk starts again when it changes.
+ROTATION=$(pref screen_rotation)
+case "$ROTATION" in
+  90)  MATRIX="0 1 0 -1 0 1" ;;
+  180) MATRIX="-1 0 1 0 -1 1" ;;
+  270) MATRIX="0 -1 1 1 0 0" ;;
+  *)   MATRIX="" ;;
+esac
+TOUCH_RULE=/etc/udev/rules.d/99-ownbox-touch.rules
+touch_before=$(cat "$TOUCH_RULE" 2>/dev/null || true)
+if [ -n "$MATRIX" ]; then
+  write "$TOUCH_RULE" "$(printf '# own.audio box: touch turned with the screen (Settings → Screen; written by boot-config.sh).\nENV{ID_INPUT_TOUCHSCREEN}==\"1\", ENV{LIBINPUT_CALIBRATION_MATRIX}=\"%s\"' "$MATRIX")"
+else
+  rm -f "$TOUCH_RULE"
+fi
+if [ "$(cat "$TOUCH_RULE" 2>/dev/null || true)" != "$touch_before" ]; then
+  udevadm control --reload || true
+  udevadm trigger --subsystem-match=input --action=change || true
+  systemctl try-restart ownbox-kiosk.service || true
+fi
+
 # The UI is laid out for the 7" display's 800 × 480 points (5.2 px/mm). Touch Display 2
 # packs 8 px/mm (720 × 1280 on 90 × 151 mm), so the page is zoomed 1.55 times there to
 # keep the same finger size. Chromium's own page zoom (its Preferences) and not

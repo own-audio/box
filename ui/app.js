@@ -1447,11 +1447,13 @@ function scheduleSearch(showResults) {
   searchTimer = setTimeout(async () => {
     const seq = ++searchState.seq;
     const q = encodeURIComponent(query);
-    const [music, bookHits] = await Promise.all([
+    const [music, bookHits, stations, favs] = await Promise.all([
       get(`/api/library/search?q=${q}`).catch((e) => ({ error: e.message })),
       get(`/api/books/search?q=${q}`).catch(() => []),
+      get(`/api/radio/search?q=${q}`).catch(() => []),
+      get('/api/radio/favourites').catch(() => []),
     ]);
-    const r = Object.assign({}, music, { books: bookHits });
+    const r = Object.assign({}, music, { books: bookHits, stations: stations.slice(0, 8), radioFavourites: favs });
     if (seq !== searchState.seq) return; // a newer search is on its way
     searchState.results = r;
     showResults();
@@ -1476,7 +1478,8 @@ function results(r) {
   if (r.error) return el('div', { class: 'message bad', text: r.error });
   const out = el('div');
   const books = r.books || [];
-  if (!r.artists.length && !r.albums.length && !r.tracks.length && !books.length) {
+  const stations = r.stations || [];
+  if (!r.artists.length && !r.albums.length && !r.tracks.length && !books.length && !stations.length) {
     return el('div', { class: 'message', text: t('Nothing found. The search matches accents exactly: try ěšč.') });
   }
   if (r.tracks.length) {
@@ -1490,6 +1493,14 @@ function results(r) {
   if (books.length) {
     out.append(el('div', { class: 'section-title', text: t('Audiobooks') }),
       el('div', { class: 'hscroll' }, books.map(bookTile)));
+  }
+  if (stations.length) {
+    // Stations as the Radio tab lists them, the heart included.
+    const favourites = r.radioFavourites || [];
+    const rows = el('div', { class: 'rows' });
+    const draw = () => rows.replaceChildren(...stations.map((st) => stationRow(st, favourites, draw)));
+    draw();
+    out.append(el('div', { class: 'section-title', text: t('Radio') }), rows);
   }
   if (r.artists.length) {
     out.append(el('div', { class: 'section-title', text: t('Artists') }),
@@ -2774,6 +2785,11 @@ function screenSettings(s) {
     el('div', { class: 'section-title', text: t('Screen') }),
     el('div', { class: 'setting' }, el('span', { text: t('Brightness') }), slider, value),
     el('div', { class: 'setting' }, el('span', { text: t('Turn off after') }), choices),
+    choiceSetting('Turn the screen', [[0, '0°'], [90, '90°'], [180, '180°'], [270, '270°']], () => s.rotation || 0, async (deg) => {
+      const r = await post('/api/screen/settings', { rotation: deg }).catch(() => null);
+      if (r) s.rotation = r.rotation;
+      toast(t('The screen turns; touch follows a moment later.'));
+    }),
     el('p', { class: 'muted small', text: t('The backlight draws the most power. On a weak supply, a bright screen that stays on can make the sound crackle.') }));
 }
 

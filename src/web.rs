@@ -928,6 +928,7 @@ async fn setup_reset(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> 
             screen_brightness: p.screen_brightness,
             screen_off_after_secs: p.screen_off_after_secs,
             auto_update: p.auto_update,
+            screen_rotation: p.screen_rotation,
             ..Default::default()
         };
     });

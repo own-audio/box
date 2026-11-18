@@ -7,6 +7,14 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- Screen turning: Settings → Screen turns the picture by 0, 90, 180 or 270 degrees, and
+  touch turns with it (libinput's calibration, written by `boot-config.sh`). The picture
+  turns at once (wlr-randr, which an update installs where it is missing); touch follows
+  when the kiosk starts again a moment later.
+- Search finds radio stations too, beside songs, albums, audiobooks and artists.
+
 ### Changed
 
 - Where there is no picture (or it does not load), a fitting icon shows instead of an

@@ -9,6 +9,9 @@ use serde::{Deserialize, Serialize};
 pub struct Prefs {
     pub screen_brightness: Option<u8>,
     pub screen_off_after_secs: Option<u64>,
+    /// The picture turned by 0, 90, 180 or 270 degrees (missing: 0); touch turns with it
+    /// (`boot-config.sh`).
+    pub screen_rotation: Option<u16>,
     /// mpv's volume, 0–100.
     pub volume: Option<f64>,
     /// Playback speed chosen for each audiobook, by book id.

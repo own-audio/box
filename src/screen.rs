@@ -44,12 +44,15 @@ pub struct ScreenState {
     pub levels: u32,
     pub off_after_secs: u64,
     pub controllable: bool,
+    /// 0, 90, 180 or 270.
+    pub rotation: u16,
 }
 
 #[derive(Deserialize)]
 pub struct Settings {
     pub brightness: Option<u8>,
     pub off_after_secs: Option<u64>,
+    pub rotation: Option<u16>,
 }
 
 impl Screen {
@@ -100,6 +103,10 @@ impl Screen {
         if let Some(secs) = s.off_after_secs {
             self.off_after_secs.store(secs, Ordering::Relaxed);
         }
+        if let Some(r) = s.rotation.filter(|r| ROTATIONS.contains(r)) {
+            self.prefs.update(|p| p.screen_rotation = Some(r));
+            tokio::spawn(async move { apply_rotation(r).await });
+        }
         let (brightness, off_after) =
             (self.brightness.load(Ordering::Relaxed), self.off_after_secs.load(Ordering::Relaxed));
         self.prefs.update(|p| {
@@ -135,6 +142,7 @@ impl Screen {
             levels: self.max,
             off_after_secs: self.off_after_secs.load(Ordering::Relaxed),
             controllable: self.path.is_some(),
+            rotation: self.prefs.get().screen_rotation.unwrap_or(0),
         }
     }
 }
@@ -154,5 +162,87 @@ mod tests {
         assert_eq!(panel_value(255, 31), 31);
         assert_eq!(panel_value(128, 31), 16);
         assert_eq!(panel_value(10, 31), 1);
+    }
+}
+
+pub const ROTATIONS: [u16; 4] = [0, 90, 180, 270];
+
+/// wlr-randr's name for a turn.
+fn transform(rotation: u16) -> &'static str {
+    match rotation {
+        90 => "90",
+        180 => "180",
+        270 => "270",
+        _ => "normal",
+    }
+}
+
+/// The outputs cage shows and how each is turned, from `wlr-randr`'s listing: an output's
+/// line starts at the margin, its `Transform:` line is indented under it.
+fn outputs(listing: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    let mut name: Option<String> = None;
+    for line in listing.lines() {
+        if !line.starts_with(' ') && !line.trim().is_empty() {
+            name = line.split_whitespace().next().map(str::to_owned);
+        } else if let (Some(n), Some(t)) = (&name, line.trim().strip_prefix("Transform:")) {
+            out.push((n.clone(), t.trim().to_owned()));
+        }
+    }
+    out
+}
+
+async fn wlr_randr(args: &[&str]) -> Option<String> {
+    use std::os::unix::fs::MetadataExt;
+    let uid = std::fs::metadata("/proc/self").ok()?.uid();
+    let out = tokio::time::timeout(
+        Duration::from_secs(5),
+        tokio::process::Command::new("wlr-randr")
+            .args(args)
+            .env("WAYLAND_DISPLAY", "wayland-0")
+            .env("XDG_RUNTIME_DIR", format!("/run/user/{uid}"))
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .ok()?
+    .ok()?;
+    out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// Turns every output cage shows to `rotation`, when it is not already. Without cage (no
+/// screen) or wlr-randr (an older image), nothing.
+pub async fn apply_rotation(rotation: u16) {
+    let want = transform(rotation);
+    let Some(listing) = wlr_randr(&[]).await else { return };
+    for (name, now) in outputs(&listing) {
+        if now != want && wlr_randr(&["--output", &name, "--transform", want]).await.is_some() {
+            tracing::info!(output = %name, transform = want, "screen turned");
+        }
+    }
+}
+
+/// Keeps the screen turned as set: the kiosk starting again (after a restart, a change of
+/// touch calibration) starts unturned.
+pub async fn keep_rotation(prefs: Arc<PrefsStore>) {
+    loop {
+        if let Some(r) = prefs.get().screen_rotation.filter(|r| *r != 0) {
+            apply_rotation(r).await;
+        }
+        tokio::time::sleep(Duration::from_secs(10)).await;
+    }
+}
+
+#[cfg(test)]
+mod rotation_tests {
+    #[test]
+    fn outputs_and_their_turn_come_from_the_listing() {
+        let listing = "DSI-1 \"(null) (null) (DSI-1)\"\n  Enabled: yes\n  Modes:\n    720x1280 px\n  Transform: normal\n  Scale: 1.000000\nHDMI-A-1 \"x\"\n  Transform: 90\n";
+        assert_eq!(
+            super::outputs(listing),
+            vec![("DSI-1".to_owned(), "normal".to_owned()), ("HDMI-A-1".to_owned(), "90".to_owned())]
+        );
+        assert_eq!(super::transform(270), "270");
+        assert_eq!(super::transform(0), "normal");
     }
 }

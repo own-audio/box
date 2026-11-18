@@ -17,6 +17,8 @@ const ROOMS = {
 };
 
 const CS = {
+  "Turn the screen": "Otočení obrazovky",
+  "The screen turns; touch follows a moment later.": "Obrazovka se otočí, dotyk ji dožene za okamžik.",
   // sign-in
   'Sign in to own.audio': 'Přihlášení k own.audio',
   'Use your phone to let this box into your library. No password is typed here.':
@@ -450,6 +452,8 @@ const CS = {
 };
 
 const SK = {
+  "Turn the screen": "Otočenie obrazovky",
+  "The screen turns; touch follows a moment later.": "Obrazovka sa otočí, dotyk ju dobehne o chvíľu.",
   "Sign in to own.audio": "Prihlásenie do own.audio",
   "Use your phone to let this box into your library. No password is typed here.": "Box pustíte do svojej knižnice z telefónu. Žiadne heslo sa tu nezadáva.",
   "Sign in": "Prihlásiť sa",
@@ -823,6 +827,8 @@ const SK = {
 const COUNTS_SK = {"tracks": ["{n} skladba", "{n} skladby", "{n} skladieb"], "unplayed": ["{n} nevypočutá", "{n} nevypočuté", "{n} nevypočutých"]};
 
 const HU = {
+  "Turn the screen": "Képernyő elforgatása",
+  "The screen turns; touch follows a moment later.": "A kép elfordul, az érintés egy pillanat múlva követi.",
   "Sign in to own.audio": "Bejelentkezés az own.audio szolgáltatásba",
   "Use your phone to let this box into your library. No password is typed here.": "A telefonjáról engedheti be a boxot a könyvtárába. Itt nem kell jelszót beírni.",
   "Sign in": "Bejelentkezés",

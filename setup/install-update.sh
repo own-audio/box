@@ -40,6 +40,16 @@ swap_back() {
 # named here are put in place, at the places named here — nothing the archive says about
 # paths counts. A file updates the one the box already has; the ones marked "new" are put
 # in even if missing (they came with a later release). @USER@ becomes this box's user.
+PACKAGES="wlr-randr"
+ensure_packages() {
+  local missing=""
+  for p in $PACKAGES; do dpkg -s "$p" >/dev/null 2>&1 || missing="$missing $p"; done
+  [ -z "$missing" ] && return 0
+  echo "  packages:$missing"
+  DEBIAN_FRONTEND=noninteractive timeout 600 apt-get update -q >/dev/null \
+    && DEBIAN_FRONTEND=noninteractive timeout 600 apt-get install -y -q --no-install-recommends $missing >/dev/null
+}
+
 install_setup() {
   local bundle="$DIR/ownbox-setup.tar.gz" work src dest mode always
   [ -f "$bundle" ] && [ ! -L "$bundle" ] || return 0
@@ -85,6 +95,10 @@ FILES
   systemctl daemon-reload
   # Units that start at boot since a later release (their [Install] says so).
   [ -e /etc/systemd/system/ownbox-sources.service ] && systemctl enable --quiet ownbox-sources.service
+  # Programs a later release needs (wlr-randr turns the screen); a box without network
+  # gets them at the next update or the weekly security run.
+  ensure_packages || echo "  packages: left for later"
+
   return 0
 }
 
@@ -181,6 +195,7 @@ case "$ACTION" in
     system_result() { printf '%s %s\n' "$(date -Iseconds)" "$*" > "$STATE/system-result"; echo "$*"; }
     export DEBIAN_FRONTEND=noninteractive
     if ! timeout 900 apt-get update -q; then system_result "no package lists (no network?)"; exit 1; fi
+    ensure_packages || true
     if ! dpkg -s unattended-upgrades >/dev/null 2>&1 \
        && ! timeout 900 apt-get install -y -q --no-install-recommends unattended-upgrades; then
       system_result "could not install unattended-upgrades"; exit 1
