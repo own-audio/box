@@ -7,6 +7,11 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.12] — 2026-11-21
+
+Screen turning with touch that follows, tab icons, icons where a picture is missing, and a
+faster start. Boxes on beta.10 or later install it by themselves at night.
+
 ### Fixed
 
 - A faster start: 24 s to 17 s on a Pi 4 with Touch Display 2. At every start the AirPlay
