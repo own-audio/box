@@ -34,10 +34,16 @@ if [ -z "$(raspi-config nonint get_wifi_country 2>/dev/null)" ]; then
   rfkill unblock wifi || true
 fi
 
-# cloud-init has done its one job (Imager's settings) once a boot has finished it; it would
-# only cost seconds and writes at every boot after. (Its status says "running" this early.)
-if [ ! -e /etc/cloud/cloud-init.disabled ] && [ -e /var/lib/cloud/instance/boot-finished ]; then
-  touch /etc/cloud/cloud-init.disabled
+# cloud-init has one job, Imager's settings at the first start; at the second start it is
+# switched off. Not only when it says it finished: on the Pi 4 it never did, and from a
+# plain power supply every start waited minutes on cloud-init-local before going on.
+# (Its status says "running" this early, so the first start only leaves a mark.)
+if [ ! -e /etc/cloud/cloud-init.disabled ]; then
+  if [ -e /var/lib/ownbox/started-once ] || [ -e /var/lib/cloud/instance/boot-finished ]; then
+    touch /etc/cloud/cloud-init.disabled
+  else
+    install -d /var/lib/ownbox && touch /var/lib/ownbox/started-once
+  fi
 fi
 
 if [ "$(/opt/ownbox/boot-config.sh)" = reboot ]; then

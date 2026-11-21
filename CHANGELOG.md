@@ -7,6 +7,14 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- A Pi 4 started from a plain power supply waited about eight minutes on cloud-init at
+  every start (from a computer's USB port it went on at once). cloud-init only applies
+  Raspberry Pi Imager's settings at the first start; the box now switches it off at the
+  second start, not only once cloud-init reports it finished, which on this Pi it never
+  did. Found on the Pi 4 with beta.11.
+
 ### Added
 
 - Screen turning: Settings → Screen turns the picture by 0, 90, 180 or 270 degrees, and
