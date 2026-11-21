@@ -26,6 +26,8 @@ that version's section below as a GitHub Release.
   turns at once (wlr-randr, which an update installs where it is missing); touch follows
   when the kiosk starts again a moment later.
 - Search finds radio stations too, beside songs, albums, audiobooks and artists.
+- Settings → About the box says how long the start took (systemd's record) and its
+  slowest steps, so a slow start can be read without a console.
 - The tabs have icons: beside each name on a wide screen (the box turned to landscape);
   upright and on phones, icons with the open tab's name beside its icon.
 
