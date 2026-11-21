@@ -14,6 +14,10 @@ that version's section below as a GitHub Release.
   Raspberry Pi Imager's settings at the first start; the box now switches it off at the
   second start, not only once cloud-init reports it finished, which on this Pi it never
   did. Found on the Pi 4 with beta.11.
+- After a power cut the screen could stay black: Chromium found its own lock from before
+  the cut, took it for another Chromium, and quit at every try until the kiosk gave up.
+  The kiosk now clears the lock before it starts. A change of the screen's turn no longer
+  makes the start wait on the kiosk either.
 
 ### Added
 

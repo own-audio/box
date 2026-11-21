@@ -21,6 +21,10 @@ UtmpMode=user
 EnvironmentFile=-/etc/default/ownbox-kiosk
 # A transparent cursor theme (setup/blank-cursor.py): cage's own pointer stays invisible.
 Environment=XCURSOR_PATH=/opt/ownbox/cursors
+# A power cut leaves Chromium's profile lock behind; Chromium then takes it for another
+# Chromium running, quits at once (code 21), and the kiosk gives up after a few tries.
+# The profile is incognito: nothing in it is worth the lock.
+ExecStartPre=/bin/sh -c 'rm -f /home/@USER@/.config/chromium/SingletonLock /home/@USER@/.config/chromium/SingletonCookie /home/@USER@/.config/chromium/SingletonSocket'
 # Give ownbox up to 30 s to listen, so the first page is the UI and not an error.
 ExecStartPre=/bin/bash -c 'for i in {1..30}; do (exec 3<>/dev/tcp/127.0.0.1/8686) 2>/dev/null && exit 0; sleep 1; done; exit 0'
 # The page zoom for the panel is in Chromium's Preferences (boot-config.sh).

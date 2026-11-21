@@ -141,7 +141,9 @@ fi
 if [ "$(cat "$TOUCH_RULE" 2>/dev/null || true)" != "$touch_before" ]; then
   udevadm control --reload || true
   udevadm trigger --subsystem-match=input --action=change || true
-  systemctl try-restart ownbox-kiosk.service || true
+  # Queued, not waited for: at boot this runs before the kiosk is up, and waiting on it
+  # from here would hold up the start.
+  systemctl --no-block try-restart ownbox-kiosk.service || true
 fi
 
 # The UI is laid out for the 7" display's 800 × 480 points (5.2 px/mm). Touch Display 2
