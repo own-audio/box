@@ -9,6 +9,10 @@ that version's section below as a GitHub Release.
 
 ### Fixed
 
+- Gapless play of M4A (AAC, ALAC) albums: mpv dropped the last 23–46 ms of every M4A,
+  heard as a jump at each join of an album that runs on. mpv now reads M4A edit lists the
+  plain way (`--demuxer-lavf-o=advanced_editlist=0`); measured on a tone split in two,
+  M4A, MP3, FLAC and Opus all join without a gap or a lost sample.
 - A Pi 4 started from a plain power supply waited about eight minutes on cloud-init at
   every start (from a computer's USB port it went on at once). cloud-init only applies
   Raspberry Pi Imager's settings at the first start; the box now switches it off at the

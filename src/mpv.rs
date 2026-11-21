@@ -150,6 +150,10 @@ async fn supervise(
             // mpv reads up to 150 MiB ahead by default; a Zero 2 W has 512 MiB for everything.
             // A few minutes of audio is plenty to ride out a drop.
             .args(["--demuxer-max-bytes=24MiB", "--demuxer-max-back-bytes=8MiB"])
+            // With ffmpeg's advanced edit lists mpv drops the last AAC frame of every M4A
+            // (23–46 ms), a jump at each join of an album that runs on; measured, the plain
+            // edit list keeps M4A whole and leaves MP3, FLAC and Opus as they were.
+            .arg("--demuxer-lavf-o=advanced_editlist=0")
             .arg(format!("--audio-device={audio_device}"))
             .args(&audio_options)
             // Read on every start, so an mpv restarted after a crash keeps the chosen volume
