@@ -78,6 +78,19 @@ replace() {
 # A source counts once its service is there (a build installs the program before the unit).
 installed() { systemctl cat "$1" >/dev/null 2>&1; }
 
+# A source on or off. systemctl enable reloads all of systemd every time (1.3–1.5 s on a
+# Pi 4, nothing else starts meanwhile), so only when the setting really changed; --no-block
+# because squeezelite waits for the network, which held this script up at every boot.
+want() {
+  if [ "$2" = yes ]; then
+    systemctl is-enabled --quiet "$1" || systemctl enable --quiet "$1"
+    systemctl is-active --quiet "$1" || systemctl start --no-block "$1"
+  else
+    ! systemctl is-enabled --quiet "$1" || systemctl disable --quiet "$1"
+    ! systemctl is-active --quiet "$1" || systemctl stop --no-block "$1"
+  fi
+}
+
 hook() { echo "/usr/bin/curl -fsS -m 5 -X POST http://127.0.0.1:8686/api/outside/$1/$2"; }
 
 AIRPLAY_CONF="general = {
@@ -105,7 +118,7 @@ if installed shairport-sync.service; then
   if replace /etc/shairport-sync.conf "$AIRPLAY_CONF" && [ "$AIRPLAY" = yes ]; then
     systemctl restart shairport-sync.service || true
   fi
-  if [ "$AIRPLAY" = yes ]; then systemctl enable --now --quiet shairport-sync.service; else systemctl disable --now --quiet shairport-sync.service; fi
+  want shairport-sync.service "$AIRPLAY"
 fi
 
 # squeezelite: -C closes the card after 2 idle seconds so own.audio and AirPlay can have it.
@@ -118,7 +131,7 @@ if installed squeezelite.service; then
   if replace /etc/default/squeezelite "$MA_CONF" && [ "$MA" = yes ]; then
     systemctl restart squeezelite.service || true
   fi
-  if [ "$MA" = yes ]; then systemctl enable --now --quiet squeezelite.service; else systemctl disable --now --quiet squeezelite.service; fi
+  want squeezelite.service "$MA"
 fi
 
 # The name as the box's address, only on a box made from the SD card image: a box set up

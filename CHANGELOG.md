@@ -9,6 +9,11 @@ that version's section below as a GitHub Release.
 
 ### Fixed
 
+- A faster start: 24 s to 17 s on a Pi 4 with Touch Display 2. At every start the AirPlay
+  and Music Assistant settings script enabled both sources again, and each enable made
+  systemd reload all its units (1.3–1.5 s each, nothing else starting meanwhile); it now
+  enables or disables a source only when the setting changed. udisks2 and e2scrub_reap,
+  desktop services the box never uses, are masked (by the image and by the update).
 - Gapless play of M4A (AAC, ALAC) albums: mpv dropped the last 23–46 ms of every M4A,
   heard as a jump at each join of an album that runs on. mpv now reads M4A edit lists the
   plain way (`--demuxer-lavf-o=advanced_editlist=0`); measured on a tone split in two,

@@ -132,6 +132,9 @@ sed -i '1s/$/ systemd.firstboot=off/' "$root/boot/firmware/cmdline.txt"
 # back to the card. The journal already lives in memory (Raspberry Pi OS's default).
 in_root systemctl mask apt-daily.timer apt-daily-upgrade.timer apt-listchanges.timer \
   man-db.timer dpkg-db-backup.timer rpi-zram-writeback.timer
+# Nor desktop services that cost the start ~4 s on a Pi 4: udisks2 mounts drives for a
+# desktop, e2scrub_reap cleans up after LVM snapshots the box never takes.
+in_root systemctl mask udisks2.service e2scrub_reap.service
 # NetworkManager keeps the Wi-Fi switched off on a fresh Raspberry Pi OS; the box needs it
 # for its own setup Wi-Fi before anyone has chosen a country.
 printf '[main]\nNetworkingEnabled=true\nWirelessEnabled=true\nWWANEnabled=true\n' \

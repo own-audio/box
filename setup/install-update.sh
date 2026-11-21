@@ -95,6 +95,9 @@ FILES
   systemctl daemon-reload
   # Units that start at boot since a later release (their [Install] says so).
   [ -e /etc/systemd/system/ownbox-sources.service ] && systemctl enable --quiet ownbox-sources.service
+  # Desktop services the box never uses, masked in the image since beta.12; they slowed
+  # every start.
+  systemctl mask --quiet udisks2.service e2scrub_reap.service 2>/dev/null || true
   # Programs a later release needs (wlr-randr turns the screen); a box without network
   # gets them at the next update or the weekly security run.
   ensure_packages || echo "  packages: left for later"
