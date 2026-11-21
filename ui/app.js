@@ -2695,7 +2695,8 @@ function settingsPages() {
       el('dt', { text: t('Board') }), dd('board'),
       el('dt', { text: t('Display') }), dd('display'),
       el('dt', { text: t('Version') }), dd('version'),
-      el('dt', { text: t('Running for') }), dd('uptime'));
+      el('dt', { text: t('Running for') }), dd('uptime'),
+      el('dt', { text: t('Start took') }), dd('startup'));
   };
   const account = () => el('div', { class: 'settings-group' },
     el('div', { class: 'buttons' }, el('button', { id: 'signout', class: 'secondary', text: t('Sign out'), onclick: signOut })));
@@ -2863,6 +2864,10 @@ async function refreshStatus() {
     show('display', hw.display ? `${hw.display.name} (${hw.display.mode})` : '—');
     show('version', `ownbox ${s.version}`);
     show('uptime', uptime(s.uptime_secs));
+    if (s.startup) {
+      const slow = s.startup.slowest.slice(0, 3).map(([unit, time]) => `${unit.replace(/\.service$/, '')} ${time}`).join(', ');
+      show('startup', `${s.startup.total}${slow ? ` — ${t('slowest')}: ${slow}` : ''}`);
+    }
   } catch (e) {
     show('mpv', e.message, 'bad');
   }

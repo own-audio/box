@@ -1408,6 +1408,7 @@ struct Status {
     mpv: MpvStatus,
     power: Option<power::Power>,
     hardware: hardware::Hardware,
+    startup: Option<crate::startup::Startup>,
 }
 
 #[derive(Serialize)]
@@ -1430,6 +1431,7 @@ async fn status(State(s): State<Arc<AppState>>) -> Json<Status> {
         mpv,
         power: power::read().await,
         hardware: hardware::read(),
+        startup: crate::startup::read().await,
     })
 }
 

@@ -17,6 +17,8 @@ const ROOMS = {
 };
 
 const CS = {
+  "Start took": "Start trval",
+  "slowest": "nejpomalejší",
   "Turn the screen": "Otočení obrazovky",
   "The screen turns; touch follows a moment later.": "Obrazovka se otočí, dotyk ji dožene za okamžik.",
   // sign-in
@@ -452,6 +454,8 @@ const CS = {
 };
 
 const SK = {
+  "Start took": "Štart trval",
+  "slowest": "najpomalšie",
   "Turn the screen": "Otočenie obrazovky",
   "The screen turns; touch follows a moment later.": "Obrazovka sa otočí, dotyk ju dobehne o chvíľu.",
   "Sign in to own.audio": "Prihlásenie do own.audio",
@@ -827,6 +831,8 @@ const SK = {
 const COUNTS_SK = {"tracks": ["{n} skladba", "{n} skladby", "{n} skladieb"], "unplayed": ["{n} nevypočutá", "{n} nevypočuté", "{n} nevypočutých"]};
 
 const HU = {
+  "Start took": "Indulás ideje",
+  "slowest": "leglassabb",
   "Turn the screen": "Képernyő elforgatása",
   "The screen turns; touch follows a moment later.": "A kép elfordul, az érintés egy pillanat múlva követi.",
   "Sign in to own.audio": "Bejelentkezés az own.audio szolgáltatásba",
