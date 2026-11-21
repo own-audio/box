@@ -7,6 +7,18 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+
+- Settings says what is set on each row of its list: the box's name, language and time
+  zone; the output and equalizer; brightness, switching off and turning; the Wi-Fi it is
+  on; paired phones; AirPlay and Music Assistant on or off; the account and server; whether
+  the box is up to date. A new version shows as "New" beside Updates.
+- Updates in plain words: "This box is up to date" or "A new version is ready", one button
+  to install or to check, and after a check that finds nothing it says so. The release
+  notes wait behind "What is new" (they are in English). The history reads as dates and
+  sentences instead of the installer's records, and going back to the previous version
+  takes two taps.
+
 ## [1.0.0-beta.12] — 2026-11-21
 
 Screen turning with touch that follows, tab icons, icons where a picture is missing, and a

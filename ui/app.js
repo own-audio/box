@@ -2460,72 +2460,178 @@ function eqView() {
 
 // --- updates -------------------------------------------------------------------------
 
-async function updateSettings() {
-  const group = el('div', { class: 'settings-group' }, el('div', { class: 'section-title', text: t('Updates') }));
+/** A date and time from the update records, short ("18. 11. 20:36"). */
+function when(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString(locale(), { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+/** The installer's record ("2026-11-18T20:36:55+01:00 installed 1.0.0-beta.11") in words. */
+function updateRecord(line) {
+  if (!line) return null;
+  const [stamp, ...rest] = line.split(' ');
+  const text = rest.join(' ');
+  let m;
+  let say;
+  if ((m = text.match(/^installed (\S+)/))) say = t('Version {v} installed', { v: m[1] });
+  else if ((m = text.match(/^rolled back from (\S+) to (\S+)/))) say = t('Version {a} did not start; the box went back to {b}', { a: m[1], b: m[2] });
+  else if ((m = text.match(/^went back from (\S+) to (\S+)/))) say = t('Went back to version {v}', { v: m[2] });
+  else if (text.startsWith('refused')) say = t('The update could not be installed');
+  else say = text;
+  return `${when(stamp)} · ${say}`;
+}
+
+/** The weekly security run's record in words. */
+function systemRecord(line) {
+  if (!line) return null;
+  const [stamp, ...rest] = line.split(' ');
+  const text = rest.join(' ');
+  let m;
+  let say;
+  if ((m = text.match(/security updates: (\d+) packages/))) say = t('{n} security fixes installed', { n: m[1] });
+  else if (text.includes('nothing new')) say = t('nothing new');
+  else if (text.includes('no network')) say = t('no internet connection');
+  else say = t('did not finish');
+  return `${when(stamp)} · ${say}`;
+}
+
+/** Release notes as a person reads them: the opening lines, then the list without markup. */
+function releaseNotes(notes) {
+  const text = (notes || '').trim();
+  const [lead, ...more] = text.split(/\n\s*\n/);
+  const rest = more.join('\n\n')
+    .replace(/^#+\s*/gm, '')
+    .replace(/`([^`]*)`/g, '$1')
+    .trim();
+  // The notes are written in English: in another language they wait behind "What is new"
+  // instead of greeting the reader.
+  const lead1 = lead.replace(/\s*\n\s*/g, ' ');
+  const inside = LANG === 'en' ? rest : [lead1, rest].filter(Boolean).join('\n\n');
+  const parts = LANG === 'en' ? [el('p', { text: lead1 })] : [];
+  if (inside) {
+    parts.push(el('details', { class: 'notes' },
+      el('summary', { text: t('What is new') }),
+      el('pre', { class: 'notes', text: inside.slice(0, 4000) })));
+  }
+  return parts;
+}
+
+async function updateSettings(said) {
+  // No heading of its own: the page is called Updates already, and a redraw kept it.
+  const group = el('div', { class: 'settings-group' });
   const u = await get('/api/update').catch(() => null);
-  if (!u) return group;
-  const msg = el('p', { class: 'muted small' });
-  const redraw = async () => group.replaceWith(await updateSettings());
-  const act = (label, path, primary) => el('button', {
-    class: primary ? '' : 'secondary',
-    text: label,
-    onclick: async (ev) => {
-      ev.currentTarget.disabled = true;
-      msg.textContent = t('Working…');
-      try {
-        await post(path);
-        if (path !== '/api/update/check') {
-          // The box restarts with the other version: the page waits until the box answers
-          // with a version other than this one (or with a result), then reloads.
-          msg.textContent = t('Installing. The box restarts in a moment.');
-          const until = Date.now() + 180000;
-          const wait = async () => {
-            const now = await get('/api/update').catch(() => null);
-            if ((now && (now.current !== u.current || (now.last_result && now.last_result !== u.last_result && !now.state))) || Date.now() > until) {
-              location.reload();
-              return;
-            }
-            setTimeout(wait, 2000);
-          };
-          setTimeout(wait, 3000);
+  if (!u) {
+    group.append(el('p', { class: 'muted', text: t('The box did not answer. Try again in a moment.') }));
+    return group;
+  }
+  const msg = el('p', { class: 'muted small', text: said || '' });
+  const redraw = async (text) => group.replaceWith(await updateSettings(text));
+
+  const install = el('button', { class: 'primary', text: t('Install now'), onclick: async (ev) => {
+    ev.currentTarget.disabled = true;
+    msg.textContent = t('Installing. The box restarts in a moment, then this page loads again.');
+    try {
+      await post('/api/update/install');
+    } catch (e) {
+      msg.textContent = t('Failed: {e}', { e: t(e.message) });
+      ev.currentTarget.disabled = false;
+      return;
+    }
+    // The box restarts with the other version: wait until it answers with a version other
+    // than this one (or with a result), then reload.
+    const until = Date.now() + 180000;
+    const wait = async () => {
+      const now = await get('/api/update').catch(() => null);
+      if ((now && (now.current !== u.current || (now.last_result && now.last_result !== u.last_result && !now.state))) || Date.now() > until) {
+        location.reload();
+        return;
+      }
+      setTimeout(wait, 2000);
+    };
+    setTimeout(wait, 3000);
+  } });
+
+  const check = el('button', { class: 'secondary', text: t('Check for a new version'), onclick: async (ev) => {
+    ev.currentTarget.disabled = true;
+    msg.textContent = t('Checking…');
+    try {
+      const r = await post('/api/update/check');
+      redraw(r && r.available ? '' : t('No new version. This box has the latest one.'));
+    } catch (e) {
+      redraw(t('Could not check. Is the box connected to the internet?'));
+    }
+  } });
+
+  // What the box has, in one sentence, and what to do about it.
+  const status = el('div', { class: 'update-status' });
+  if (!u.enabled) {
+    status.append(
+      el('p', { class: 'update-headline', text: t('Version {v}', { v: u.current }) }),
+      el('p', { class: 'muted small', text: t('This box does not update itself; it is updated from the computer it was set up from.') }));
+    group.append(status, msg);
+    return group;
+  }
+  const busy = { checking: t('Checking…'), downloading: t('Downloading the new version…'), installing: t('Installing…') }[u.state];
+  if (u.available) {
+    status.append(
+      el('p', { class: 'update-headline', text: t('A new version is ready: {v}', { v: u.available.version }) }),
+      ...releaseNotes(u.available.notes),
+      el('div', { class: 'buttons' }, install),
+      el('p', { class: 'muted small', text: t('Music stops for a moment while the box restarts. Everything else stays as it is.') }));
+  } else {
+    status.append(
+      el('p', { class: 'update-headline ok', text: t('This box is up to date.') }),
+      el('p', { class: 'muted small', text: t('Version {v}', { v: u.current }) }),
+      el('div', { class: 'buttons' }, check));
+  }
+  if (busy) msg.textContent = busy;
+  else if (u.state && !said) msg.textContent = t('The last try did not work out: {e}', { e: t(u.state) });
+  group.append(status, msg);
+
+  // By itself at night, or only on a tap.
+  const auto = (on) => el('button', {
+    class: u.auto === on ? 'on' : 'secondary',
+    text: on ? t('By itself at night') : t('Only when I tap Install'),
+    onclick: async () => { await post('/api/update/auto', { on }).catch(() => null); redraw(); },
+  });
+  group.append(
+    el('div', { class: 'section-title', text: t('New versions') }),
+    el('div', { class: 'buttons wrap' }, auto(true), auto(false)),
+    el('p', { class: 'muted small', text: u.auto
+      ? t('The box installs a new version between 3 and 5 at night, when nothing is playing.')
+      : t('The box tells you when a new version is ready; it installs when you tap Install.') }),
+    el('p', { class: 'muted small', text: t('Security fixes for the system come once a week either way.') }));
+
+  // What happened lately, for when something seems off.
+  const history = [
+    u.last_result && [t('Last update'), updateRecord(u.last_result)],
+    u.system_result && [t('Security fixes'), systemRecord(u.system_result)],
+  ].filter(Boolean);
+  if (history.length || u.previous) {
+    group.append(el('div', { class: 'section-title', text: t('History') }));
+    for (const [label, text] of history) {
+      group.append(el('p', { class: 'history' }, el('span', { text: `${label}: ` }), el('span', { class: 'muted', text })));
+    }
+    if (u.previous) {
+      let armed = null;
+      const back = el('button', { class: 'secondary', text: t('Go back to version {v}', { v: u.previous }), onclick: async (ev) => {
+        // Two taps: going back restarts the box.
+        if (!armed) {
+          ev.currentTarget.textContent = t('Tap again to go back');
+          armed = setTimeout(() => { armed = null; back.textContent = t('Go back to version {v}', { v: u.previous }); }, 4000);
           return;
         }
-        redraw();
-      } catch (e) {
-        msg.textContent = t('Failed: {e}', { e: t(e.message) });
-        ev.currentTarget.disabled = false;
-      }
-    },
-  });
-  const buttons = el('div', { class: 'buttons' });
-  group.append(el('div', { class: 'setting' }, el('span', { text: t('Version') }), el('span', { text: `ownbox ${u.current}` })));
-  if (!u.enabled) {
-    group.append(el('p', { class: 'muted small', text: t('This box does not update itself; it is updated from the computer it was set up from.') }));
-  } else if (u.available) {
-    group.append(el('p', { text: t('Version {v} is available.', { v: u.available.version }) }));
-    if (u.available.notes) group.append(el('pre', { class: 'notes', text: u.available.notes.trim().slice(0, 1500) }));
-    buttons.append(act(t('Install'), '/api/update/install', true));
-  } else {
-    group.append(el('p', { class: 'muted small', text: t('Up to date.') }));
-    buttons.append(act(t('Check now'), '/api/update/check'));
+        ev.currentTarget.disabled = true;
+        msg.textContent = t('Going back. The box restarts in a moment.');
+        await post('/api/update/rollback').catch(() => null);
+        setTimeout(() => location.reload(), 20000);
+      } });
+      group.append(
+        el('div', { class: 'buttons' }, back),
+        el('p', { class: 'muted small', text: t('If something stopped working after the last update.') }));
+    }
   }
-  if (u.previous) buttons.append(act(t('Go back to {v}', { v: u.previous }), '/api/update/rollback'));
-  if (u.enabled) {
-    const auto = (on) => el('button', {
-      class: u.auto === on ? 'on' : 'secondary',
-      text: on ? t('At night by itself') : t('Only when I tap Install'),
-      onclick: async () => { await post('/api/update/auto', { on }).catch(() => null); redraw(); },
-    });
-    group.append(
-      el('div', { class: 'setting' }, el('span', { text: t('Install updates') })),
-      el('div', { class: 'buttons' }, auto(true), auto(false)),
-      el('p', { class: 'muted small', text: t('Between 3 and 5 at night by the box\'s time zone, when nothing is playing. Debian\'s security updates come once a week either way. The box may restart.') }),
-    );
-  }
-  if (buttons.childElementCount) group.append(buttons);
-  if (u.last_result) group.append(el('p', { class: 'muted small', text: t('Last: {r}', { r: u.last_result }) }));
-  if (u.system_result) group.append(el('p', { class: 'muted small', text: t('System: {r}', { r: u.system_result }) }));
-  group.append(msg);
   return group;
 }
 
@@ -2674,7 +2780,8 @@ function pairView() {
   };
 }
 
-// Settings: a short list of pages, each with one subject, instead of one long page.
+// Settings: a short list of pages, each with one subject, instead of one long page. Each
+// row says what is set now (its summary), so most questions are answered without opening it.
 function settingsPages() {
   const eqRow = () => el('div', { class: 'settings-group' },
     el('div', { class: 'setting' }, el('span', { text: t('Equalizer') }),
@@ -2687,42 +2794,100 @@ function settingsPages() {
     const dd = (id) => el('dd', { id });
     setTimeout(refreshStatus, 0);
     return el('dl', {},
+      el('dt', { text: t('Version') }), dd('version'),
       el('dt', { text: t('Account') }), dd('account'),
-      el('dt', { text: t('Player') }), dd('mpv'),
-      el('dt', { text: t('Audio') }), dd('audio'),
       el('dt', { text: t('Server') }), dd('server'),
+      el('dt', { text: t('Audio') }), dd('audio'),
+      el('dt', { text: t('Player') }), dd('mpv'),
       el('dt', { text: t('Power') }), dd('power'),
       el('dt', { text: t('Board') }), dd('board'),
       el('dt', { text: t('Display') }), dd('display'),
-      el('dt', { text: t('Version') }), dd('version'),
       el('dt', { text: t('Running for') }), dd('uptime'),
       el('dt', { text: t('Start took') }), dd('startup'));
   };
-  const account = () => el('div', { class: 'settings-group' },
+  const signOutRow = () => el('div', { class: 'settings-group' },
     el('div', { class: 'buttons' }, el('button', { id: 'signout', class: 'secondary', text: t('Sign out'), onclick: signOut })));
+
+  const join = (...parts) => parts.filter(Boolean).join(' · ');
+  const eqSummary = (e) => (!e || !e.eq ? null : e.eq.enabled ? t('Equalizer: {p}', { p: e.eq.preset_name ? t(e.eq.preset_name) : t('own') }) : t('Equalizer off'));
+  const langName = { cs: 'Čeština', sk: 'Slovenčina', hu: 'Magyar', en: 'English' };
+  const host = (url) => { try { return new URL(url).host; } catch { return url; } };
+
   if (REMOTE) {
     // From a phone: how it sounds and looks; the box's own settings stay on its screen.
     return [
-      { title: 'Sound', hint: 'Equalizer', parts: async () => [eqRow()] },
+      { title: 'Sound', hint: 'Equalizer', parts: async () => [eqRow()],
+        summary: async () => eqSummary(await get('/api/eq').catch(() => null)) },
       { title: 'Appearance', hint: 'Theme, buttons', parts: async () => [appearanceSettings()] },
       { title: 'About the box', hint: 'Version, player, power', parts: async () => [about()] },
     ];
   }
   return [
-    { title: 'General', hint: 'Name, language, look, time zone', parts: async () => [nameSettings(), languageSettings(), appearanceSettings(), await timeSettings()] },
-    { title: 'Sound', hint: 'Equalizer, output, sound card', parts: async () => [eqRow(), await outputSettings(), await hatSettings(), toneRow()] },
-    { title: 'Screen', hint: 'Brightness, switching off', screen: true, parts: async () => {
+    { title: 'General', hint: 'Name, language, look, time zone',
+      parts: async () => [nameSettings(), languageSettings(), appearanceSettings(), await timeSettings()],
+      summary: async () => {
+        const [st, z] = await Promise.all([get('/api/setup').catch(() => null), get('/api/time').catch(() => null)]);
+        return join(st && st.box_name, langName[LANG], z && z.zone && z.zone.split('/').pop().replaceAll('_', ' '));
+      } },
+    { title: 'Sound', hint: 'Equalizer, output, sound card, test tone',
+      parts: async () => [eqRow(), await outputSettings(), await hatSettings(), toneRow()],
+      summary: async () => {
+        const [a, e] = await Promise.all([get('/api/audio').catch(() => null), get('/api/eq').catch(() => null)]);
+        const out = a && a.outputs.find((o) => o.device === a.chosen);
+        return join(out && (out.kind === 'analog' ? t('3.5 mm jack') : out.label), eqSummary(e));
+      } },
+    { title: 'Screen', hint: 'Brightness, switching off, turning', screen: true, parts: async () => {
       const sc = await get('/api/screen').catch(() => null);
       return sc && sc.controllable ? [screenSettings(sc)] : [el('div', { class: 'message', text: t('This box has no screen to set.') })];
+    }, summary: async () => {
+      const sc = await get('/api/screen').catch(() => null);
+      if (!sc || !sc.controllable) return t('No screen');
+      const off = OFF_AFTER.find(([secs]) => secs === sc.off_after_secs);
+      return join(t('Brightness {p}', { p: `${Math.round((sc.brightness / 255) * 100)} %` }),
+        sc.off_after_secs ? t('off after {t}', { t: t(off ? off[1] : `${sc.off_after_secs} s`) }) : t('stays on'),
+        sc.rotation ? `${sc.rotation}°` : null);
     } },
-    { title: 'Network', hint: 'Wi-Fi', parts: async () => [await networkSettings()] },
-    { title: 'Phones', hint: 'Phone control, pairing', parts: async () => [phoneSettings()] },
-    { title: 'AirPlay and Music Assistant', hint: 'Other apps playing to the box', parts: async () => [await sourcesSettings()] },
-    { title: 'Library', hint: 'Server, account, start over', parts: async () => [serverSettings(), account()] },
-    { title: 'Updates', hint: 'Version, night updates', update: true, parts: async () => [await updateSettings()] },
-    { title: 'About the box', hint: 'Player, power, board, display', parts: async () => [about()] },
+    { title: 'Network', hint: 'Wi-Fi, cable', parts: async () => [await networkSettings()],
+      summary: async () => {
+        const w = await get('/api/wifi').catch(() => null);
+        if (!w) return null;
+        if (w.ethernet) return t('Cable');
+        if (w.connected) return t('Wi-Fi: {n}', { n: w.connected });
+        return t('Not connected');
+      } },
+    { title: 'Phones', hint: 'Control the box from a phone', parts: async () => [phoneSettings()],
+      summary: async () => {
+        const d = await get('/api/remote/devices').catch(() => null);
+        if (!d) return null;
+        return d.length ? t('Paired phones: {n}', { n: d.length }) : t('No phone paired yet');
+      } },
+    { title: 'AirPlay and Music Assistant', hint: 'Other apps playing to the box', parts: async () => [await sourcesSettings()],
+      summary: async () => {
+        const st = await get('/api/outside/sources').catch(() => null);
+        if (!st) return null;
+        const one = (key, name) => (st[key] && st[key].installed ? `${name} ${st[key].enabled ? t('on') : t('off')}` : null);
+        return join(one('airplay', 'AirPlay'), one('music_assistant', 'Music Assistant'));
+      } },
+    { title: 'Library', hint: 'Server, account, start over', parts: async () => [serverSettings(), signOutRow()],
+      summary: async () => {
+        const st = await get('/api/setup').catch(() => null);
+        return join(account && account.email, st && host(st.server_url));
+      } },
+    { title: 'Updates', hint: 'New versions of the box', update: true, parts: async () => [await updateSettings()],
+      summary: async (u) => {
+        if (!u) return null;
+        if (!u.enabled) return t('Version {v}', { v: u.current });
+        if (u.available) return t('A new version is ready: {v}', { v: u.available.version });
+        return join(t('Up to date'), u.auto ? t('updates at night') : null);
+      } },
+    { title: 'About the box', hint: 'Version, player, power, board, display',
+      parts: async () => [about()],
+      summary: async () => t('Version {v}', { v: VERSION_SEEN || '' }) },
   ];
 }
+
+// The box's version as the status last gave it, for the About row's summary.
+let VERSION_SEEN = null;
 
 function settingsPage(page) {
   return {
@@ -2742,14 +2907,23 @@ function settingsView() {
   return {
     async render(box) {
       const u = REMOTE ? null : await get('/api/update').catch(() => null);
+      if (u) VERSION_SEEN = u.current;
       const waiting = !!(u && u.enabled && u.available && !u.state);
-      box.append(brand(44), el('div', { class: 'settings-list' }, settingsPages().map((page) =>
-        el('button', { class: 'settings-row', onclick: () => push(settingsPage(page)) },
+      const rows = settingsPages().map((page) => {
+        const hint = el('span', { class: 'settings-row-hint muted', text: t(page.hint) });
+        // The summary replaces the description once it is in; the description stays when
+        // the box has nothing to say (or does not answer).
+        if (page.summary) {
+          page.summary(u).then((text) => { if (text) hint.textContent = text; }).catch(() => null);
+        }
+        return el('button', { class: 'settings-row', onclick: () => push(settingsPage(page)) },
           el('span', { class: 'settings-row-text' },
             el('span', { class: 'settings-row-title', text: t(page.title) }),
-            el('span', { class: 'settings-row-hint muted', text: t(page.hint) })),
-          page.update && waiting ? el('span', { class: 'settings-row-badge', text: u.available.version }) : null,
-          el('span', { class: 'settings-row-chevron', 'aria-hidden': 'true', text: '›' })))));
+            hint),
+          page.update && waiting ? el('span', { class: 'settings-row-badge', text: t('New') }) : null,
+          el('span', { class: 'settings-row-chevron', 'aria-hidden': 'true', text: '›' }));
+      });
+      box.append(brand(44), el('div', { class: 'settings-list' }, rows));
     },
   };
 }
@@ -2862,7 +3036,8 @@ async function refreshStatus() {
     const heat = [hw.temperature_c != null ? `${hw.temperature_c.toLocaleString(locale())} °C` : null, hw.cpu_mhz ? `${hw.cpu_mhz} MHz` : null].filter(Boolean).join(' · ');
     show('board', [hw.board || '—', heat].filter(Boolean).join(' · '));
     show('display', hw.display ? `${hw.display.name} (${hw.display.mode})` : '—');
-    show('version', `ownbox ${s.version}`);
+    show('version', s.version);
+    VERSION_SEEN = s.version;
     show('uptime', uptime(s.uptime_secs));
     if (s.startup) {
       const slow = s.startup.slowest.slice(0, 3).map(([unit, time]) => `${unit.replace(/\.service$/, '')} ${time}`).join(', ');

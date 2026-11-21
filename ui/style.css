@@ -351,6 +351,7 @@ dl { display: grid; grid-template-columns: 150px 1fr; gap: 10px 20px; margin: 0 
 dt { color: var(--muted); }
 dd { margin: 0; overflow-wrap: anywhere; }
 .buttons { display: flex; gap: 12px; }
+.buttons.wrap { flex-wrap: wrap; }
 #message { margin-top: 12px; color: var(--muted); min-height: 1.4em; }
 .settings-group { margin-top: 8px; display: flex; flex-direction: column; gap: 14px; }
 .setting { display: flex; align-items: center; gap: 16px; }
@@ -703,6 +704,13 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 }
 
 .notes { white-space: pre-wrap; font: inherit; font-size: 15px; color: var(--muted, #aaa); max-height: 180px; overflow-y: auto; margin: 4px 0 8px; }
+.update-status { margin: 4px 0 8px; }
+.history { margin: 4px 0; font-size: 15px; }
+.update-headline { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+.update-headline.ok { color: var(--ok); }
+details.notes { max-height: none; overflow: visible; white-space: normal; }
+details.notes summary { cursor: pointer; color: var(--accent); padding: 6px 0; }
+details.notes pre.notes { max-height: 260px; }
 
 /* --- the own.audio mark ----------------------------------------------------------------- */
 
@@ -859,7 +867,7 @@ button.danger.armed { background: var(--bad); color: #fff; }
 .settings-row:active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .settings-row-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .settings-row-title { font-weight: 600; }
-.settings-row-hint { font-size: 14px; }
+.settings-row-hint { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .settings-row-badge { font-size: 13px; padding: 3px 9px; border-radius: 999px; background: var(--accent); color: #fff; white-space: nowrap; }
 .settings-row-chevron { font-size: 26px; line-height: 1; color: var(--muted); }
 .settings-title { margin: 4px 0 6px; }
