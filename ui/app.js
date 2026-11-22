@@ -2890,7 +2890,7 @@ function pairView() {
         el('p', { class: 'wiz-intro', text: t('Scan the code with the phone. It opens the box in its browser, ready to control it.') }),
         el('div', { class: 'wiz-signin' },
           el('img', { class: 'wiz-qr', src: `/api/remote/qr.svg?url=${encodeURIComponent(r.url)}`, alt: '', width: 220, height: 220 }),
-          el('div', {},
+          el('div', { class: 'wiz-code' },
             el('p', { class: 'link', text: r.url.replace(/\?.*$/, '') }),
             el('p', { class: 'code', text: r.code }),
             left,

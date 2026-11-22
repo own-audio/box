@@ -7,6 +7,11 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- Pairing a phone on an upright screen: the QR code stands above the code and the address,
+  which no longer run off the right edge. The sign-in code in the setup wizard gets the same.
+
 ### Changed
 
 - README: new screenshots with the Radio tab, and the upright Touch Display 2.
