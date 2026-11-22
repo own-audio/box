@@ -7,6 +7,17 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- The real cause of a black screen on a Pi 4 started from a power supply: the beta image's
+  USB console (`systemd.debug_shell`) waited for a computer on the port while holding the
+  system console's lock, and every unit that sets up a terminal waited behind it — the
+  kiosk among them, for 90 s and then for good. From a computer's USB port the port opened
+  at once, which is why it only failed on a power supply. The console is now a root login
+  by agetty, which opens the port itself and waits for nobody; `boot-config.sh` moves
+  boxes over at their next start (the kernel's command line loses `systemd.debug_shell`).
+  The beta.14 change to the kiosk's screen check stays, but it was not the cause.
+
 ## [1.0.0-beta.15] — 2026-11-22
 
 A fix for updates on a Pi 3. Boxes on beta.10 or later install it by themselves at night.

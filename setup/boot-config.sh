@@ -119,6 +119,39 @@ else
   rm -f /etc/tmpfiles.d/ownbox-cpu.conf
 fi
 
+# The USB console of a beta image (g_serial on the kernel's command line): root logged in by
+# agetty, which opens the port itself (-L) and waits for nobody. systemd.debug_shell, used
+# before, held the console's lock while it waited for a computer on the port; on a box on
+# its own power supply nothing ever came, and every unit that sets up a terminal waited
+# with it: the kiosk for 90 s and then for good, the screen black.
+CMDLINE=${CMDLINE:-/boot/firmware/cmdline.txt}
+if grep -q 'g_serial' "$CMDLINE" 2>/dev/null; then
+  GETTY=/etc/systemd/system/serial-getty@ttyGS0.service.d/ownbox.conf
+  getty_before=$(cat "$GETTY" 2>/dev/null || true)
+  install -d "$(dirname "$GETTY")"
+  write "$GETTY" '# own.audio box beta: a root shell over USB (boot-config.sh). systemd must not open the
+# port (StandardInput=tty blocks with no computer on it, and every unit setting up a
+# terminal blocks behind it); agetty opens it and does not wait for a carrier (-L).
+[Service]
+StandardInput=null
+StandardOutput=journal
+TTYReset=no
+TTYVHangup=no
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root -L --noclear --keep-baud 115200,57600,38400,9600 ttyGS0 $TERM'
+  if [ "$(cat "$GETTY")" != "$getty_before" ]; then
+    systemctl daemon-reload
+    systemctl enable --quiet serial-getty@ttyGS0.service
+    systemctl --no-block start serial-getty@ttyGS0.service || true
+  fi
+  if grep -q 'systemd.debug_shell=ttyGS0' "$CMDLINE"; then
+    sed 's/ systemd\.debug_shell=ttyGS0//' "$CMDLINE" > "$CMDLINE.ownbox-new"
+    sync "$CMDLINE.ownbox-new"
+    mv "$CMDLINE.ownbox-new" "$CMDLINE"
+    sync
+  fi
+fi
+
 # The screen turned in Settings (ownbox turns the picture with wlr-randr): touch turns with
 # it through libinput's calibration matrix, which is read when the touch device appears,
 # so the kiosk starts again when it changes.

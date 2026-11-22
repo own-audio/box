@@ -154,7 +154,9 @@ printf 'own.audio box %s (Raspberry Pi OS Lite 2026-10-06, arm64)\n' "$version" 
 case "$version" in
   *-*)
     echo "== serial console (beta)"
-    sed -i '1s/$/ modules-load=dwc2,g_serial systemd.debug_shell=ttyGS0/' "$root/boot/firmware/cmdline.txt"
+    # The root login on the port is set up by boot-config.sh at the first start (agetty, which
+    # never waits for a computer; systemd.debug_shell did and held up the kiosk).
+    sed -i '1s/$/ modules-load=dwc2,g_serial/' "$root/boot/firmware/cmdline.txt"
     printf '\n# own.audio box beta: a root shell over USB (g_serial on ttyGS0); releases leave it out\n[pi02]\ndtoverlay=dwc2\n[pi4]\ndtoverlay=dwc2\n[all]\n' \
       >> "$root/boot/firmware/config.txt"
     ;;
