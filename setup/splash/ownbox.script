@@ -11,9 +11,10 @@ turn = ROTATION * Math.Pi / 180;
 w = Window.GetWidth();
 h = Window.GetHeight();
 short = Math.Min(w, h);
-// The mark at 40 % of the screen's short side, the words under it at the same scale.
-size = Math.Int(short * 0.4);
-k = size / 360;
+// Laid out as still.png, which the kiosk shows next (imv, while Chromium starts): at 720 px
+// across, the mark 360 px, its middle 104 px above the screen's, the words' 190 px below.
+k = short / 720;
+size = Math.Int(360 * k);
 
 core_image = Image("core.png").Scale(size, size);
 arcs_image = Image("arcs.png").Scale(size, size);
@@ -26,10 +27,9 @@ arcs = Sprite();
 family = Sprite();
 words = Sprite(words_image);
 
-// The mark a little above the middle, the words below it; both moved round the middle by
-// the screen's turn.
-lift = size * 0.35;
-drop = size * 0.5 + words_base.GetHeight() * k * 0.9;
+// Both moved round the middle by the screen's turn.
+lift = 104 * k;
+drop = 190 * k;
 cx = w / 2 + lift * Math.Sin(turn);
 cy = h / 2 - lift * Math.Cos(turn);
 words.SetX(w / 2 - drop * Math.Sin(turn) - words_image.GetWidth() / 2);

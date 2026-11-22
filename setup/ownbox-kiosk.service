@@ -35,10 +35,18 @@ ExecStartPre=/bin/bash -c 'for i in {1..30}; do (exec 3<>/dev/tcp/127.0.0.1/8686
 # --password-store=basic keeps Chromium away from a keyring, which would ask
 # for a password at every start. --incognito keeps its cache and profile in RAM:
 # nothing the UI needs is stored by the browser, and the SD card is spared the writes.
-ExecStart=/usr/bin/cage -s -- /usr/bin/chromium --kiosk --noerrdialogs \
+# While Chromium starts (seconds on a Pi 3) the start-up screen's picture stays up: mpv (the
+# box has it already) shows still.png as a window of its own, at its own size like the start-up
+# screen, and Chromium opens over it; mpv goes after 90 s. Without a picture it just fails.
+ExecStart=/usr/bin/cage -s -- /bin/sh -c '\
+  mpv --no-config --really-quiet --vo=gpu --gpu-context=wayland --fs --video-unscaled=yes \
+    --no-audio --image-display-duration=90 --background-color=#000000 --no-osc \
+    --no-input-default-bindings --cursor-autohide=always \
+    /usr/share/plymouth/themes/ownbox/still.png >/dev/null 2>&1 & \
+  exec /usr/bin/chromium --kiosk --noerrdialogs \
   --disable-infobars --no-first-run --password-store=basic --incognito \
   --disable-features=Translate --check-for-update-interval=31536000 \
-  --ozone-platform=wayland ${KIOSK_URL}
+  --ozone-platform=wayland ${KIOSK_URL}'
 Restart=always
 RestartSec=3
 

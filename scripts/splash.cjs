@@ -37,5 +37,15 @@ const WORDS = `<html><body style="margin:0;background:transparent;font-family:-a
   await page.setViewportSize({ width: 800, height: 400 });
   await page.setContent(WORDS);
   await page.locator('#w').screenshot({ path: path.join(out, 'words.png'), omitBackground: true });
+  // The same picture standing still, mark and words together, for the kiosk to show while
+  // Chromium starts (imv in cage): the start-up screen goes on with no black between.
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.setContent(`<html><body style="margin:0;background:#000;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#fff">
+<div id="s" style="display:inline-flex;flex-direction:column;align-items:center;padding:40px 60px">
+  <svg width="${SIZE}" height="${SIZE}" viewBox="0 0 100 100">${MARK}</svg>
+  <div style="font-size:90px;font-weight:700;letter-spacing:-0.02em;margin-top:30px">own<span style="color:#9b7bff">.</span>audio</div>
+  <div style="font-size:42px;color:#8e8e93;margin-top:18px">Simple. Private. Yours.</div>
+</div></body></html>`);
+  await page.locator('#s').screenshot({ path: path.join(out, 'still.png') });
   await browser.close();
 })();

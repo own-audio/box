@@ -17,6 +17,9 @@ const ROOMS = {
 };
 
 const CS = {
+  // start-up sound
+  "Start-up sound": "Znělka při startu",
+  "\"own.audio. Simple. Private. Yours.\" once when the box starts. Never between 10 pm and 7 am, never over music.": "„own.audio. Simple. Private. Yours.“ jednou po zapnutí boxu. Nikdy mezi 22. a 7. hodinou a nikdy přes hudbu.",
   // restart and switch off
   "The box": "Box",
   "Restart": "Restartovat",
@@ -538,6 +541,9 @@ const CS = {
 };
 
 const SK = {
+  // start-up sound
+  "Start-up sound": "Znelka pri štarte",
+  "\"own.audio. Simple. Private. Yours.\" once when the box starts. Never between 10 pm and 7 am, never over music.": "„own.audio. Simple. Private. Yours.“ raz po zapnutí boxu. Nikdy medzi 22. a 7. hodinou a nikdy cez hudbu.",
   // restart and switch off
   "The box": "Box",
   "Restart": "Reštartovať",
@@ -999,6 +1005,9 @@ const SK = {
 const COUNTS_SK = {"tracks": ["{n} skladba", "{n} skladby", "{n} skladieb"], "unplayed": ["{n} nevypočutá", "{n} nevypočuté", "{n} nevypočutých"]};
 
 const HU = {
+  // start-up sound
+  "Start-up sound": "Indítási hang",
+  "\"own.audio. Simple. Private. Yours.\" once when the box starts. Never between 10 pm and 7 am, never over music.": "„own.audio. Simple. Private. Yours.” egyszer, amikor a doboz elindul. Soha 22 és 7 óra között, és soha zene közben.",
   // restart and switch off
   "The box": "A doboz",
   "Restart": "Újraindítás",

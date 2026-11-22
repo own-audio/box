@@ -2723,6 +2723,27 @@ async function sourcesSettings() {
   return group;
 }
 
+// --- start-up sound -------------------------------------------------------------------
+
+async function startupSoundSetting() {
+  const st = await get('/api/startup-sound').catch(() => null);
+  if (!st) return el('div');
+  const group = el('div', { class: 'settings-group' });
+  const btn = (on) => el('button', {
+    class: st.on === on ? 'on' : 'secondary',
+    text: t(on ? 'On' : 'Off'),
+    onclick: async () => {
+      if (st.on === on) return;
+      await post('/api/startup-sound', { on }).catch(() => null);
+      group.replaceWith(await startupSoundSetting());
+    },
+  });
+  group.append(
+    el('div', { class: 'setting' }, el('span', { text: t('Start-up sound') }), el('div', { class: 'buttons' }, btn(true), btn(false))),
+    el('p', { class: 'muted small', text: t('"own.audio. Simple. Private. Yours." once when the box starts. Never between 10 pm and 7 am, never over music.') }));
+  return group;
+}
+
 // --- restart and switch off (on the box's screen) ----------------------------------------
 
 /** Restart and Switch off, each on a second tap within four seconds. */
@@ -2929,7 +2950,7 @@ function settingsPages() {
         return join(st && st.box_name, langName[LANG], z && z.zone && z.zone.split('/').pop().replaceAll('_', ' '));
       } },
     { title: 'Sound', hint: 'Equalizer, output, sound card, test tone',
-      parts: async () => [eqRow(), await outputSettings(), await hatSettings(), toneRow()],
+      parts: async () => [eqRow(), await outputSettings(), await hatSettings(), await startupSoundSetting(), toneRow()],
       summary: async () => {
         const [a, e] = await Promise.all([get('/api/audio').catch(() => null), get('/api/eq').catch(() => null)]);
         const out = a && a.outputs.find((o) => o.device === a.chosen);
@@ -3809,7 +3830,7 @@ async function start() {
   document.body.classList.toggle('phone', REMOTE || HEADLESS);
   // The language comes first, so the first screen is already in it.
   const u = await get('/api/ui').catch(() => null);
-  if (u) LANG = u.language === 'en' ? 'en' : 'cs';
+  if (u) LANG = LANGS.includes(u.language) ? u.language : 'cs';
   if (u) applyTheme(u.theme);
   applyButtons(u && u.buttons);
   translatePage();
@@ -3834,6 +3855,9 @@ async function start() {
   }
   if (!setup.done) startWizard();
   else refreshSession();
+  // The box's own screen is up: the start-up sound, if this start has not had it (ownbox
+  // decides: once a start, not at night, not over music, not when switched off).
+  if (!REMOTE && !HEADLESS) post('/api/startup-sound/play').catch(() => null);
   setInterval(once(refreshSession), 2000);
   // A phone puts a tab in the background to sleep; back in front, it asks at once.
   document.addEventListener('visibilitychange', () => {

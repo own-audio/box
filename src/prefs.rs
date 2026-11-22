@@ -63,6 +63,8 @@ pub struct Prefs {
     pub debug_github: Option<String>,
     #[serde(default)]
     pub debug_keys: Vec<String>,
+    /// The start-up sound (missing = on; `jingle.rs`).
+    pub startup_sound: Option<bool>,
 }
 
 /// Writes `path` so that a power cut leaves the old file or the new one, never half of it:

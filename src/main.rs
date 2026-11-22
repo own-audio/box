@@ -19,6 +19,7 @@ mod screen;
 mod session;
 mod setup;
 mod debug;
+mod jingle;
 mod splash;
 mod startup;
 mod update;
@@ -158,6 +159,15 @@ async fn main() -> anyhow::Result<()> {
     tokio::spawn(night_updates(Arc::clone(&state)));
     tokio::spawn(screen::keep_rotation(Arc::clone(&state.prefs)));
     tokio::spawn(startup::watch());
+    // A box without a screen plays the start-up sound by itself; one with a screen when the
+    // page first shows the player.
+    if state.config.headless {
+        let s = Arc::clone(&state);
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            jingle::play_once(s).await;
+        });
+    }
     tokio::spawn(wifi::roam());
     tokio::spawn(buttons::run(Arc::clone(&state)));
 

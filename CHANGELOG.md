@@ -9,6 +9,15 @@ that version's section below as a GitHub Release.
 
 ### Added
 
+- A start-up sound: the own.audio motif (four soft notes, "own-au-di-o") and a calm voice
+  saying "own audio. Simple. Private. Yours." (Gemini's voice Achird, `setup/sounds/`), once
+  a start when the screen first shows the player, or a few seconds after ownbox starts on a
+  box without a screen. Never between 22 and 7 h (so not after a night update), never over
+  something playing, at the box's own volume but at most 60 %. Settings → Sound switches it
+  off.
+- No black between the start-up screen and the player: while Chromium starts, the kiosk
+  shows the same picture standing still (mpv, which the box has anyway, as a window under
+  Chromium's).
 - A start-up screen: the own.audio mark, moving as in the box's own UI (the arcs turn, the
   family sways, the core beats), with "Simple. Private. Yours." under it, from about the
   fifth second until the kiosk draws over it. No kernel messages, firmware colours or
@@ -19,6 +28,8 @@ that version's section below as a GitHub Release.
 
 ### Fixed
 
+- Slovak and Hungarian went back to Czech whenever the page loaded again (a restart, an
+  update): the page only took "en" or "cs" from the box.
 - The real cause of a black screen on a Pi 4 started from a power supply: the beta image's
   USB console (`systemd.debug_shell`) waited for a computer on the port while holding the
   system console's lock, and every unit that sets up a terminal waited behind it — the
