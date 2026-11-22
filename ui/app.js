@@ -2723,6 +2723,40 @@ async function sourcesSettings() {
   return group;
 }
 
+// --- restart and switch off (on the box's screen) ----------------------------------------
+
+/** Restart and Switch off, each on a second tap within four seconds. */
+function powerButtons() {
+  if (REMOTE) return el('div');
+  const msg = el('p', { class: 'muted small' });
+  const action = (label, again, path, saying) => {
+    let armed = null;
+    const b = el('button', { class: 'secondary', text: label, onclick: async () => {
+      if (!armed) {
+        b.textContent = again;
+        armed = setTimeout(() => { armed = null; b.textContent = label; }, 4000);
+        return;
+      }
+      clearTimeout(armed);
+      b.disabled = true;
+      msg.textContent = saying;
+      try {
+        await post(path);
+      } catch (e) {
+        msg.textContent = t('Failed: {e}', { e: t(e.message) });
+        b.disabled = false;
+      }
+    } });
+    return b;
+  };
+  return el('div', { class: 'settings-group' },
+    el('div', { class: 'section-title', text: t('The box') }),
+    el('div', { class: 'buttons wrap' },
+      action(t('Restart'), t('Tap again to restart'), '/api/box/restart', t('Restarting. The box is back in about a minute.')),
+      action(t('Switch off'), t('Tap again to switch off'), '/api/box/off', t('Switching off. The button on the box, or unplugging it, starts it again.'))),
+    msg);
+}
+
 // --- debug access (on the box's screen) ------------------------------------------------
 
 /** Root over SSH with a GitHub account's keys, and logs kept across restarts. */
@@ -2946,7 +2980,7 @@ function settingsPages() {
         return join(t('Up to date'), u.auto ? t('updates at night') : null);
       } },
     { title: 'About the box', hint: 'Version, player, power, board, display',
-      parts: async () => [about(), await debugSettings()],
+      parts: async () => [about(), powerButtons(), await debugSettings()],
       summary: async () => t('Version {v}', { v: VERSION_SEEN || '' }) },
   ];
 }

@@ -161,7 +161,7 @@ fn box_only(path: &str) -> bool {
 /// Paths a phone may never use: they run the box itself (sign-in, server, network, screen,
 /// pairing) or are hooks for programs on the box.
 fn screen_only(path: &str) -> bool {
-    const PREFIXES: [&str; 18] = [
+    const PREFIXES: [&str; 19] = [
         "/api/setup",
         "/api/sign-in",
         "/api/sign-out",
@@ -182,6 +182,8 @@ fn screen_only(path: &str) -> bool {
         "/api/time/",
         // Root over SSH: only from the box's own screen, never a phone.
         "/api/debug",
+        // Restart and switch off: someone at the box, not a phone in another room.
+        "/api/box/",
     ];
     PREFIXES.iter().any(|p| path.starts_with(p)) || path == "/api/player/release"
 }

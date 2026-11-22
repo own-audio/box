@@ -17,6 +17,14 @@ const ROOMS = {
 };
 
 const CS = {
+  // restart and switch off
+  "The box": "Box",
+  "Restart": "Restartovat",
+  "Tap again to restart": "Klepněte znovu pro restart",
+  "Restarting. The box is back in about a minute.": "Restartuje se. Box bude zpět asi za minutu.",
+  "Switch off": "Vypnout",
+  "Tap again to switch off": "Klepněte znovu pro vypnutí",
+  "Switching off. The button on the box, or unplugging it, starts it again.": "Vypíná se. Zapnete ho tlačítkem na boxu nebo vytažením a zastrčením napájení.",
   "Neither is installed on this box.": "Na tomto boxu není nainstalované ani jedno.",
   // debug access
   "Debug access": "Ladicí přístup",
@@ -530,6 +538,14 @@ const CS = {
 };
 
 const SK = {
+  // restart and switch off
+  "The box": "Box",
+  "Restart": "Reštartovať",
+  "Tap again to restart": "Ťuknite znova pre reštart",
+  "Restarting. The box is back in about a minute.": "Reštartuje sa. Box bude späť asi o minútu.",
+  "Switch off": "Vypnúť",
+  "Tap again to switch off": "Ťuknite znova pre vypnutie",
+  "Switching off. The button on the box, or unplugging it, starts it again.": "Vypína sa. Zapnete ho tlačidlom na boxe alebo vytiahnutím a zastrčením napájania.",
   "Neither is installed on this box.": "Na tomto boxe nie je nainštalované ani jedno.",
   // debug access
   "Debug access": "Ladiaci prístup",
@@ -983,6 +999,14 @@ const SK = {
 const COUNTS_SK = {"tracks": ["{n} skladba", "{n} skladby", "{n} skladieb"], "unplayed": ["{n} nevypočutá", "{n} nevypočuté", "{n} nevypočutých"]};
 
 const HU = {
+  // restart and switch off
+  "The box": "A doboz",
+  "Restart": "Újraindítás",
+  "Tap again to restart": "Koppintson újra az újraindításhoz",
+  "Restarting. The box is back in about a minute.": "Újraindul. A doboz körülbelül egy perc múlva újra kész.",
+  "Switch off": "Kikapcsolás",
+  "Tap again to switch off": "Koppintson újra a kikapcsoláshoz",
+  "Switching off. The button on the box, or unplugging it, starts it again.": "Kikapcsol. A dobozon lévő gombbal vagy a tápellátás ki- és visszadugásával indítható újra.",
   "Neither is installed on this box.": "Egyik sincs telepítve ezen a dobozon.",
   // debug access
   "Debug access": "Hibakeresési hozzáférés",

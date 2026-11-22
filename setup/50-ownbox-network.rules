@@ -1,12 +1,18 @@
 // own.audio box: ownbox runs as the box's user (@USER@, filled in at install) and sets
-// up Wi-Fi from the screen through NetworkManager (nmcli), and the time zone through
-// systemd-timedated. Without this, every scan, connect or zone change would ask for a
+// up Wi-Fi from the screen through NetworkManager (nmcli), the time zone through
+// systemd-timedated, and restarts and switches off the Pi through logind. Without this, every scan, connect or zone change would ask for a
 // password nobody can type on the box. Installed to /etc/polkit-1/rules.d/.
 polkit.addRule(function (action, subject) {
   if (action.id.indexOf("org.freedesktop.NetworkManager.") === 0 && subject.user === "@USER@") {
     return polkit.Result.YES;
   }
   if (action.id === "org.freedesktop.timedate1.set-timezone" && subject.user === "@USER@") {
+    return polkit.Result.YES;
+  }
+  // Restart and Switch off in Settings (ownbox saves the place first).
+  if ((action.id === "org.freedesktop.login1.reboot" || action.id === "org.freedesktop.login1.reboot-multiple-sessions" ||
+       action.id === "org.freedesktop.login1.power-off" || action.id === "org.freedesktop.login1.power-off-multiple-sessions") &&
+      subject.user === "@USER@") {
     return polkit.Result.YES;
   }
 });

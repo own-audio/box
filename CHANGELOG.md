@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- Restart and Switch off in Settings → About the box, each on a second tap, on the box's
+  own screen only. The place in a book or episode is saved first; logind does the rest
+  (allowed for the box's user by its polkit rule).
+
 ## [1.0.0-beta.13] — 2026-11-22
 
 Settings that say what is set, updates in plain words, debug access over SSH, and a fix for a

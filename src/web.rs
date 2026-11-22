@@ -83,6 +83,8 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/outside/take-back", post(outside_take_back))
         .route("/api/outside/sources", get(sources_state).post(sources_set))
         .route("/api/debug", get(debug_state).post(debug_set))
+        .route("/api/box/restart", post(box_restart))
+        .route("/api/box/off", post(box_off))
         .route("/api/update", get(update_state))
         .route("/api/update/check", post(update_check))
         .route("/api/update/install", post(update_install))
@@ -568,6 +570,28 @@ async fn sources_set(State(s): State<Arc<AppState>>, Json(req): Json<SourcesRequ
         }
     });
     Json(sources_json(&s))
+}
+
+// --- restart and switch off -------------------------------------------------------------
+
+/// Restart or switch off from Settings: the place goes to the server and to disk first,
+/// then logind (allowed by the polkit rule) takes the Pi down.
+async fn box_power(s: &AppState, verb: &'static str) -> axum::response::Response {
+    tracing::info!(verb, "from Settings");
+    s.player.release().await;
+    match tokio::process::Command::new("systemctl").arg(verb).status().await {
+        Ok(st) if st.success() => Json(json!({ "ok": true })).into_response(),
+        Ok(st) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("systemctl {verb}: {st}") }))).into_response(),
+        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": err.to_string() }))).into_response(),
+    }
+}
+
+async fn box_restart(State(s): State<Arc<AppState>>) -> axum::response::Response {
+    box_power(&s, "reboot").await
+}
+
+async fn box_off(State(s): State<Arc<AppState>>) -> axum::response::Response {
+    box_power(&s, "poweroff").await
 }
 
 // --- debug access ----------------------------------------------------------------------
