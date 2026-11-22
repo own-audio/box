@@ -42,14 +42,26 @@ fn slowest(text: &str, n: usize) -> Vec<(String, String)> {
         .collect()
 }
 
-/// The start's times, once the start has finished (before that systemd has none).
-pub async fn read() -> Option<Startup> {
-    if let Some(s) = STARTUP.get() {
-        return Some(s.clone());
+/// The start's times, if they have been read (`watch`). Never waits: `systemd-analyze`
+/// takes seconds on a Pi 3, and the installer's check of a new version (`/api/status`, 2 s
+/// each) failed while every status call waited for it.
+pub fn get() -> Option<Startup> {
+    STARTUP.get().cloned()
+}
+
+/// Reads the start's times in the background once the start has finished (systemd has none
+/// before), trying every 30 s for the first half hour.
+pub async fn watch() {
+    // Not while the box is still starting: on a Pi 3 the read itself costs seconds of CPU.
+    tokio::time::sleep(Duration::from_secs(20)).await;
+    for _ in 0..60 {
+        if let Some(t) = analyze(&["time"]).await.as_deref().and_then(total) {
+            let slowest = analyze(&["blame", "--no-pager"]).await.map(|b| slowest(&b, 5)).unwrap_or_default();
+            let _ = STARTUP.set(Startup { total: t, slowest });
+            return;
+        }
+        tokio::time::sleep(Duration::from_secs(30)).await;
     }
-    let total = total(&analyze(&["time"]).await?)?;
-    let slowest = analyze(&["blame", "--no-pager"]).await.map(|b| slowest(&b, 5)).unwrap_or_default();
-    Some(STARTUP.get_or_init(|| Startup { total, slowest }).clone())
 }
 
 #[cfg(test)]

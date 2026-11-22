@@ -7,6 +7,15 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- Updates could fail on a Pi 3: the box's status (which the installer asks, 2 s at a time,
+  to see that a new version runs) waited for `systemd-analyze` for the start's times in
+  About, which takes 7 s there, and until the start had finished it asked again at every
+  call. The installer saw a version that did not answer for minutes. The times are now
+  read in the background, 20 s after ownbox starts, and the status never waits for them.
+  Found in the Pi 3's kept log (debug access).
+
 ## [1.0.0-beta.14] — 2026-11-22
 
 Debug access as a read-only user instead of root, and Restart and Switch off in Settings.

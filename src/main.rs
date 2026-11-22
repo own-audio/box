@@ -154,6 +154,7 @@ async fn main() -> anyhow::Result<()> {
     tokio::spawn(updater.run(http));
     tokio::spawn(night_updates(Arc::clone(&state)));
     tokio::spawn(screen::keep_rotation(Arc::clone(&state.prefs)));
+    tokio::spawn(startup::watch());
     tokio::spawn(wifi::roam());
     tokio::spawn(buttons::run(Arc::clone(&state)));
 

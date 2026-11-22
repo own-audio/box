@@ -1497,7 +1497,7 @@ async fn status(State(s): State<Arc<AppState>>) -> Json<Status> {
         mpv,
         power: power::read().await,
         hardware: hardware::read(),
-        startup: crate::startup::read().await,
+        startup: crate::startup::get(),
     })
 }
 
