@@ -84,7 +84,6 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/outside/sources", get(sources_state).post(sources_set))
         .route("/api/debug", get(debug_state).post(debug_set))
         .route("/api/startup-sound", get(startup_sound_state).post(startup_sound_set))
-        .route("/api/startup-sound/play", post(startup_sound_play))
         .route("/api/box/restart", post(box_restart))
         .route("/api/box/off", post(box_off))
         .route("/api/update", get(update_state))
@@ -588,12 +587,6 @@ struct OnRequest {
 async fn startup_sound_set(State(s): State<Arc<AppState>>, Json(req): Json<OnRequest>) -> Json<serde_json::Value> {
     s.prefs.update(|p| p.startup_sound = Some(req.on));
     Json(json!({ "on": req.on }))
-}
-
-/// The screen's page, once it shows the player: plays the sound if this start has not yet.
-async fn startup_sound_play(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    tokio::spawn(crate::jingle::play_once(s));
-    Json(json!({ "ok": true }))
 }
 
 // --- restart and switch off -------------------------------------------------------------

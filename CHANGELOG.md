@@ -11,8 +11,7 @@ that version's section below as a GitHub Release.
 
 - A start-up sound: the own.audio motif (four soft notes, "own-au-di-o") and a calm voice
   saying "own audio. Simple. Private. Yours." (Gemini's voice Achird, `setup/sounds/`), once
-  a start when the screen first shows the player, or a few seconds after ownbox starts on a
-  box without a screen. Never between 22 and 7 h (so not after a night update), never over
+  a start as ownbox comes up, while a box with a screen still shows the start-up picture. Never between 22 and 7 h (so not after a night update), never over
   something playing, at the box's own volume but at most 60 %. Settings → Sound switches it
   off.
 - No black between the start-up screen and the player: while Chromium starts, the kiosk

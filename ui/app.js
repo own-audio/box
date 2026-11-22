@@ -3855,9 +3855,6 @@ async function start() {
   }
   if (!setup.done) startWizard();
   else refreshSession();
-  // The box's own screen is up: the start-up sound, if this start has not had it (ownbox
-  // decides: once a start, not at night, not over music, not when switched off).
-  if (!REMOTE && !HEADLESS) post('/api/startup-sound/play').catch(() => null);
   setInterval(once(refreshSession), 2000);
   // A phone puts a tab in the background to sleep; back in front, it asks at once.
   document.addEventListener('visibilitychange', () => {
