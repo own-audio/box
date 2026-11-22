@@ -6,7 +6,11 @@ After=getty@tty1.service ownbox.service
 
 [Service]
 # No screen connected (a box without one): no kiosk, instead of a restart every 3 s.
-ExecCondition=/bin/sh -c 'grep -qsx connected /sys/class/drm/card*-*/status'
+# ownbox-boot has already looked (headless = true/false in config.toml); reading the
+# connectors again could hang: on a Pi 4 started from a power supply it took over 90 s,
+# systemd gave up and the screen stayed black. Only a box set up by hand looks here, and
+# not for longer than 5 s.
+ExecCondition=/bin/sh -c 'c=/home/@USER@/.config/ownbox/config.toml; grep -qx "headless = false" "$$c" 2>/dev/null && exit 0; grep -qx "headless = true" "$$c" 2>/dev/null && exit 1; timeout 5 grep -qsx connected /sys/class/drm/card*-*/status'
 User=@USER@
 PAMName=login
 TTYPath=/dev/tty1

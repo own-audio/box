@@ -7,6 +7,13 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- A Pi 4 started from a power supply (not a computer's USB port) could stay black: the
+  kiosk's check for a screen read every display connector again, the read hung for over
+  90 s, and systemd gave up on the kiosk. The kiosk now goes by what ownbox-boot found at
+  the start (config.toml's `headless`); a box set up by hand still looks, for at most 5 s.
+
 ### Changed
 
 - Settings says what is set on each row of its list: the box's name, language and time

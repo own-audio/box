@@ -13,7 +13,7 @@ CONFIG=/home/@USER@/.config/ownbox/config.toml
 udevadm settle --timeout=10 || true
 screen=false
 for i in 1 2 3 4 5; do
-  if grep -qsx connected /sys/class/drm/card*-*/status; then screen=true; break; fi
+  if timeout 5 grep -qsx connected /sys/class/drm/card*-*/status; then screen=true; break; fi
   sleep 1
 done
 headless=$([ "$screen" = true ] && echo false || echo true)
