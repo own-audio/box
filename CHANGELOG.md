@@ -10,6 +10,8 @@ that version's section below as a GitHub Release.
 ### Changed
 
 - README: new screenshots with the Radio tab, and the upright Touch Display 2.
+- HARDWARE.md: any powered speaker with an AUX input, the Logitech Z313 as an example; the IKEA
+  VAPPEBY was never used.
 
 ## [1.0.0-beta.18] — 2026-11-22
 

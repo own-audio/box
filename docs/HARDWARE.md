@@ -18,8 +18,8 @@ on-board power button.
 | Raspberry Pi DAC+ (IQA001) | 539 Kč | PCM5122, 112 dB SNR, line out on RCA plus a headphone jack. Pass-through 40-pin header, so the display's power wires still reach 5 V and GND. Over I²S, off USB. |
 | Mounting kit, four 12 mm M2.5 metal standoffs (ABE011) | 99 Kč | Holds the DAC+ over the Pi at the standard HAT height. |
 | microSD, 16–32 GB, A1/A2, a known brand, ideally "endurance" | bought elsewhere | The system takes about 4.3 GB; nothing is downloaded, only cached. Endurance matters more than size (logs, cache, session and settings are written). The 32 GB card already flashed with 64-bit Raspberry Pi OS also works. |
-| 3.5 mm jack to jack cable | already at home | From the DAC+'s headphone jack into the VAPPEBY's AUX. The RCA line out is a touch cleaner (the jack goes through the TPA6133A headphone amplifier), not audible through the VAPPEBY. The headphone amp is switched on and its level set in ALSA, low enough not to overdrive the AUX input. |
-| IKEA VAPPEBY 20×20, gen 3 | 1 490 Kč (IKEA, last chance to buy) | The speaker: mains-powered, 1×15 W + 1×5 W with its own DSP crossover, 3.5 mm AUX in. |
+| 3.5 mm jack to jack cable | already at home | From the DAC+'s headphone jack into the speaker's AUX input. The RCA line out is a touch cleaner (the jack goes through the TPA6133A headphone amplifier), not audible through a small speaker. The headphone amp is switched on and its level set in ALSA, low enough not to overdrive the AUX input. |
+| A powered speaker with a 3.5 mm input | e.g. Logitech Z313, 1 299 Kč | Any active speaker or speaker set with an AUX input. The Z313 is a 2.1 set, 25 W. |
 
 **Total from rpishop: 3 383 Kč** without the card and the speaker.
 
