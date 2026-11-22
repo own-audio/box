@@ -7,6 +7,11 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.18] — 2026-11-22
+
+The start-up film fits the older 800×480 Raspberry Pi screen. Boxes on beta.10 or later
+install it by themselves at night.
+
 ### Fixed
 
 - The start-up film fits smaller screens: it was made for 720 px across the short side and
