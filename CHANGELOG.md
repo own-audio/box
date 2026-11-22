@@ -7,6 +7,10 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+
+- README: new screenshots with the Radio tab, and the upright Touch Display 2.
+
 ## [1.0.0-beta.18] — 2026-11-22
 
 The start-up film fits the older 800×480 Raspberry Pi screen. Boxes on beta.10 or later

@@ -23,6 +23,13 @@
   <img src="docs/readme/screen-books.jpg" alt="Audiobooks, continue listening" width="400">
 </p>
 <p align="center">
+  <img src="docs/readme/screen-radio.jpg" alt="Internet radio, favourite stations" width="400">
+</p>
+<p align="center">
+  <img src="docs/readme/portrait-books.jpg" alt="Audiobooks on the upright Touch Display 2" width="200">
+  <img src="docs/readme/portrait-podcasts.jpg" alt="Podcasts on the upright Touch Display 2" width="200">
+</p>
+<p align="center">
   <img src="docs/readme/phone-player.jpg" alt="The box controlled from a phone" width="200">
   <img src="docs/readme/phone-playlists-light.jpg" alt="Playlists and smart playlists, light mode, on a phone" width="200">
 </p>
