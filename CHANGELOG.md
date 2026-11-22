@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- The start-up film fits smaller screens: it was made for 720 px across the short side and
+  ran past the top and bottom of an 800×480 display (the older Raspberry Pi 7" screen). It
+  is now zoomed by the screen's short side, as the Plymouth screen before it is.
+
 ## [1.0.0-beta.17] — 2026-11-22
 
 The start-up film and sound on every box with a screen, Plymouth or not. Boxes on beta.10 or

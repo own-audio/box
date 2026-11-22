@@ -37,14 +37,19 @@ ExecStartPre=/bin/bash -c 'for i in {1..30}; do (exec 3<>/dev/tcp/127.0.0.1/8686
 # nothing the UI needs is stored by the browser, and the SD card is spared the writes.
 # While Chromium starts (seconds, longer on a Pi 3) the start-up film plays: mpv (the box has
 # it already) shows intro.mp4 as a window of its own, laid out as the start-up screen, and
-# Chromium opens over it; mpv then holds the last frame under it. Starting the film, the
-# kiosk asks ownbox for the start-up sound, so the sound always comes with the picture; with
-# no picture (boot-config.sh writes them to /usr/share/ownbox) there is no sound either.
+# Chromium opens over it; mpv then holds the last frame under it. The film is made for 720 px
+# across the screen's short side; on other screens mpv zooms it by short/720, as the Plymouth
+# screen before it is, so an 800x480 display shows it whole and at the same size. Starting
+# the film, the kiosk asks ownbox for the start-up sound, so the sound always comes with the
+# picture; with no picture (boot-config.sh writes them to /usr/share/ownbox) there is no sound either.
 ExecStart=/usr/bin/cage -s -- /bin/sh -c '\
   F=/usr/share/ownbox; V=$$F/intro.mp4; [ -f "$$V" ] || V=$$F/still.png; \
   if [ -f "$$V" ]; then \
+    M=$$(for c in /sys/class/drm/card*-*; do [ "$$(cat $$c/status 2>/dev/null)" = connected ] && head -n1 $$c/modes; done | head -n1); \
+    W=$${M%%x*}; H=$${M#*x}; H=$${H%%[!0-9]*}; S=$$W; [ "$$H" -lt "$$W" ] 2>/dev/null && S=$$H; \
+    Z=$$(awk "BEGIN{print log($${S:-720}/720)/log(2)}" 2>/dev/null); \
     mpv --no-config --really-quiet --vo=gpu --gpu-context=wayland --hwdec=auto-safe --fs \
-      --video-unscaled=yes --no-audio --keep-open=yes --image-display-duration=90 \
+      --video-unscaled=yes --video-zoom=$${Z:-0} --no-audio --keep-open=yes --image-display-duration=90 \
       --background-color=#000000 --no-osc --no-input-default-bindings --cursor-autohide=always \
       "$$V" >/dev/null 2>&1 & \
     (sleep 0.4; curl -fsS -m 3 -X POST http://127.0.0.1:8686/api/startup-sound/play >/dev/null 2>&1) & \
