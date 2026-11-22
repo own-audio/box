@@ -183,6 +183,13 @@ if [ "$(cat "$TOUCH_RULE" 2>/dev/null || true)" != "$touch_before" ]; then
   systemctl --no-block try-restart ownbox-kiosk.service || true
 fi
 
+# The kiosk's start-up film and picture (src/splash.rs), on every box with a screen: the
+# kiosk plays the film while Chromium starts, and asks for the start-up sound only when it
+# has a picture to show with it.
+if [ -x /opt/ownbox/ownbox ] && ! grep -qsx 'headless = true' "$CONFIG_TOML"; then
+  /opt/ownbox/ownbox write-kiosk-film /usr/share/ownbox || true
+fi
+
 # The start-up screen: Plymouth with the own.audio mark (src/splash.rs carries it, ownbox
 # writes it out), on a box where install-update.sh put Plymouth in (one with a screen). The
 # picture stands the way the screen is turned; the kernel's messages, the firmware's

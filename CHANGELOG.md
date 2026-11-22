@@ -7,6 +7,19 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.17] — 2026-11-22
+
+The start-up film and sound on every box with a screen, Plymouth or not. Boxes on beta.10 or
+later install it by themselves at night.
+
+### Fixed
+
+- A box updated to beta.16 by an older installer had no Plymouth yet (packages come with
+  the update after), and the kiosk's film lived in Plymouth's theme, so the box showed no
+  start-up picture at all and the start-up sound played without one (Pi 3). The film and
+  picture now live in `/usr/share/ownbox`, written on every box with a screen, and the
+  kiosk asks for the sound only when it has a picture to show with it.
+
 ## [1.0.0-beta.16] — 2026-11-22
 
 The fix for a Pi 4 that stayed black on a power supply (the USB console), a start-up screen

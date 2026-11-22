@@ -57,6 +57,7 @@ async fn main() -> anyhow::Result<()> {
         }
         ["verify", file, signature] => return update::verify_files(file.as_ref(), signature.as_ref()),
         ["write-splash", dir, rotation] => return splash::write(dir.as_ref(), rotation.parse().unwrap_or(0)),
+        ["write-kiosk-film", dir] => return splash::write_kiosk(dir.as_ref()),
         _ => {}
     }
     tracing_subscriber::fmt()
