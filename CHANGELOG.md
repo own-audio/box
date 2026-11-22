@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.13] — 2026-11-22
+
+Settings that say what is set, updates in plain words, debug access over SSH, and a fix for a
+Pi 4 that stayed black when started from a power supply. Boxes on beta.10 or later install it
+by themselves at night.
+
 ### Added
 
 - Debug access (Settings → About the box, on the box's own screen only): root over SSH with
