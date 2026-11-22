@@ -7,6 +7,10 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.15] — 2026-11-22
+
+A fix for updates on a Pi 3. Boxes on beta.10 or later install it by themselves at night.
+
 ### Fixed
 
 - Updates could fail on a Pi 3: the box's status (which the installer asks, 2 s at a time,
