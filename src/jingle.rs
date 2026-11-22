@@ -1,6 +1,7 @@
 //! The start-up sound: the own.audio motif and "own audio. Simple. Private. Yours." (Gemini's
-//! voice Achird over a synthesized motif, setup/sounds/). Played once a start as ownbox comes
-//! up, while a box with a screen still shows the start-up picture. Not at night, not over
+//! voice Achird over a synthesized motif, setup/sounds/). Played once a start: on a box with a
+//! screen when the kiosk starts the start-up film (`/api/startup-sound/play`), so it never
+//! sounds over a black screen; without a screen as ownbox comes up. Not at night, not over
 //! something playing, not with the volume at 0, and not when switched off in Settings → Sound.
 
 use std::sync::Arc;

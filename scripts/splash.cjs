@@ -47,5 +47,27 @@ const WORDS = `<html><body style="margin:0;background:transparent;font-family:-a
   <div style="font-size:42px;color:#8e8e93;margin-top:18px">Simple. Private. Yours.</div>
 </div></body></html>`);
   await page.locator('#s').screenshot({ path: path.join(out, 'still.png') });
+  // The kiosk's start-up film: the same picture, moving as in the box's UI, 30 s at 20
+  // frames a second (Chromium is up well before it ends; mpv then holds the last frame).
+  // Frames only; ffmpeg makes intro.mp4 of them (no sound: ownbox plays the start-up sound
+  // on its own, so the sound card is free again when it ends):
+  //   ffmpeg -framerate 20 -i target/splash-frames/f%04d.png -c:v libx264 -preset veryslow \
+  //     -tune animation -crf 30 -pix_fmt yuv420p -g 200 -movflags +faststart setup/splash/intro.mp4
+  const frames = path.join(out, '..', '..', 'target', 'splash-frames');
+  fs.rmSync(frames, { recursive: true, force: true });
+  fs.mkdirSync(frames, { recursive: true });
+  await page.setViewportSize({ width: 560, height: 660 });
+  await page.setContent(`<html><body style="margin:0;background:#000;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#fff">
+<style>${fs.readFileSync(path.join(__dirname, '..', 'ui', 'style.css'), 'utf8').match(/\.own-mark--animated[\s\S]*?@keyframes own-bass[^\n]*\n/)[0]}</style>
+<div id="s" style="width:560px;height:660px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+  <svg width="${SIZE}" height="${SIZE}" viewBox="0 0 100 100" class="own-mark own-mark--animated">${MARK}</svg>
+  <div style="font-size:90px;font-weight:700;letter-spacing:-0.02em;margin-top:30px">own<span style="color:#9b7bff">.</span>audio</div>
+  <div style="font-size:42px;color:#8e8e93;margin-top:18px">Simple. Private. Yours.</div>
+</div></body></html>`);
+  const FPS = 20, SECONDS = 30;
+  for (let i = 0; i < FPS * SECONDS; i += 1) {
+    await page.evaluate((ms) => document.getAnimations().forEach((a) => { a.pause(); a.currentTime = ms; }), (i * 1000) / FPS);
+    await page.screenshot({ path: path.join(frames, `f${String(i).padStart(4, '0')}.png`) });
+  }
   await browser.close();
 })();

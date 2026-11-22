@@ -159,9 +159,11 @@ async fn main() -> anyhow::Result<()> {
     tokio::spawn(night_updates(Arc::clone(&state)));
     tokio::spawn(screen::keep_rotation(Arc::clone(&state.prefs)));
     tokio::spawn(startup::watch());
-    // The start-up sound as ownbox comes up: on a box with a screen the start-up picture is
-    // showing then (Plymouth, then the kiosk's), never the player.
-    tokio::spawn(jingle::play_once(Arc::clone(&state)));
+    // The start-up sound: on a box with a screen the kiosk asks for it as it starts the
+    // start-up film (so it never plays over a black screen); without one, ownbox plays it.
+    if state.config.headless {
+        tokio::spawn(jingle::play_once(Arc::clone(&state)));
+    }
     tokio::spawn(wifi::roam());
     tokio::spawn(buttons::run(Arc::clone(&state)));
 

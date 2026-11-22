@@ -11,18 +11,22 @@ that version's section below as a GitHub Release.
 
 - A start-up sound: the own.audio motif (four soft notes, "own-au-di-o") and a calm voice
   saying "own audio. Simple. Private. Yours." (Gemini's voice Achird, `setup/sounds/`), once
-  a start as ownbox comes up, while a box with a screen still shows the start-up picture. Never between 22 and 7 h (so not after a night update), never over
-  something playing, at the box's own volume but at most 60 %. Settings → Sound switches it
-  off.
-- No black between the start-up screen and the player: while Chromium starts, the kiosk
-  shows the same picture standing still (mpv, which the box has anyway, as a window under
-  Chromium's).
+  a start. On a box with a screen the kiosk asks for it as it starts the start-up film, so it
+  never sounds over a black screen; without a screen ownbox plays it as it comes up. Never
+  between 22 and 7 h (so not after a night update), never over something playing, at the
+  box's own volume but at most 60 %. Settings → Sound switches it off.
+- A start-up film in the kiosk: while Chromium starts under it, mpv (which the box has
+  anyway) plays the mark moving, laid out as the start-up screen (`intro.mp4`, 30 s, made
+  by `scripts/splash.cjs`), then holds its last frame; no sound in it, so the sound card is
+  free as soon as the start-up sound ends.
 - A start-up screen: the own.audio mark, moving as in the box's own UI (the arcs turn, the
   family sways, the core beats), with "Simple. Private. Yours." under it, from about the
   fifth second until the kiosk draws over it. No kernel messages, firmware colours or
   cursor before it. Plymouth's script theme (`setup/splash/`, the pictures made by
   `scripts/splash.cjs` from the mark in `ui/app.js`); ownbox carries the theme and
-  `boot-config.sh` writes it out, turned the way the screen is. Updates put Plymouth in on a
+  `boot-config.sh` writes it out, turned the way the screen is, and puts the display's
+  drivers into the initramfs so it starts once, on the real display (before, it started on
+  the firmware's framebuffer, went black and started again). Updates put Plymouth in on a
   box with a screen; the picture shows from the start after next.
 
 ### Fixed

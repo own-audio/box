@@ -195,6 +195,25 @@ if command -v plymouth-set-default-theme >/dev/null 2>&1 && [ -x /opt/ownbox/own
     plymouth-set-default-theme ownbox
     splash=changed
   fi
+  # The display's drivers in the initramfs too, so the start-up screen starts on the real
+  # display: without them it started on the firmware's framebuffer, went black when the
+  # display driver came up a second later, and started again. Taken from what this box has
+  # loaded (a Pi 4 with Touch Display 2 differs from a Pi 3 with the 7" one).
+  MODULES=/etc/initramfs-tools/modules
+  if [ -f "$MODULES" ]; then
+    want_mods=$(lsmod | awk 'NR > 1 { print $1 }' \
+      | grep -E '^(vc4|panel_.*|rpi_panel_.*|pwm_bl|i2c_bcm2835|i2c_mux_pinctrl|i2c_mux|regmap_i2c|gpio_regmap|rpi_touchscreen_attiny|tc358762)$' \
+      | sort | tr '\n' ' ' || true)
+    have_mods=$(sed -n '/^# own.audio box display begin/,/^# own.audio box display end/p' "$MODULES" | { grep -v '^#' || true; } | sort | tr '\n' ' ')
+    if [ -n "$want_mods" ] && [ "$want_mods" != "$have_mods" ]; then
+      { sed '/^# own.audio box display begin/,/^# own.audio box display end/d' "$MODULES"
+        echo "# own.audio box display begin (boot-config.sh)"
+        printf '%s\n' $want_mods
+        echo "# own.audio box display end"; } > "$MODULES.ownbox-new"
+      mv "$MODULES.ownbox-new" "$MODULES"
+      splash=changed
+    fi
+  fi
   if [ -n "$splash" ]; then
     # The theme lives in the initramfs too. A minute's work on a Pi 3, and at boot this runs
     # before ownbox, so in the background; the new picture shows from the next start.

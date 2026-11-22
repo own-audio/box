@@ -4,15 +4,17 @@
 
 use std::path::Path;
 
-const FILES: [(&str, &[u8]); 7] = [
+const FILES: [(&str, &[u8]); 8] = [
     ("ownbox.plymouth", include_bytes!("../setup/splash/ownbox.plymouth")),
     ("ownbox.script", include_bytes!("../setup/splash/ownbox.script")),
     ("core.png", include_bytes!("../setup/splash/core.png")),
     ("arcs.png", include_bytes!("../setup/splash/arcs.png")),
     ("family.png", include_bytes!("../setup/splash/family.png")),
     ("words.png", include_bytes!("../setup/splash/words.png")),
-    // Shown by the kiosk (mpv) while Chromium starts.
+    // Shown by the kiosk (mpv) where the film is missing.
     ("still.png", include_bytes!("../setup/splash/still.png")),
+    // The same, moving: the kiosk plays it while Chromium starts under it.
+    ("intro.mp4", include_bytes!("../setup/splash/intro.mp4")),
 ];
 
 /// Writes the theme into `dir`, the script with the screen's turn (degrees) filled in.
