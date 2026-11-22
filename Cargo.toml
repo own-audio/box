@@ -1,6 +1,6 @@
 [package]
 name = "ownbox"
-version = "1.0.0-beta.15"
+version = "1.0.0-beta.16"
 edition = "2024"
 license = "MPL-2.0"
 description = "A touch-screen player for an own.audio library on a Raspberry Pi"

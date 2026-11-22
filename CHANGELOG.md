@@ -7,6 +7,13 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.16] — 2026-11-22
+
+The fix for a Pi 4 that stayed black on a power supply (the USB console), a start-up screen
+and film with the own.audio mark, a start-up sound, and Slovak and Hungarian that stay after
+a restart. Boxes on beta.10 or later install it by themselves at night; the start-up screen
+shows from the second start after the update.
+
 ### Added
 
 - A start-up sound: the own.audio motif (four soft notes, "own-au-di-o") and a calm voice
