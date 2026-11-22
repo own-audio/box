@@ -142,9 +142,11 @@ if [ -e /etc/ownbox-image ] && [ "$HOST" != - ] && [ "$(hostname)" != "$HOST" ];
   systemctl try-restart avahi-daemon.service || true
 fi
 
-# Debug access (Settings → About the box, on the box's own screen): root over SSH with the
-# keys chosen there, and the journal kept on the card across restarts. ownbox wrote the keys,
-# so they are checked again here: a key type and the key, no options.
+# Debug access (Settings → About the box, on the box's own screen): the user "debug" over
+# SSH with the keys chosen there, and the journal kept on the card across restarts. "debug"
+# reads every log and the state of the services but changes nothing; root stays with the
+# USB console. ownbox (which a fault in the player could hand to someone) only keeps the
+# choice, so it never leads to root. The keys are checked again here: a type and a key.
 mapfile -t DEBUG < <(python3 - "$STATE" <<'EOF'
 import json, re, sys
 try:
@@ -160,24 +162,32 @@ if on:
             print(key)
 EOF
 )
-AUTH=/root/.ssh/authorized_keys
-BEGIN="# own.audio box debug access (Settings) begin"
-END="# own.audio box debug access (Settings) end"
-# Keys put there by hand stay; only the box's own block is rewritten.
-KEEP=$([ -f "$AUTH" ] && awk -v b="$BEGIN" -v e="$END" '$0 == b { skip = 1; next } $0 == e { skip = 0; next } !skip' "$AUTH" || true)
-if [ "${DEBUG[0]:-off}" = on ] && [ "${#DEBUG[@]}" -gt 1 ]; then
-  WANT="${KEEP:+$KEEP
-}$BEGIN
-$(printf '%s\n' "${DEBUG[@]:1}")
-$END
-"
-else
-  WANT="${KEEP:+$KEEP
-}"
+# beta.13 put the keys in root's file; they leave it (keys added there by hand stay).
+ROOT_AUTH=/root/.ssh/authorized_keys
+if [ -f "$ROOT_AUTH" ] && grep -qx "# own.audio box debug access (Settings) begin" "$ROOT_AUTH"; then
+  replace "$ROOT_AUTH" "$(awk '$0 == "# own.audio box debug access (Settings) begin" { skip = 1; next }
+    $0 == "# own.audio box debug access (Settings) end" { skip = 0; next } !skip' "$ROOT_AUTH")
+" || true
 fi
-if [ -f "$AUTH" ] || [ "${DEBUG[0]:-off}" = on ]; then
-  install -d -m 700 /root/.ssh
-  replace "$AUTH" "$WANT" && chmod 600 "$AUTH" || true
+DEBUG_HOME=/var/lib/ownbox-debug
+DEBUG_AUTH=$DEBUG_HOME/.ssh/authorized_keys
+if [ "${DEBUG[0]:-off}" = on ]; then
+  if ! id debug >/dev/null 2>&1; then
+    useradd --system --home-dir "$DEBUG_HOME" --no-create-home --shell /bin/bash \
+      --groups systemd-journal,adm --comment "own.audio box debug access (read only)" debug
+    # No password at all ("*"), not a locked one ("!"): sshd turns a locked account away
+    # even with a key.
+    usermod -p '*' debug
+  fi
+  # Root owns the folder and the keys: "debug" cannot add keys of its own.
+  install -d -m 755 -o root -g root "$DEBUG_HOME" "$DEBUG_HOME/.ssh"
+  replace "$DEBUG_AUTH" "$(printf '%s\n' "${DEBUG[@]:1}")
+" && chmod 644 "$DEBUG_AUTH" || true
+else
+  if [ -f "$DEBUG_AUTH" ]; then
+    rm -f "$DEBUG_AUTH"
+    pkill -u debug 2>/dev/null || true
+  fi
 fi
 JCONF=/etc/systemd/journald.conf.d/zz-ownbox-debug.conf
 if [ "${DEBUG[0]:-off}" = on ]; then

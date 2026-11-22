@@ -2759,7 +2759,7 @@ function powerButtons() {
 
 // --- debug access (on the box's screen) ------------------------------------------------
 
-/** Root over SSH with a GitHub account's keys, and logs kept across restarts. */
+/** Read-only SSH (user debug) with a GitHub account's keys, and logs kept across restarts. */
 async function debugSettings() {
   const d = await get('/api/debug').catch(() => null);
   if (!d) return el('div');
@@ -2776,10 +2776,10 @@ async function debugSettings() {
   });
   group.append(
     el('div', { class: 'setting' }, el('span', { text: t('SSH and kept logs') }), el('div', { class: 'buttons' }, btn(true), btn(false))),
-    el('p', { class: 'muted small', text: t('For development and help with a fault. Whoever holds these keys can do anything on the box; leave it off otherwise.') }));
+    el('p', { class: 'muted small', text: t("For development and help with a fault: whoever holds these keys can read the box's logs and see how it runs, but cannot change anything.") }));
   if (d.on) {
     group.append(el('p', { class: 'small', text: d.keys
-      ? t('ssh root@{a} — {n} keys from GitHub user {u}', { a: d.address, n: d.keys, u: d.github })
+      ? t('ssh debug@{a} — {n} keys from GitHub user {u}', { a: d.address, n: d.keys, u: d.github })
       : t('No keys yet: load them from a GitHub account.') }));
     group.append(el('p', { class: 'muted small', text: t('The system log is kept on the card across restarts (up to 50 MB).') }));
   }

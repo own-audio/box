@@ -29,8 +29,8 @@ const CS = {
   // debug access
   "Debug access": "Ladicí přístup",
   "SSH and kept logs": "SSH a uchovávané logy",
-  "For development and help with a fault. Whoever holds these keys can do anything on the box; leave it off otherwise.": "Pro vývoj a pomoc při poruše. Kdo má tyto klíče, může s boxem dělat cokoli; jinak nechte vypnuté.",
-  "ssh root@{a} — {n} keys from GitHub user {u}": "ssh root@{a} — klíčů z GitHub účtu {u}: {n}",
+  "For development and help with a fault: whoever holds these keys can read the box's logs and see how it runs, but cannot change anything.": "Pro vývoj a pomoc při poruše: kdo má tyto klíče, může číst logy boxu a vidět, jak běží, ale nic změnit nemůže.",
+  "ssh debug@{a} — {n} keys from GitHub user {u}": "ssh debug@{a} — klíčů z GitHub účtu {u}: {n}",
   "No keys yet: load them from a GitHub account.": "Zatím žádné klíče: načtěte je z GitHub účtu.",
   "The system log is kept on the card across restarts (up to 50 MB).": "Systémový log se uchovává na kartě i přes restart (nejvýš 50 MB).",
   "Keys from GitHub: {u}": "Klíče z GitHubu: {u}",
@@ -550,8 +550,8 @@ const SK = {
   // debug access
   "Debug access": "Ladiaci prístup",
   "SSH and kept logs": "SSH a uchovávané logy",
-  "For development and help with a fault. Whoever holds these keys can do anything on the box; leave it off otherwise.": "Na vývoj a pomoc pri poruche. Kto má tieto kľúče, môže s boxom robiť čokoľvek; inak nechajte vypnuté.",
-  "ssh root@{a} — {n} keys from GitHub user {u}": "ssh root@{a} — kľúčov z GitHub účtu {u}: {n}",
+  "For development and help with a fault: whoever holds these keys can read the box's logs and see how it runs, but cannot change anything.": "Na vývoj a pomoc pri poruche: kto má tieto kľúče, môže čítať logy boxu a vidieť, ako beží, ale nič zmeniť nemôže.",
+  "ssh debug@{a} — {n} keys from GitHub user {u}": "ssh debug@{a} — kľúčov z GitHub účtu {u}: {n}",
   "No keys yet: load them from a GitHub account.": "Zatiaľ žiadne kľúče: načítajte ich z GitHub účtu.",
   "The system log is kept on the card across restarts (up to 50 MB).": "Systémový log sa uchováva na karte aj cez reštart (najviac 50 MB).",
   "Keys from GitHub: {u}": "Kľúče z GitHubu: {u}",
@@ -1011,8 +1011,8 @@ const HU = {
   // debug access
   "Debug access": "Hibakeresési hozzáférés",
   "SSH and kept logs": "SSH és megőrzött naplók",
-  "For development and help with a fault. Whoever holds these keys can do anything on the box; leave it off otherwise.": "Fejlesztéshez és hibaelhárításhoz. Akinél ezek a kulcsok vannak, bármit megtehet a dobozzal; egyébként hagyja kikapcsolva.",
-  "ssh root@{a} — {n} keys from GitHub user {u}": "ssh root@{a} — {n} kulcs a(z) {u} GitHub-fiókból",
+  "For development and help with a fault: whoever holds these keys can read the box's logs and see how it runs, but cannot change anything.": "Fejlesztéshez és hibaelhárításhoz: akinél ezek a kulcsok vannak, olvashatja a doboz naplóit és láthatja, hogyan fut, de semmit sem módosíthat.",
+  "ssh debug@{a} — {n} keys from GitHub user {u}": "ssh debug@{a} — {n} kulcs a(z) {u} GitHub-fiókból",
   "No keys yet: load them from a GitHub account.": "Még nincs kulcs: töltse be egy GitHub-fiókból.",
   "The system log is kept on the card across restarts (up to 50 MB).": "A rendszernapló újraindítás után is megmarad a kártyán (legfeljebb 50 MB).",
   "Keys from GitHub: {u}": "Kulcsok a GitHubról: {u}",

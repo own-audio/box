@@ -1,8 +1,9 @@
-//! Debug access: root over SSH with keys the owner chose (their GitHub account's public
-//! keys), and the system journal kept on the card across restarts. Off unless switched on
-//! in Settings on the box's own screen. ownbox only keeps the choice in prefs.json;
-//! `apply-sources.sh` (root) writes the keys and the journal setting, and checks the keys
-//! again, since ownbox is not trusted with root's files.
+//! Debug access: the read-only user `debug` over SSH with keys the owner chose (their
+//! GitHub account's public keys), and the system journal kept on the card across restarts.
+//! Off unless switched on in Settings on the box's own screen. ownbox only keeps the choice
+//! in prefs.json; `apply-sources.sh` (root) writes the keys and the journal setting and
+//! checks the keys again. It never gives root: ownbox could be taken over through a fault
+//! in what it plays, and must not lead past its own user.
 
 use anyhow::{bail, Context};
 

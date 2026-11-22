@@ -56,8 +56,8 @@ pub struct Prefs {
     /// Stations played lately, the latest first.
     #[serde(default)]
     pub radios_recent: Vec<crate::radio::Station>,
-    /// Debug access (`debug.rs`): root over SSH with `debug_keys`, the journal kept on the
-    /// card. `apply-sources.sh` applies it.
+    /// Debug access (`debug.rs`): the read-only user `debug` over SSH with `debug_keys`,
+    /// the journal kept on the card. `apply-sources.sh` applies it.
     pub debug_access: Option<bool>,
     /// The GitHub account the keys came from, to show and to load again.
     pub debug_github: Option<String>,

@@ -180,19 +180,24 @@ Press Enter for a `root@ownbox` prompt. `journalctl -u ownbox -b`, `nmcli device
 
 ## Debug access (SSH)
 
-Settings → About the box → Debug access lets a developer in over the network, for work on
-the box or help with a fault. It is off until switched on, and only on the box's own screen
-(a phone cannot). It loads the public SSH keys of a GitHub account
+Settings → About the box → Debug access lets a developer look into the box over the network,
+for work on it or help with a fault. It is off until switched on, and only on the box's own
+screen (a phone cannot). It loads the public SSH keys of a GitHub account
 (`https://github.com/<user>.keys`) and then:
 
 ```bash
-ssh root@<box>.local
+ssh debug@<box>.local
+journalctl --list-boots        # the log is kept on the card while debug access is on
+journalctl -b -1               # the start before this one
+systemctl --failed
 ```
 
-While it is on, the system log is kept on the card across restarts (up to 50 MB), so a start
-that went wrong can be read afterwards: `journalctl --list-boots`, `journalctl -b -1`.
-Switching it off removes the keys and the kept log; keys put into `/root/.ssh/authorized_keys`
-by hand stay.
+`debug` reads every log and the state of the services but changes nothing: no sudo, no
+writes outside its home, no access to the box's sign-in. Root stays with the USB console
+(beta images), which needs the box in hand; fixes reach boxes as signed updates. ownbox,
+which plays streams from the internet, only keeps the choice, so a fault in it never leads
+to root. The log is kept on the card (up to 50 MB) while access is on; switching it off
+removes the keys and the kept log.
 
 ## Development
 

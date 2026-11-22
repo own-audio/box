@@ -7,6 +7,14 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+
+- Debug access no longer gives root: the keys now log in as the user `debug`, who reads
+  every log and the state of the services but changes nothing (no sudo, no access to the
+  box's sign-in). In beta.13 a fault in ownbox, which plays streams from the internet, could
+  have switched access on with keys of someone else's and so reached root. Keys beta.13 put
+  in root's file are removed at the first settings change; root stays with the USB console.
+
 ### Added
 
 - Restart and Switch off in Settings → About the box, each on a second tap, on the box's
