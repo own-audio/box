@@ -1,0 +1,65 @@
+// own.audio box start-up screen (Plymouth's script plugin). The mark's three parts move as
+// in the box's own UI: the arcs turn (6 s a turn), the family sways (±8°, 4 s each way) and
+// the core beats (0.4 s). ROTATION is the screen's turn from Settings, written in by
+// boot-config.sh, so the picture stands the way the box does.
+ROTATION = 0;
+
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+turn = ROTATION * Math.Pi / 180;
+w = Window.GetWidth();
+h = Window.GetHeight();
+short = Math.Min(w, h);
+// The mark at 40 % of the screen's short side, the words under it at the same scale.
+size = Math.Int(short * 0.4);
+k = size / 360;
+
+core_image = Image("core.png").Scale(size, size);
+arcs_image = Image("arcs.png").Scale(size, size);
+family_image = Image("family.png").Scale(size, size);
+words_base = Image("words.png");
+words_image = words_base.Scale(Math.Int(words_base.GetWidth() * k * 1.4), Math.Int(words_base.GetHeight() * k * 1.4)).Rotate(turn);
+
+core = Sprite();
+arcs = Sprite();
+family = Sprite();
+words = Sprite(words_image);
+
+// The mark a little above the middle, the words below it; both moved round the middle by
+// the screen's turn.
+lift = size * 0.35;
+drop = size * 0.5 + words_base.GetHeight() * k * 0.9;
+cx = w / 2 + lift * Math.Sin(turn);
+cy = h / 2 - lift * Math.Cos(turn);
+words.SetX(w / 2 - drop * Math.Sin(turn) - words_image.GetWidth() / 2);
+words.SetY(h / 2 + drop * Math.Cos(turn) - words_image.GetHeight() / 2);
+words.SetZ(1);
+
+fun place(sprite, image, z) {
+  sprite.SetImage(image);
+  sprite.SetX(cx - image.GetWidth() / 2);
+  sprite.SetY(cy - image.GetHeight() / 2);
+  sprite.SetZ(z);
+}
+
+t = 0;
+frame = 0;
+fun refresh() {
+  frame++;
+  // 25 pictures a second are enough, and half the work for a Pi 3.
+  if (frame % 2 == 0) {
+    t += 0.04;
+    place(arcs, arcs_image.Rotate(turn + 2 * Math.Pi * t / 6), 2);
+    sway = (1 - Math.Cos(Math.Pi * t / 4)) / 2;
+    s = 0.98 + 0.04 * sway;
+    family_turned = family_image.Scale(Math.Int(size * s), Math.Int(size * s));
+    place(family, family_turned.Rotate(turn + (sway * 16 - 8) * Math.Pi / 180), 3);
+    beat = (1 - Math.Cos(Math.Pi * t / 0.4)) / 2;
+    c = Math.Int(size * (1 + 0.25 * beat));
+    place(core, core_image.Scale(c, c), 4);
+  }
+}
+Plymouth.SetRefreshFunction(refresh);
+
+// Password prompts and messages are never asked for on the box: nothing else to draw.

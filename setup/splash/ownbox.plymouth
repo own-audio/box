@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=own.audio box
+Description=The own.audio mark, moving, with "Simple. Private. Yours." under it
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/ownbox
+ScriptFile=/usr/share/plymouth/themes/ownbox/ownbox.script

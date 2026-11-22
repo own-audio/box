@@ -63,7 +63,7 @@ cp /etc/resolv.conf "$root/etc/resolv.conf"
 echo "== packages"
 in_root apt-get update -q
 in_root apt-get install -y -q --no-install-recommends \
-  mpv avahi-daemon polkitd squeezelite cage chromium fonts-dejavu-core python3 rfkill dnsmasq-base unattended-upgrades wlr-randr
+  mpv avahi-daemon polkitd squeezelite cage chromium fonts-dejavu-core python3 rfkill dnsmasq-base unattended-upgrades wlr-randr plymouth
 
 echo "== AirPlay 2 (built from source)"
 cp -r "$setup/airplay" "$root/var/tmp/ownbox-airplay"

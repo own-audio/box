@@ -7,6 +7,16 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- A start-up screen: the own.audio mark, moving as in the box's own UI (the arcs turn, the
+  family sways, the core beats), with "Simple. Private. Yours." under it, from about the
+  fifth second until the kiosk draws over it. No kernel messages, firmware colours or
+  cursor before it. Plymouth's script theme (`setup/splash/`, the pictures made by
+  `scripts/splash.cjs` from the mark in `ui/app.js`); ownbox carries the theme and
+  `boot-config.sh` writes it out, turned the way the screen is. Updates put Plymouth in on a
+  box with a screen; the picture shows from the start after next.
+
 ### Fixed
 
 - The real cause of a black screen on a Pi 4 started from a power supply: the beta image's

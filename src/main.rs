@@ -19,6 +19,7 @@ mod screen;
 mod session;
 mod setup;
 mod debug;
+mod splash;
 mod startup;
 mod update;
 mod web;
@@ -45,7 +46,8 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // `ownbox --version`, and `ownbox verify <file> <signature>` for the root update unit.
+    // `ownbox --version`, `ownbox verify <file> <signature>` for the root update unit, and
+    // `ownbox write-splash <dir> <degrees>` for boot-config.sh (the start-up screen).
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
         ["--version"] => {
@@ -53,6 +55,7 @@ async fn main() -> anyhow::Result<()> {
             return Ok(());
         }
         ["verify", file, signature] => return update::verify_files(file.as_ref(), signature.as_ref()),
+        ["write-splash", dir, rotation] => return splash::write(dir.as_ref(), rotation.parse().unwrap_or(0)),
         _ => {}
     }
     tracing_subscriber::fmt()

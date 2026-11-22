@@ -13,6 +13,7 @@ exec 9>/run/ownbox-boot-config.lock
 flock 9
 
 CONFIG_TXT=${CONFIG_TXT:-/boot/firmware/config.txt}
+CMDLINE=${CMDLINE:-/boot/firmware/cmdline.txt}
 CONFIG_TOML=${CONFIG_TOML:-/home/@USER@/.config/ownbox/config.toml}
 PREFS_JSON=${PREFS_JSON:-/home/@USER@/.local/state/ownbox/prefs.json}
 BEGIN="# own.audio box begin: written by the deploy, edit config.toml instead"
@@ -73,6 +74,10 @@ BLOCK="$BEGIN
 [all]
 $BUTTON
 dtoverlay=disable-bt"
+if command -v plymouth >/dev/null 2>&1; then
+  BLOCK="$BLOCK
+disable_splash=1"
+fi
 if [ -n "$HAT" ]; then
   BLOCK="$BLOCK
 dtparam=audio=off
@@ -124,7 +129,6 @@ fi
 # before, held the console's lock while it waited for a computer on the port; on a box on
 # its own power supply nothing ever came, and every unit that sets up a terminal waited
 # with it: the kiosk for 90 s and then for good, the screen black.
-CMDLINE=${CMDLINE:-/boot/firmware/cmdline.txt}
 if grep -q 'g_serial' "$CMDLINE" 2>/dev/null; then
   GETTY=/etc/systemd/system/serial-getty@ttyGS0.service.d/ownbox.conf
   getty_before=$(cat "$GETTY" 2>/dev/null || true)
@@ -177,6 +181,45 @@ if [ "$(cat "$TOUCH_RULE" 2>/dev/null || true)" != "$touch_before" ]; then
   # Queued, not waited for: at boot this runs before the kiosk is up, and waiting on it
   # from here would hold up the start.
   systemctl --no-block try-restart ownbox-kiosk.service || true
+fi
+
+# The start-up screen: Plymouth with the own.audio mark (src/splash.rs carries it, ownbox
+# writes it out), on a box where install-update.sh put Plymouth in (one with a screen). The
+# picture stands the way the screen is turned; the kernel's messages, the firmware's
+# colours and the cursor stay away, and Plymouth leaves its last picture up until the
+# kiosk draws over it.
+if command -v plymouth-set-default-theme >/dev/null 2>&1 && [ -x /opt/ownbox/ownbox ]; then
+  case "$ROTATION" in 90|180|270) TURN=$ROTATION ;; *) TURN=0 ;; esac
+  splash=$(/opt/ownbox/ownbox write-splash /usr/share/plymouth/themes/ownbox "$TURN" || true)
+  if [ "$(plymouth-set-default-theme 2>/dev/null)" != ownbox ]; then
+    plymouth-set-default-theme ownbox
+    splash=changed
+  fi
+  if [ -n "$splash" ]; then
+    # The theme lives in the initramfs too. A minute's work on a Pi 3, and at boot this runs
+    # before ownbox, so in the background; the new picture shows from the next start.
+    systemd-run --no-block --quiet --collect --unit=ownbox-initramfs update-initramfs -u || true
+  fi
+  QUIT=/etc/systemd/system/plymouth-quit.service.d/ownbox.conf
+  quit_before=$(cat "$QUIT" 2>/dev/null || true)
+  install -d "$(dirname "$QUIT")"
+  write "$QUIT" '# own.audio box: the start-up picture stays until the kiosk draws over it (boot-config.sh).
+[Service]
+ExecStart=
+ExecStart=-/usr/bin/plymouth quit --retain-splash'
+  [ "$(cat "$QUIT")" = "$quit_before" ] || systemctl daemon-reload
+  want="quiet splash plymouth.ignore-serial-consoles loglevel=3 vt.global_cursor_default=0 logo.nologo"
+  line=$(head -1 "$CMDLINE")
+  new_line=$line
+  for word in $want; do
+    case " $new_line " in *" $word "*) ;; *) new_line="$new_line $word" ;; esac
+  done
+  if [ "$new_line" != "$line" ]; then
+    printf '%s\n' "$new_line" > "$CMDLINE.ownbox-new"
+    sync "$CMDLINE.ownbox-new"
+    mv "$CMDLINE.ownbox-new" "$CMDLINE"
+    sync
+  fi
 fi
 
 # The UI is laid out for the 7" display's 800 × 480 points (5.2 px/mm). Touch Display 2

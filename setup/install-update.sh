@@ -41,6 +41,8 @@ swap_back() {
 # paths counts. A file updates the one the box already has; the ones marked "new" are put
 # in even if missing (they came with a later release). @USER@ becomes this box's user.
 PACKAGES="wlr-randr"
+# The start-up screen (boot-config.sh sets it up), on a box with a screen.
+grep -qsx 'headless = false' /home/@USER@/.config/ownbox/config.toml && PACKAGES="$PACKAGES plymouth"
 ensure_packages() {
   local missing=""
   for p in $PACKAGES; do dpkg -s "$p" >/dev/null 2>&1 || missing="$missing $p"; done
