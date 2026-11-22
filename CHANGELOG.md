@@ -7,6 +7,12 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.14] — 2026-11-22
+
+Debug access as a read-only user instead of root, and Restart and Switch off in Settings.
+Boxes on beta.10 or later install it by themselves at night; a box with debug access on
+should take it now.
+
 ### Changed
 
 - Debug access no longer gives root: the keys now log in as the user `debug`, who reads
