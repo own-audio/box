@@ -178,6 +178,22 @@ screen /dev/ttyACM0 115200         # Linux
 Press Enter for a `root@ownbox` prompt. `journalctl -u ownbox -b`, `nmcli device` and
 `/var/log` are the usual first looks. Releases (a version without `-beta`) leave this out.
 
+## Debug access (SSH)
+
+Settings → About the box → Debug access lets a developer in over the network, for work on
+the box or help with a fault. It is off until switched on, and only on the box's own screen
+(a phone cannot). It loads the public SSH keys of a GitHub account
+(`https://github.com/<user>.keys`) and then:
+
+```bash
+ssh root@<box>.local
+```
+
+While it is on, the system log is kept on the card across restarts (up to 50 MB), so a start
+that went wrong can be read afterwards: `journalctl --list-boots`, `journalctl -b -1`.
+Switching it off removes the keys and the kept log; keys put into `/root/.ssh/authorized_keys`
+by hand stay.
+
 ## Development
 
 From a Mac (or any machine with Rust, [zig](https://ziglang.org) and

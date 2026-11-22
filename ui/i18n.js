@@ -17,6 +17,24 @@ const ROOMS = {
 };
 
 const CS = {
+  "Neither is installed on this box.": "Na tomto boxu není nainstalované ani jedno.",
+  // debug access
+  "Debug access": "Ladicí přístup",
+  "SSH and kept logs": "SSH a uchovávané logy",
+  "For development and help with a fault. Whoever holds these keys can do anything on the box; leave it off otherwise.": "Pro vývoj a pomoc při poruše. Kdo má tyto klíče, může s boxem dělat cokoli; jinak nechte vypnuté.",
+  "ssh root@{a} — {n} keys from GitHub user {u}": "ssh root@{a} — klíčů z GitHub účtu {u}: {n}",
+  "No keys yet: load them from a GitHub account.": "Zatím žádné klíče: načtěte je z GitHub účtu.",
+  "The system log is kept on the card across restarts (up to 50 MB).": "Systémový log se uchovává na kartě i přes restart (nejvýš 50 MB).",
+  "Keys from GitHub: {u}": "Klíče z GitHubu: {u}",
+  "Load keys from GitHub": "Načíst klíče z GitHubu",
+  "The box loads the public SSH keys of this GitHub account.": "Box načte veřejné SSH klíče tohoto GitHub účtu.",
+  "{n} keys loaded": "Načteno klíčů: {n}",
+  "GitHub user": "GitHub účet",
+  "Load": "Načíst",
+  "not a GitHub user name": "Toto není jméno GitHub účtu",
+  "cannot reach GitHub": "GitHub není dostupný",
+  "no such GitHub user": "Takový GitHub účet neexistuje",
+  "this GitHub user has no SSH keys": "Tento GitHub účet nemá žádné SSH klíče",
   // settings overview and updates
   "Version {v} installed": "Nainstalována verze {v}",
   "Version {a} did not start; the box went back to {b}": "Verze {a} se nespustila, box se vrátil k {b}",
@@ -512,6 +530,24 @@ const CS = {
 };
 
 const SK = {
+  "Neither is installed on this box.": "Na tomto boxe nie je nainštalované ani jedno.",
+  // debug access
+  "Debug access": "Ladiaci prístup",
+  "SSH and kept logs": "SSH a uchovávané logy",
+  "For development and help with a fault. Whoever holds these keys can do anything on the box; leave it off otherwise.": "Na vývoj a pomoc pri poruche. Kto má tieto kľúče, môže s boxom robiť čokoľvek; inak nechajte vypnuté.",
+  "ssh root@{a} — {n} keys from GitHub user {u}": "ssh root@{a} — kľúčov z GitHub účtu {u}: {n}",
+  "No keys yet: load them from a GitHub account.": "Zatiaľ žiadne kľúče: načítajte ich z GitHub účtu.",
+  "The system log is kept on the card across restarts (up to 50 MB).": "Systémový log sa uchováva na karte aj cez reštart (najviac 50 MB).",
+  "Keys from GitHub: {u}": "Kľúče z GitHubu: {u}",
+  "Load keys from GitHub": "Načítať kľúče z GitHubu",
+  "The box loads the public SSH keys of this GitHub account.": "Box načíta verejné SSH kľúče tohto GitHub účtu.",
+  "{n} keys loaded": "Načítaných kľúčov: {n}",
+  "GitHub user": "GitHub účet",
+  "Load": "Načítať",
+  "not a GitHub user name": "Toto nie je meno GitHub účtu",
+  "cannot reach GitHub": "GitHub nie je dostupný",
+  "no such GitHub user": "Taký GitHub účet neexistuje",
+  "this GitHub user has no SSH keys": "Tento GitHub účet nemá žiadne SSH kľúče",
   // settings overview and updates
   "Version {v} installed": "Nainštalovaná verzia {v}",
   "Version {a} did not start; the box went back to {b}": "Verzia {a} sa nespustila, box sa vrátil k {b}",
@@ -947,6 +983,24 @@ const SK = {
 const COUNTS_SK = {"tracks": ["{n} skladba", "{n} skladby", "{n} skladieb"], "unplayed": ["{n} nevypočutá", "{n} nevypočuté", "{n} nevypočutých"]};
 
 const HU = {
+  "Neither is installed on this box.": "Egyik sincs telepítve ezen a dobozon.",
+  // debug access
+  "Debug access": "Hibakeresési hozzáférés",
+  "SSH and kept logs": "SSH és megőrzött naplók",
+  "For development and help with a fault. Whoever holds these keys can do anything on the box; leave it off otherwise.": "Fejlesztéshez és hibaelhárításhoz. Akinél ezek a kulcsok vannak, bármit megtehet a dobozzal; egyébként hagyja kikapcsolva.",
+  "ssh root@{a} — {n} keys from GitHub user {u}": "ssh root@{a} — {n} kulcs a(z) {u} GitHub-fiókból",
+  "No keys yet: load them from a GitHub account.": "Még nincs kulcs: töltse be egy GitHub-fiókból.",
+  "The system log is kept on the card across restarts (up to 50 MB).": "A rendszernapló újraindítás után is megmarad a kártyán (legfeljebb 50 MB).",
+  "Keys from GitHub: {u}": "Kulcsok a GitHubról: {u}",
+  "Load keys from GitHub": "Kulcsok betöltése a GitHubról",
+  "The box loads the public SSH keys of this GitHub account.": "A doboz betölti ennek a GitHub-fióknak a nyilvános SSH-kulcsait.",
+  "{n} keys loaded": "{n} kulcs betöltve",
+  "GitHub user": "GitHub-fiók",
+  "Load": "Betöltés",
+  "not a GitHub user name": "Ez nem GitHub-felhasználónév",
+  "cannot reach GitHub": "A GitHub nem érhető el",
+  "no such GitHub user": "Nincs ilyen GitHub-fiók",
+  "this GitHub user has no SSH keys": "Ennek a GitHub-fióknak nincs SSH-kulcsa",
   // settings overview and updates
   "Version {v} installed": "Telepítve: {v} verzió",
   "Version {a} did not start; the box went back to {b}": "A(z) {a} verzió nem indult el, a doboz visszaállt erre: {b}",

@@ -142,6 +142,64 @@ if [ -e /etc/ownbox-image ] && [ "$HOST" != - ] && [ "$(hostname)" != "$HOST" ];
   systemctl try-restart avahi-daemon.service || true
 fi
 
+# Debug access (Settings → About the box, on the box's own screen): root over SSH with the
+# keys chosen there, and the journal kept on the card across restarts. ownbox wrote the keys,
+# so they are checked again here: a key type and the key, no options.
+mapfile -t DEBUG < <(python3 - "$STATE" <<'EOF'
+import json, re, sys
+try:
+    prefs = json.load(open(sys.argv[1]))
+except Exception:
+    prefs = {}
+on = prefs.get("debug_access") is True
+print("on" if on else "off")
+if on:
+    ok = re.compile(r"(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh\.com) [A-Za-z0-9+/=]{20,2000}")
+    for key in (prefs.get("debug_keys") or [])[:20]:
+        if isinstance(key, str) and ok.fullmatch(key):
+            print(key)
+EOF
+)
+AUTH=/root/.ssh/authorized_keys
+BEGIN="# own.audio box debug access (Settings) begin"
+END="# own.audio box debug access (Settings) end"
+# Keys put there by hand stay; only the box's own block is rewritten.
+KEEP=$([ -f "$AUTH" ] && awk -v b="$BEGIN" -v e="$END" '$0 == b { skip = 1; next } $0 == e { skip = 0; next } !skip' "$AUTH" || true)
+if [ "${DEBUG[0]:-off}" = on ] && [ "${#DEBUG[@]}" -gt 1 ]; then
+  WANT="${KEEP:+$KEEP
+}$BEGIN
+$(printf '%s\n' "${DEBUG[@]:1}")
+$END
+"
+else
+  WANT="${KEEP:+$KEEP
+}"
+fi
+if [ -f "$AUTH" ] || [ "${DEBUG[0]:-off}" = on ]; then
+  install -d -m 700 /root/.ssh
+  replace "$AUTH" "$WANT" && chmod 600 "$AUTH" || true
+fi
+JCONF=/etc/systemd/journald.conf.d/zz-ownbox-debug.conf
+if [ "${DEBUG[0]:-off}" = on ]; then
+  install -d /etc/systemd/journald.conf.d
+  if replace "$JCONF" "[Journal]
+Storage=persistent
+SystemMaxUse=50M
+"; then
+    install -d /var/log/journal && systemd-tmpfiles --create --prefix /var/log/journal
+    systemctl restart systemd-journald.service && journalctl --flush || true
+  fi
+  if installed ssh.service; then
+    systemctl is-enabled --quiet ssh.service || systemctl enable --quiet ssh.service
+    systemctl is-active --quiet ssh.service || systemctl start --no-block ssh.service
+  fi
+elif [ -f "$JCONF" ]; then
+  rm -f "$JCONF"
+  # A journal folder alone keeps the journal on the card (Storage=auto).
+  rm -rf /var/log/journal
+  systemctl restart systemd-journald.service || true
+fi
+
 # A sound card chosen on the box: its overlay into config.txt, which the firmware reads at
 # boot only.
 if [ -x /opt/ownbox/boot-config.sh ] && [ "$(/opt/ownbox/boot-config.sh)" = reboot ]; then

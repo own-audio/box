@@ -82,6 +82,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/outside/cover", get(outside_cover))
         .route("/api/outside/take-back", post(outside_take_back))
         .route("/api/outside/sources", get(sources_state).post(sources_set))
+        .route("/api/debug", get(debug_state).post(debug_set))
         .route("/api/update", get(update_state))
         .route("/api/update/check", post(update_check))
         .route("/api/update/install", post(update_install))
@@ -567,6 +568,47 @@ async fn sources_set(State(s): State<Arc<AppState>>, Json(req): Json<SourcesRequ
         }
     });
     Json(sources_json(&s))
+}
+
+// --- debug access ----------------------------------------------------------------------
+
+fn debug_json(s: &AppState) -> serde_json::Value {
+    let p = s.prefs.get();
+    json!({
+        "on": p.debug_access == Some(true),
+        "github": p.debug_github,
+        "keys": p.debug_keys.len(),
+        "address": box_address(s),
+    })
+}
+
+async fn debug_state(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    Json(debug_json(&s))
+}
+
+#[derive(Deserialize)]
+struct DebugRequest {
+    on: Option<bool>,
+    /// Load the keys of this GitHub account (replacing the ones kept).
+    github: Option<String>,
+}
+
+/// Saved in `prefs.json`; `apply-sources.sh` (root) writes the keys and the journal setting.
+async fn debug_set(State(s): State<Arc<AppState>>, Json(req): Json<DebugRequest>) -> axum::response::Response {
+    if let Some(user) = req.github.as_deref().map(str::trim) {
+        match crate::debug::github_keys(&s.http, user).await {
+            Ok(keys) => s.prefs.update(|p| {
+                p.debug_github = Some(user.to_string());
+                p.debug_keys = keys;
+            }),
+            Err(err) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": err.to_string() }))).into_response(),
+        }
+    }
+    if let Some(on) = req.on {
+        s.prefs.update(|p| p.debug_access = Some(on));
+        tracing::info!(on, "debug access");
+    }
+    Json(debug_json(&s)).into_response()
 }
 
 // --- updates ---------------------------------------------------------------------------

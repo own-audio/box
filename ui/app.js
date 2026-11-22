@@ -2718,9 +2718,74 @@ async function sourcesSettings() {
     row('airplay', 'AirPlay', t('iPhone, iPad and Mac can play to the box from any app.')),
     row('music_assistant', 'Music Assistant', t('Music Assistant finds the box as a Squeezelite player.')),
   ].filter(Boolean);
-  if (!rows.length) return el('div');
+  if (!rows.length) return el('div', { class: 'message', text: t('Neither is installed on this box.') });
   group.append(...rows);
   return group;
+}
+
+// --- debug access (on the box's screen) ------------------------------------------------
+
+/** Root over SSH with a GitHub account's keys, and logs kept across restarts. */
+async function debugSettings() {
+  const d = await get('/api/debug').catch(() => null);
+  if (!d) return el('div');
+  const group = el('div', { class: 'settings-group' }, el('div', { class: 'section-title', text: t('Debug access') }));
+  const redraw = async () => group.replaceWith(await debugSettings());
+  const btn = (on) => el('button', {
+    class: d.on === on ? 'on' : 'secondary',
+    text: t(on ? 'On' : 'Off'),
+    onclick: async () => {
+      if (d.on === on) return;
+      await post('/api/debug', { on }).catch(() => null);
+      redraw();
+    },
+  });
+  group.append(
+    el('div', { class: 'setting' }, el('span', { text: t('SSH and kept logs') }), el('div', { class: 'buttons' }, btn(true), btn(false))),
+    el('p', { class: 'muted small', text: t('For development and help with a fault. Whoever holds these keys can do anything on the box; leave it off otherwise.') }));
+  if (d.on) {
+    group.append(el('p', { class: 'small', text: d.keys
+      ? t('ssh root@{a} — {n} keys from GitHub user {u}', { a: d.address, n: d.keys, u: d.github })
+      : t('No keys yet: load them from a GitHub account.') }));
+    group.append(el('p', { class: 'muted small', text: t('The system log is kept on the card across restarts (up to 50 MB).') }));
+  }
+  group.append(el('div', { class: 'buttons' }, el('button', {
+    class: 'secondary',
+    text: d.github ? t('Keys from GitHub: {u}', { u: d.github }) : t('Load keys from GitHub'),
+    onclick: () => push(debugGithubView(d.github)),
+  })));
+  return group;
+}
+
+function debugGithubView(current) {
+  return {
+    async render(box) {
+      const field = { value: current || '' };
+      const text = el('div', { class: 'q', text: field.value });
+      const msg = el('p', { class: 'muted', style: 'min-height:1.4em', text: t('The box loads the public SSH keys of this GitHub account.') });
+      const load = async () => {
+        if (!field.value.trim()) return;
+        msg.className = 'muted';
+        msg.textContent = t('Loading…');
+        try {
+          const r = await post('/api/debug', { github: field.value.trim() });
+          toast(t('{n} keys loaded', { n: r.keys }));
+          stack.pop();
+          render();
+        } catch (e) {
+          msg.className = 'bad';
+          msg.textContent = t(e.message);
+        }
+      };
+      document.body.classList.add('typing');
+      box.append(el('div', { class: 'search-wrap' },
+        el('h2', { text: t('GitHub user') }),
+        el('div', { class: 'searchbar' }, text),
+        msg,
+        el('div', { style: 'flex:1' }),
+        textKeyboard(field, { onChange: () => { text.textContent = field.value; }, onDone: load, doneLabel: t('Load') })));
+    },
+  };
 }
 
 // --- phone control (on the box's screen) --------------------------------------------
@@ -2881,7 +2946,7 @@ function settingsPages() {
         return join(t('Up to date'), u.auto ? t('updates at night') : null);
       } },
     { title: 'About the box', hint: 'Version, player, power, board, display',
-      parts: async () => [about()],
+      parts: async () => [about(), await debugSettings()],
       summary: async () => t('Version {v}', { v: VERSION_SEEN || '' }) },
   ];
 }

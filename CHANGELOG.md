@@ -7,6 +7,15 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- Debug access (Settings → About the box, on the box's own screen only): root over SSH with
+  the public keys of a GitHub account, and the system log kept on the card across restarts
+  (up to 50 MB), for development and for help with a fault. Off unless switched on;
+  switching it off removes the keys and the kept log. ownbox only keeps the choice; root's
+  `apply-sources.sh` checks the keys again and writes them in a block of its own in
+  `/root/.ssh/authorized_keys`.
+
 ### Fixed
 
 - A Pi 4 started from a power supply (not a computer's USB port) could stay black: the

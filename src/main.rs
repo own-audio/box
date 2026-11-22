@@ -18,6 +18,7 @@ mod remote;
 mod screen;
 mod session;
 mod setup;
+mod debug;
 mod startup;
 mod update;
 mod web;

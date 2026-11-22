@@ -56,6 +56,13 @@ pub struct Prefs {
     /// Stations played lately, the latest first.
     #[serde(default)]
     pub radios_recent: Vec<crate::radio::Station>,
+    /// Debug access (`debug.rs`): root over SSH with `debug_keys`, the journal kept on the
+    /// card. `apply-sources.sh` applies it.
+    pub debug_access: Option<bool>,
+    /// The GitHub account the keys came from, to show and to load again.
+    pub debug_github: Option<String>,
+    #[serde(default)]
+    pub debug_keys: Vec<String>,
 }
 
 /// Writes `path` so that a power cut leaves the old file or the new one, never half of it:
