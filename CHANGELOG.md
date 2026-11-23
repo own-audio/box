@@ -7,6 +7,8 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.19] — 2026-11-23
+
 ### Added
 
 - Several people on one box. Everyone in the household signs in with their own account
