@@ -7,6 +7,8 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.20] — 2026-11-23
+
 ### Changed
 
 - The screen's Slovak queue is "poradie" (never "front"), the Hungarian one "lejátszási sor", and French and Italian use the typographic apostrophe, as the apps do.
