@@ -17,6 +17,15 @@ const ROOMS = {
 };
 
 const CS = {
+  // people on the box
+  "People": "Lidé",
+  "Who is listening, adding someone": "Kdo poslouchá, přidání dalšího",
+  "Who is listening?": "Kdo poslouchá?",
+  "Now listening: {n}": "Teď poslouchá: {n}",
+  "Listening now": "Poslouchá teď",
+  "Add a person": "Přidat osobu",
+  "Everyone in the household can sign in with their own account. Each keeps their own queue and their place in books and playlists. Tap a name to switch.": "Každý v domácnosti se může přihlásit vlastním účtem. Každý má svou frontu a své místo v knihách a playlistech. Klepnutím na jméno přepnete.",
+  "Scan the code with the phone of the person you are adding. It has to be signed in to own.audio.": "Naskenujte kód telefonem osoby, kterou přidáváte. Telefon musí být přihlášený do own.audio.",
   // start-up sound
   "Start-up sound": "Znělka při startu",
   "\"own.audio. Simple. Private. Yours.\" once when the box starts. Never between 10 pm and 7 am, never over music.": "„own.audio. Simple. Private. Yours.“ jednou po zapnutí boxu. Nikdy mezi 22. a 7. hodinou a nikdy přes hudbu.",
@@ -541,6 +550,15 @@ const CS = {
 };
 
 const SK = {
+  // people on the box
+  "People": "Ľudia",
+  "Who is listening, adding someone": "Kto počúva, pridanie ďalšieho",
+  "Who is listening?": "Kto počúva?",
+  "Now listening: {n}": "Teraz počúva: {n}",
+  "Listening now": "Počúva teraz",
+  "Add a person": "Pridať osobu",
+  "Everyone in the household can sign in with their own account. Each keeps their own queue and their place in books and playlists. Tap a name to switch.": "Každý v domácnosti sa môže prihlásiť vlastným účtom. Každý má svoje poradie a svoje miesto v knihách a playlistoch. Ťuknutím na meno prepnete.",
+  "Scan the code with the phone of the person you are adding. It has to be signed in to own.audio.": "Naskenujte kód telefónom osoby, ktorú pridávate. Telefón musí byť prihlásený do own.audio.",
   // start-up sound
   "Start-up sound": "Znelka pri štarte",
   "\"own.audio. Simple. Private. Yours.\" once when the box starts. Never between 10 pm and 7 am, never over music.": "„own.audio. Simple. Private. Yours.“ raz po zapnutí boxu. Nikdy medzi 22. a 7. hodinou a nikdy cez hudbu.",
@@ -1005,6 +1023,15 @@ const SK = {
 const COUNTS_SK = {"tracks": ["{n} skladba", "{n} skladby", "{n} skladieb"], "unplayed": ["{n} nevypočutá", "{n} nevypočuté", "{n} nevypočutých"]};
 
 const HU = {
+  // people on the box
+  "People": "Személyek",
+  "Who is listening, adding someone": "Ki hallgat, új személy hozzáadása",
+  "Who is listening?": "Ki hallgat?",
+  "Now listening: {n}": "Most hallgat: {n}",
+  "Listening now": "Most hallgat",
+  "Add a person": "Személy hozzáadása",
+  "Everyone in the household can sign in with their own account. Each keeps their own queue and their place in books and playlists. Tap a name to switch.": "A háztartásban mindenki bejelentkezhet a saját fiókjával. Mindenkinek saját lejátszási sora van, és a box megjegyzi, hol tart a könyvekben és a lejátszási listákban. Váltáshoz koppintson egy névre.",
+  "Scan the code with the phone of the person you are adding. It has to be signed in to own.audio.": "Olvassa be a kódot annak a személynek a telefonjával, akit hozzáad. A telefonnak be kell lennie jelentkezve az own.audióba.",
   // start-up sound
   "Start-up sound": "Indítási hang",
   "\"own.audio. Simple. Private. Yours.\" once when the box starts. Never between 10 pm and 7 am, never over music.": "„own.audio. Simple. Private. Yours.” egyszer, amikor a doboz elindul. Soha 22 és 7 óra között, és soha zene közben.",

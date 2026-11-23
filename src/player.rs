@@ -8,7 +8,8 @@
 //! sessions, so the account's statistics include the box.
 
 use std::{
-    path::PathBuf,
+    collections::HashMap,
+    path::{Path, PathBuf},
     sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
@@ -73,6 +74,16 @@ struct Queue {
     /// was asked): tried again every tick until it is.
     next_missing: bool,
     next_tried: Option<Instant>,
+    /// Whose queue this is (the account listening when it was loaded): their places and
+    /// listening sessions are saved as them, even just after a switch to someone else.
+    owner: Option<String>,
+    /// The playlist the queue was started from, whose place is kept as it plays.
+    source: Option<String>,
+    /// The owner's place in each playlist they have left unfinished.
+    places: HashMap<String, Place>,
+    /// When the owner last played each playlist here, unix seconds: the server keeps no
+    /// such history, and the home page shows the latest first.
+    played: HashMap<String, i64>,
 }
 
 /// What survives a restart of ownbox or the Pi: the queue and where in it.
@@ -81,7 +92,35 @@ struct SavedQueue {
     tracks: Vec<Track>,
     index: usize,
     position_secs: f64,
+    #[serde(default)]
+    source: Option<String>,
 }
+
+/// One person's player on this box, `users/<id>.json`: their queue, and their places in
+/// the playlists they have not finished.
+#[derive(Default, Serialize, Deserialize)]
+struct Listener {
+    #[serde(default)]
+    queue: Option<SavedQueue>,
+    #[serde(default)]
+    places: HashMap<String, Place>,
+    #[serde(default)]
+    playlists_played: HashMap<String, i64>,
+}
+
+/// Where a playlist was left: the entry (by place and by id, since the playlist may have
+/// changed in an app meanwhile) and the second in it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Place {
+    pub index: usize,
+    pub track_id: String,
+    pub secs: f64,
+    /// When, unix seconds; only the latest places are kept.
+    pub at: i64,
+}
+
+/// Places kept per person; the oldest go beyond this.
+const MAX_PLACES: usize = 50;
 
 pub struct Player {
     mpv: Arc<Mpv>,
@@ -89,7 +128,8 @@ pub struct Player {
     prefs: Arc<PrefsStore>,
     queue: Mutex<Queue>,
     sessions: AtomicU64,
-    saved_queue: PathBuf,
+    /// Each person's `Listener` file.
+    dir: PathBuf,
 }
 
 #[derive(Debug, Serialize)]
@@ -134,42 +174,172 @@ struct StreamUrl {
 }
 
 impl Player {
-    pub fn new(mpv: Arc<Mpv>, auth: Arc<Auth>, prefs: Arc<PrefsStore>, saved_queue: PathBuf) -> Arc<Self> {
-        if let Some(dir) = saved_queue.parent() {
-            let _ = std::fs::create_dir_all(dir);
+    /// `legacy` is the one queue file from before several people could sign in; it becomes
+    /// the listening person's.
+    pub fn new(mpv: Arc<Mpv>, auth: Arc<Auth>, prefs: Arc<PrefsStore>, dir: PathBuf, legacy: &Path, owner: Option<String>) -> Arc<Self> {
+        let _ = std::fs::create_dir_all(&dir);
+        let player = Arc::new(Self { mpv, auth, prefs, queue: Mutex::new(Queue::default()), sessions: AtomicU64::new(0), dir });
+        if let Some(id) = &owner {
+            player.adopt_legacy(id, legacy);
         }
-        let mut queue = Queue::default();
-        match std::fs::read_to_string(&saved_queue).map(|t| serde_json::from_str::<SavedQueue>(&t)) {
-            Ok(Ok(saved)) if saved.index < saved.tracks.len() => {
-                tracing::info!(tracks = saved.tracks.len(), index = saved.index, "restored the queue");
-                queue.tracks = saved.tracks;
-                queue.index = saved.index;
-                queue.restored = Some(saved.position_secs);
-            }
-            Ok(_) => tracing::warn!(path = %saved_queue.display(), "unreadable saved queue; starting empty"),
-            Err(_) => {}
+        {
+            let mut q = player.queue.try_lock().expect("a new player's queue is free");
+            player.load_owner(&mut q, owner);
         }
-        let player = Arc::new(Self { mpv, auth, prefs, queue: Mutex::new(queue), sessions: AtomicU64::new(0), saved_queue });
         tokio::spawn(Arc::clone(&player).follow());
         player
     }
 
-    /// Writes the queue and the place in it, for the next start. Small and local, so done
-    /// in line; a temporary file and a rename keep a half-written file from ever being read.
-    fn persist(&self, q: &Queue, position: f64) {
-        let saved = SavedQueue { tracks: q.tracks.clone(), index: q.index, position_secs: position.max(0.0) };
-        let tmp = self.saved_queue.with_extension("tmp");
-        let written = serde_json::to_vec(&saved)
-            .map_err(std::io::Error::other)
-            .and_then(|bytes| std::fs::write(&tmp, bytes))
-            .and_then(|()| std::fs::rename(&tmp, &self.saved_queue));
-        if let Err(err) = written {
+    fn user_file(&self, id: &str) -> PathBuf {
+        let safe: String = id.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '_' }).collect();
+        self.dir.join(format!("{safe}.json"))
+    }
+
+    /// The queue file and the playlists' dates from a box with one account move into that
+    /// account's own file.
+    fn adopt_legacy(&self, id: &str, legacy: &Path) {
+        let played = std::mem::take(&mut self.prefs.get().playlists_played);
+        let queue = std::fs::read_to_string(legacy).ok().and_then(|t| serde_json::from_str::<SavedQueue>(&t).ok());
+        if queue.is_none() && played.is_empty() {
+            let _ = std::fs::remove_file(legacy);
+            return;
+        }
+        let path = self.user_file(id);
+        let mut listener = read_listener(&path);
+        if listener.queue.is_none() {
+            listener.queue = queue;
+        }
+        listener.playlists_played.extend(played);
+        if write_json(&path, &listener).is_ok() {
+            let _ = std::fs::remove_file(legacy);
+            self.prefs.update(|p| p.playlists_played.clear());
+            tracing::info!(user = id, "the saved queue is now this person's");
+        }
+    }
+
+    /// Empties the queue and reads `owner`'s back: theirs waits, paused, where they left it.
+    fn load_owner(&self, q: &mut Queue, owner: Option<String>) {
+        *q = Queue::default();
+        let Some(id) = owner else { return };
+        let listener = read_listener(&self.user_file(&id));
+        q.owner = Some(id);
+        q.places = listener.places;
+        q.played = listener.playlists_played;
+        if let Some(saved) = listener.queue.filter(|s| s.index < s.tracks.len()) {
+            tracing::info!(tracks = saved.tracks.len(), index = saved.index, "restored the queue");
+            q.tracks = saved.tracks;
+            q.index = saved.index;
+            q.source = saved.source;
+            q.restored = Some(saved.position_secs);
+        }
+    }
+
+    /// The player follows the account: when someone else listens now, the place in what
+    /// played is saved as its owner, it stops, and the new person's queue waits instead.
+    pub async fn follow_account(&self) {
+        let mut q = self.queue.lock().await;
+        self.follow_account_locked(&mut q).await;
+    }
+
+    async fn follow_account_locked(&self, q: &mut Queue) {
+        let now = self.auth.active_id().await;
+        if now == q.owner {
+            return;
+        }
+        if q.active {
+            let position = self.property_f64("time-pos").await.unwrap_or(q.last_position);
+            self.save_position(q, position, false);
+            self.persist(q, position);
+            self.end_listening(q, "stopped").await;
+            let _ = self.mpv.command(json!(["stop"])).await;
+        }
+        tracing::info!(from = ?q.owner, to = ?now, "the player follows the account");
+        self.load_owner(q, now);
+    }
+
+    /// A person signed out of the box: their queue and places go too.
+    pub async fn forget_user(&self, id: &str) {
+        let mut q = self.queue.lock().await;
+        if q.owner.as_deref() == Some(id) {
+            if q.active {
+                let _ = self.mpv.command(json!(["stop"])).await;
+            }
+            *q = Queue::default();
+        }
+        let _ = std::fs::remove_file(self.user_file(id));
+    }
+
+    /// Where the listening person left a playlist; the queue's own place when it is the
+    /// one in the queue now.
+    pub async fn place(&self, playlist_id: &str) -> Option<Place> {
+        let q = self.queue.lock().await;
+        if q.source.as_deref() == Some(playlist_id) && (q.active || q.restored.is_some()) {
+            let secs = match q.restored.filter(|_| !q.active) {
+                Some(secs) => secs,
+                None => self.property_f64("time-pos").await.unwrap_or(q.last_position),
+            };
+            let track = q.tracks.get(q.index)?;
+            return Some(Place { index: q.index, track_id: track.id.clone(), secs, at: chrono::Utc::now().timestamp() });
+        }
+        q.places.get(playlist_id).cloned()
+    }
+
+    /// When the listening person last played each playlist on this box.
+    pub async fn played(&self) -> HashMap<String, i64> {
+        self.queue.lock().await.played.clone()
+    }
+
+    pub async fn mark_played(&self, playlist_id: String) {
+        let mut q = self.queue.lock().await;
+        q.played.insert(playlist_id, chrono::Utc::now().timestamp());
+        // Only the latest matter; the oldest go, so the file stays small.
+        if q.played.len() > 50 {
+            let mut by_age: Vec<(String, i64)> = q.played.drain().collect();
+            by_age.sort_by_key(|(_, at)| -*at);
+            by_age.truncate(30);
+            q.played = by_age.into_iter().collect();
+        }
+        let position = q.restored.unwrap_or(q.last_position);
+        if q.active || q.restored.is_some() {
+            self.persist(&mut q, position);
+        } else {
+            self.write_listener(&q, None);
+        }
+    }
+
+    /// Writes the queue and the place in it, for the next start, and the place in the
+    /// playlist it came from. Small and local, so done in line.
+    fn persist(&self, q: &mut Queue, position: f64) {
+        let position = position.max(0.0);
+        if let (Some(id), Some(track)) = (q.source.clone(), q.tracks.get(q.index)) {
+            let place = Place { index: q.index, track_id: track.id.clone(), secs: position, at: chrono::Utc::now().timestamp() };
+            q.places.insert(id, place);
+            if q.places.len() > MAX_PLACES {
+                let mut by_age: Vec<(String, Place)> = q.places.drain().collect();
+                by_age.sort_by_key(|(_, p)| -p.at);
+                by_age.truncate(MAX_PLACES);
+                q.places = by_age.into_iter().collect();
+            }
+        }
+        let saved = SavedQueue { tracks: q.tracks.clone(), index: q.index, position_secs: position, source: q.source.clone() };
+        self.write_listener(q, Some(saved));
+    }
+
+    fn write_listener(&self, q: &Queue, queue: Option<SavedQueue>) {
+        let Some(id) = &q.owner else { return };
+        let listener = Listener { queue, places: q.places.clone(), playlists_played: q.played.clone() };
+        if let Err(err) = write_json(&self.user_file(id), &listener) {
             tracing::warn!(%err, "saving the queue");
         }
     }
 
-    fn forget_persisted(&self) {
-        let _ = std::fs::remove_file(&self.saved_queue);
+    /// The queue ran out: nothing to come back to, and a playlist played to its end
+    /// starts from the top next time.
+    fn forget_persisted(&self, q: &mut Queue) {
+        if let Some(id) = &q.source {
+            q.places.remove(id);
+        }
+        self.write_listener(q, None);
     }
 
     /// Lets the sound card go for an outside source (AirPlay, Music Assistant): the place is
@@ -180,7 +350,7 @@ impl Player {
             let position = self.property_f64("time-pos").await;
             if let Some(p) = position {
                 self.save_position(&q, p, false);
-                self.persist(&q, p);
+                self.persist(&mut q, p);
             }
             self.end_listening(&mut q, "stopped").await;
             let at = position.unwrap_or(q.last_position);
@@ -214,7 +384,9 @@ impl Player {
         let mut q = self.queue.lock().await;
         let _ = self.mpv.command(json!(["stop"])).await;
         *q = Queue::default();
-        self.forget_persisted();
+        // Everyone's queues and places: they were all in the old server's library.
+        let _ = std::fs::remove_dir_all(&self.dir);
+        let _ = std::fs::create_dir_all(&self.dir);
     }
 
     /// At shutdown (the power button, a deploy): the place goes to the server and to disk,
@@ -229,15 +401,15 @@ impl Player {
             tracing::warn!("mpv gave no position at shutdown; keeping the last saved one");
             return;
         };
-        self.persist(&q, position);
+        self.persist(&mut q, position);
         if let Some(track) = q.tracks.get(q.index).cloned()
             && let Some((path, body)) = Self::progress_request(&track, position, false, false)
-            && let Err(err) = self.auth.send_json(Method::PUT, &path, &body).await
+            && let Err(err) = self.auth.send_json_as(q.owner.as_deref(), Method::PUT, &path, &body).await
         {
             tracing::warn!(%err, "saving the listening position at shutdown");
         }
         if let Some(body) = self.listening_report(&mut q, "stopped").await
-            && let Err(err) = self.auth.send_json(Method::POST, "/api/v1/playback/sessions", &body).await
+            && let Err(err) = self.auth.send_json_as(q.owner.as_deref(), Method::POST, "/api/v1/playback/sessions", &body).await
         {
             tracing::warn!(%err, "reporting the listening session at shutdown");
         }
@@ -261,11 +433,17 @@ impl Player {
 
     /// Replaces the queue and starts at `start`, `start_secs` into it.
     pub async fn play(&self, tracks: Vec<Track>, start: usize, start_secs: f64) -> anyhow::Result<()> {
+        self.play_from(tracks, start, start_secs, None).await
+    }
+
+    /// `play`, for a queue that is a playlist (`source`): its place is kept as it plays.
+    pub async fn play_from(&self, tracks: Vec<Track>, start: usize, start_secs: f64, source: Option<String>) -> anyhow::Result<()> {
         anyhow::ensure!(start < tracks.len(), "nothing to play");
         let mut q = self.queue.lock().await;
         self.leave(&mut q, "replaced").await;
         q.tracks = tracks;
         q.index = start;
+        q.source = source;
         q.sleep = None;
         self.load_from(&mut q, start_secs).await
     }
@@ -359,6 +537,9 @@ impl Player {
             && let Some(position) = self.property_f64("time-pos").await
         {
             self.save_position(q, position, false);
+            if q.source.is_some() {
+                self.persist(q, position);
+            }
         }
         self.end_listening(q, reason).await;
     }
@@ -500,7 +681,7 @@ impl Player {
             }
         }
         let position = if q.active { self.property_f64("time-pos").await.unwrap_or(q.last_position) } else { q.restored.unwrap_or(0.0) };
-        self.persist(&q, position);
+        self.persist(&mut q, position);
         Ok(())
     }
 
@@ -625,6 +806,7 @@ impl Player {
     async fn step_locked(&self) -> anyhow::Result<bool> {
         let mut fetch_next = false;
         let mut q = self.queue.lock().await;
+        self.follow_account_locked(&mut q).await;
         if !q.active {
             return Ok(false);
         }
@@ -637,7 +819,7 @@ impl Player {
             q.active = false;
             q.paused = true;
             q.restored = Some(position);
-            self.persist(&q, position);
+            self.persist(&mut q, position);
             return Ok(false);
         }
         let pos = self.property("playlist-pos").await.and_then(|v| v.as_i64()).context("no playlist-pos")?;
@@ -661,7 +843,7 @@ impl Player {
             q.paused = true;
             q.restored = Some(reached);
             q.last_position = reached;
-            self.persist(&q, reached);
+            self.persist(&mut q, reached);
             return Ok(false);
         }
         let paused = self.property_bool("pause").await.unwrap_or(false);
@@ -675,7 +857,7 @@ impl Player {
             // mpv went on to the prepared entry: that is the queue's next track. An episode
             // that ran to its end is played (a book's file is not the end of the book).
             if let Some(done) = q.tracks.get(q.index).filter(|t| t.podcast_id.is_some()) {
-                self.save_track(done, done.duration_secs, true, true);
+                self.save_track(q.owner.clone(), done, done.duration_secs, true, true);
             }
             self.end_listening(&mut q, "completed").await;
             q.index += 1;
@@ -691,13 +873,13 @@ impl Player {
             }
             // The new file from its start, so another device resumes here and not in the old one.
             self.save_position(&q, 0.0, false);
-            self.persist(&q, 0.0);
+            self.persist(&mut q, 0.0);
         } else if idle && pos < 0 && q.index + 1 < q.tracks.len() {
             // Ran out with entries left: the next one never reached mpv (the server was out of
             // reach) or mpv could not open it. Go on to it; if that fails too, the queue waits
             // there, paused, instead of ending and being forgotten.
             if let Some(done) = q.tracks.get(q.index).filter(|t| t.podcast_id.is_some()).cloned() {
-                self.save_track(&done, done.duration_secs, true, true);
+                self.save_track(q.owner.clone(), &done, done.duration_secs, true, true);
             }
             self.end_listening(&mut q, "completed").await;
             q.index += 1;
@@ -707,7 +889,7 @@ impl Player {
                 q.paused = true;
                 q.restored = Some(0.0);
                 q.last_position = 0.0;
-                self.persist(&q, 0.0);
+                self.persist(&mut q, 0.0);
             }
         } else if idle && pos < 0 {
             // Ran out: the last file ended, so a book is finished.
@@ -717,7 +899,7 @@ impl Player {
             self.end_listening(&mut q, "completed").await;
             q.active = false;
             q.sleep = None;
-            self.forget_persisted();
+            self.forget_persisted(&mut q);
         } else {
             // Not every tick: a server that does not answer is asked again in 15 s.
             if q.next_missing && q.next_tried.is_none_or(|t| t.elapsed() >= Duration::from_secs(15)) {
@@ -738,7 +920,7 @@ impl Player {
                 self.save_position(&q, position, false);
                 q.last_saved = Some(Instant::now());
                 if q.last_persisted.is_none_or(|t| t.elapsed() >= PERSIST_EVERY) {
-                    self.persist(&q, position);
+                    self.persist(&mut q, position);
                     q.last_persisted = Some(Instant::now());
                 }
             }
@@ -753,16 +935,16 @@ impl Player {
     /// so a slow server never holds up playback.
     fn save_position(&self, q: &Queue, position: f64, completed: bool) {
         let Some(track) = q.tracks.get(q.index) else { return };
-        self.save_track(track, position, completed, q.index + 1 == q.tracks.len());
+        self.save_track(q.owner.clone(), track, position, completed, q.index + 1 == q.tracks.len());
     }
 
     /// Book: the place in the file (only the book's last file can finish it). Episode: the
     /// place in the episode, or played. Music: nothing to keep.
-    fn save_track(&self, track: &Track, position: f64, completed: bool, last_in_queue: bool) {
+    fn save_track(&self, owner: Option<String>, track: &Track, position: f64, completed: bool, last_in_queue: bool) {
         let Some((path, body)) = Self::progress_request(track, position, completed, last_in_queue) else { return };
         let auth = Arc::clone(&self.auth);
         tokio::spawn(async move {
-            if let Err(err) = auth.send_json(Method::PUT, &path, &body).await {
+            if let Err(err) = auth.send_json_as(owner.as_deref(), Method::PUT, &path, &body).await {
                 tracing::warn!(%err, path, "saving the listening position");
             }
         });
@@ -809,8 +991,9 @@ impl Player {
     async fn end_listening(&self, q: &mut Queue, reason: &str) {
         let Some(body) = self.listening_report(q, reason).await else { return };
         let auth = Arc::clone(&self.auth);
+        let owner = q.owner.clone();
         tokio::spawn(async move {
-            if let Err(err) = auth.send_json(Method::POST, "/api/v1/playback/sessions", &body).await {
+            if let Err(err) = auth.send_json_as(owner.as_deref(), Method::POST, "/api/v1/playback/sessions", &body).await {
                 tracing::warn!(%err, "reporting the listening session");
             }
         });
@@ -851,9 +1034,37 @@ fn ended_early(duration_secs: f64, reached_secs: f64) -> bool {
     duration_secs > 30.0 && reached_secs < duration_secs - 10.0
 }
 
+/// A temporary file and a rename keep a half-written file from ever being read.
+fn write_json<T: Serialize>(path: &Path, value: &T) -> std::io::Result<()> {
+    let tmp = path.with_extension("tmp");
+    let bytes = serde_json::to_vec(value).map_err(std::io::Error::other)?;
+    std::fs::write(&tmp, bytes)?;
+    std::fs::rename(&tmp, path)
+}
+
+fn read_listener(path: &Path) -> Listener {
+    match std::fs::read_to_string(path) {
+        Ok(text) => serde_json::from_str(&text).unwrap_or_else(|err| {
+            tracing::warn!(%err, path = %path.display(), "unreadable saved queue; starting empty");
+            Listener::default()
+        }),
+        Err(_) => Listener::default(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::ended_early;
+    use super::*;
+
+    #[test]
+    fn a_queue_saved_before_playlists_had_places_still_reads() {
+        let old = r#"{"tracks":[],"index":0,"position_secs":12.5}"#;
+        let q: SavedQueue = serde_json::from_str(old).unwrap();
+        assert_eq!(q.position_secs, 12.5);
+        assert!(q.source.is_none());
+        let empty: Listener = serde_json::from_str("{}").unwrap();
+        assert!(empty.queue.is_none() && empty.places.is_empty());
+    }
 
     #[test]
     fn a_file_played_to_its_end_is_finished() {

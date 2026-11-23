@@ -68,6 +68,11 @@ boxes below, and installs from an SD card image.
   after pairing with a QR code from Settings → Phone control, and gets the library
   and the player. Unpaired devices get nothing but the pairing page; the box's own
   settings stay on its screen.
+- **People:** everyone in the household signs in with their own account (Settings →
+  People, a QR code for each), and the round initial in the top bar switches between
+  them, from a paired phone too. Each person has their own queue, equalizer and
+  recently played playlists; books and podcasts continue at their own place. A playlist
+  continues where its listener left it, or starts over.
 - **Other sources:** the box is an AirPlay 2 receiver ("own.audio box") and a
   Squeezelite player for Music Assistant; while one of them plays, ownbox lets the sound
   card go and shows what plays, and playing own.audio takes it back. AirPlay needs
@@ -233,8 +238,8 @@ audio_hat = "hifiberry-dacplus"   # an overlay in /boot/firmware/overlays; takes
 ```
 
 Settings live in `~/.config/ownbox/config.toml` (written with defaults on first start)
-and what is changed on the box in `~/.local/state/ownbox/` (`prefs.json`,
-`session.json`, `queue.json`).
+and what is changed on the box in `~/.local/state/ownbox/` (`prefs.json`; `session.json`,
+everyone's sign-in; `users/<id>.json`, each person's queue and places in playlists).
 
 The image is built by `setup/image/build.sh` (64-bit ARM Linux, as root; GitHub Actions
 runs it as `.github/workflows/image.yml` for every release). `scripts/prepare-sd.sh`

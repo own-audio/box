@@ -7,6 +7,21 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- Several people on one box. Everyone in the household signs in with their own account
+  (Settings → People → Add a person, a QR code scanned with their phone), and a round
+  initial in the top bar switches between them, from a paired phone too. Switching stops
+  what plays, keeps its place for the person who was listening (the book's position goes
+  to the server as them), and brings back the new person's own queue, paused where they
+  left it, with their equalizer and recently played playlists. Sessions nobody uses are
+  renewed weekly, so someone away for months is still signed in. `session.json` keeps the
+  listening person's session where older versions read it, so a rollback stays signed in.
+- A playlist continues where it was left. Its page offers "Continue · 3/13" and "Start
+  over"; the place follows the track if the playlist changed in an app meanwhile, and a
+  playlist played to its end starts from the top. Smart playlists draw anew, so they
+  always start over.
+
 ### Fixed
 
 - Pairing a phone on an upright screen: the QR code stands above the code and the address,

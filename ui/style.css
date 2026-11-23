@@ -194,6 +194,8 @@ p { margin: 0; }
   border-bottom: 1px solid var(--line);
 }
 #tabs { display: flex; gap: 4px; flex: 1; }
+/* The listener's initial; a tap switches to someone else signed in on the box. */
+#who { flex: none; width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 50%; background: var(--chip); color: var(--fg); font-size: 18px; font-weight: 700; }
 #tabs button { background: transparent; color: var(--muted); font-size: 19px; padding: 0 16px; min-height: 42px; display: inline-flex; align-items: center; gap: 8px; }
 /* Icons beside the tab names only where the bar has room for both. */
 .tab-icon { display: none; }

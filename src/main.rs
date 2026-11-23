@@ -116,8 +116,11 @@ async fn main() -> anyhow::Result<()> {
         Arc::clone(&mpv),
         Arc::clone(&auth),
         Arc::clone(&prefs),
-        config::state_dir()?.join("queue.json"),
+        config::state_dir()?.join("users"),
+        &config::state_dir()?.join("queue.json"),
+        auth.active_id().await,
     );
+    tokio::spawn(Arc::clone(&auth).keep_others_alive());
     let screen = screen::Screen::new(config.screen_brightness, config.screen_off_after_secs, Arc::clone(&prefs));
     // While the server is out of reach, knock every 15 s, so the screen's notice clears
     // when it is back even if nothing else is asked of it.

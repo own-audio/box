@@ -161,10 +161,12 @@ fn box_only(path: &str) -> bool {
 /// Paths a phone may never use: they run the box itself (sign-in, server, network, screen,
 /// pairing) or are hooks for programs on the box.
 fn screen_only(path: &str) -> bool {
-    const PREFIXES: [&str; 20] = [
+    const PREFIXES: [&str; 21] = [
         "/api/setup",
         "/api/sign-in",
         "/api/sign-out",
+        // Switching who listens is fine from a phone; signing someone out is not.
+        "/api/accounts/forget",
         "/api/wifi",
         "/api/screen",
         "/api/remote/code",

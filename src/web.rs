@@ -34,6 +34,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/sign-in", post(sign_in))
         .route("/api/sign-in/qr.svg", get(sign_in_qr))
         .route("/api/sign-out", post(sign_out))
+        .route("/api/sign-in/cancel", post(sign_in_cancel))
+        .route("/api/accounts/switch", post(account_switch))
+        .route("/api/accounts/forget", post(account_forget))
+        .route("/api/player/place/{id}", get(player_place))
         .route("/manifest.webmanifest", get(manifest))
         .route("/icons/{name}", get(icon))
         .route("/api/library/albums", get(lib_albums))
@@ -207,7 +211,7 @@ async fn lib_artist_albums(State(s): State<Arc<AppState>>, Path(id): Path<String
 }
 
 async fn lib_playlists(State(s): State<Arc<AppState>>) -> axum::response::Response {
-    let played = s.prefs.get().playlists_played;
+    let played = s.player.played().await;
     answer(library::playlists(&s.auth).await.map(|mut lists| {
         for p in &mut lists {
             p.played_at = played.get(&p.id).copied();
@@ -1002,7 +1006,7 @@ async fn setup_done(State(s): State<Arc<AppState>>, Json(req): Json<DoneRequest>
 /// without a screen the first phone to open the page pairs, as on a new box.
 async fn setup_reset(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
     s.player.clear().await;
-    s.auth.sign_out().await;
+    s.auth.sign_out_all().await;
     s.auth.set_server(s.config.server_url.clone()).await;
     let _ = s.mpv.command(json!(["set_property", "af", eq::Eq::default().filter()])).await;
     s.prefs.update(|p| {
@@ -1277,6 +1281,9 @@ struct PlayRequest {
     episodes: Option<Vec<podcasts::Episode>>,
     #[serde(default)]
     from_start: bool,
+    /// For a playlist: from where the listening person left it, instead of `start`.
+    #[serde(default)]
+    resume: bool,
     /// For a book: start at this part (file), `secs` into it, instead of the saved place.
     part: Option<usize>,
     #[serde(default)]
@@ -1301,10 +1308,16 @@ async fn player_play(State(s): State<Arc<AppState>>, Json(req): Json<PlayRequest
             let (tracks, secs) = podcasts::queue(list, req.start);
             return Ok((tracks, 0, secs));
         }
+        if let Some(id) = &req.playlist_id {
+            let tracks = library::playlist_tracks(&s.auth, id).await?;
+            let place = if req.resume { s.player.place(id).await } else { None };
+            return Ok(match place.and_then(|p| resume_at(&tracks, &p).map(|i| (i, p.secs))) {
+                Some((index, secs)) => (tracks, index, secs),
+                None => (tracks, req.start, 0.0),
+            });
+        }
         let tracks = if let Some(id) = &req.album_id {
             library::album_detail(&s.auth, id).await?.tracks
-        } else if let Some(id) = &req.playlist_id {
-            library::playlist_tracks(&s.auth, id).await?
         } else if let Some(id) = &req.artist_id {
             library::artist_tracks(&s.auth, id).await?
         } else {
@@ -1314,25 +1327,29 @@ async fn player_play(State(s): State<Arc<AppState>>, Json(req): Json<PlayRequest
     };
     let r = async {
         let (tracks, start, secs) = what.await?;
-        s.player.play(tracks, start, secs).await
+        // A smart playlist is drawn anew each time: no place in it to come back to.
+        s.player.play_from(tracks, start, secs, req.playlist_id.clone()).await
     }
     .await;
     if r.is_ok()
         && let Some(id) = req.playlist_id.clone().or_else(|| req.from_playlist.clone())
     {
-        let now = chrono::Utc::now().timestamp();
-        s.prefs.update(|p| {
-            p.playlists_played.insert(id, now);
-            // Only the latest matter; the oldest go, so the file stays small.
-            if p.playlists_played.len() > 50 {
-                let mut by_age: Vec<(String, i64)> = p.playlists_played.drain().collect();
-                by_age.sort_by_key(|(_, at)| -*at);
-                by_age.truncate(30);
-                p.playlists_played = by_age.into_iter().collect();
-            }
-        });
+        s.player.mark_played(id).await;
     }
     answer(r.map(|()| json!({ "ok": true })))
+}
+
+/// The entry a playlist was left at: where it was, or where that track has moved to since
+/// (the playlist changed in an app); `None` when it is gone.
+fn resume_at(tracks: &[library::Track], place: &player::Place) -> Option<usize> {
+    if tracks.get(place.index).is_some_and(|t| t.id == place.track_id) {
+        return Some(place.index);
+    }
+    tracks.iter().position(|t| t.id == place.track_id)
+}
+
+async fn player_place(State(s): State<Arc<AppState>>, Path(id): Path<String>) -> Json<Option<player::Place>> {
+    Json(s.player.place(&id).await)
 }
 
 async fn player_now(State(s): State<Arc<AppState>>) -> Json<player::NowPlaying> {
@@ -1442,8 +1459,62 @@ async fn sign_in_qr(State(s): State<Arc<AppState>>) -> axum::response::Response 
 }
 
 async fn sign_out(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    s.auth.sign_out().await;
+    if let Some(id) = s.auth.active_id().await {
+        forget_person(&s, &id).await;
+    }
     Json(json!({ "ok": true }))
+}
+
+async fn sign_in_cancel(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    s.auth.cancel_sign_in().await;
+    Json(json!({ "ok": true }))
+}
+
+#[derive(Deserialize)]
+struct PersonRequest {
+    user_id: String,
+}
+
+/// Someone else listens now: what played stops at its place (kept as the person who was
+/// listening), and the new person's own queue, equalizer and playlists take over.
+async fn account_switch(State(s): State<Arc<AppState>>, Json(req): Json<PersonRequest>) -> axum::response::Response {
+    if let Err(e) = s.auth.switch(&req.user_id).await {
+        return (StatusCode::NOT_FOUND, Json(json!({ "error": e.to_string() }))).into_response();
+    }
+    s.player.follow_account().await;
+    account_changed(&s);
+    Json(s.auth.view().await).into_response()
+}
+
+async fn account_forget(State(s): State<Arc<AppState>>, Json(req): Json<PersonRequest>) -> Json<crate::session::View> {
+    forget_person(&s, &req.user_id).await;
+    Json(s.auth.view().await)
+}
+
+/// Signs one person out of the box, their queue and places with them. When it is the one
+/// listening, the place goes to the server first (while their session still works), and
+/// the next person signed in takes over.
+async fn forget_person(s: &Arc<AppState>, user_id: &str) {
+    let listening = s.auth.active_id().await.as_deref() == Some(user_id);
+    if listening {
+        s.player.shutdown().await;
+    }
+    s.auth.forget(user_id).await;
+    s.player.forget_user(user_id).await;
+    if listening {
+        s.player.follow_account().await;
+        account_changed(s);
+    }
+}
+
+/// The equalizer follows the account, in the background: the server may be slow.
+fn account_changed(s: &Arc<AppState>) {
+    let s = Arc::clone(s);
+    tokio::spawn(async move {
+        if let Err(err) = sync_eq(&s).await {
+            tracing::warn!(%err, "reading the new listener's equalizer");
+        }
+    });
 }
 
 /// The page as a home-screen app: the box's own name, its icon, no browser bars. A paired
@@ -1543,5 +1614,25 @@ mod tests {
         assert_eq!(clean_name("  Kuchyň  "), "Kuchyň");
         assert_eq!(clean_name("a\"b\nc\\d$e`f"), "a'b c/d e'f");
         assert_eq!(clean_name(&"x".repeat(80)).len(), 60);
+    }
+}
+
+#[cfg(test)]
+mod place_tests {
+    use super::*;
+
+    fn track(id: &str) -> library::Track {
+        serde_json::from_value(json!({ "id": id, "title": id, "artist": "", "duration_secs": 1.0 })).unwrap()
+    }
+
+    #[test]
+    fn a_playlist_continues_at_its_track_even_after_it_moved() {
+        let place = |index, id: &str| player::Place { index, track_id: id.into(), secs: 40.0, at: 0 };
+        let list = [track("a"), track("b"), track("c")];
+        assert_eq!(resume_at(&list, &place(1, "b")), Some(1));
+        // A track put in front of it in an app: found where it is now.
+        assert_eq!(resume_at(&list, &place(0, "c")), Some(2));
+        // Taken out of the playlist: nothing to continue.
+        assert_eq!(resume_at(&list, &place(1, "x")), None);
     }
 }

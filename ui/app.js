@@ -248,7 +248,14 @@ function renderSession(s) {
     if (now) go('music');
   }
   if (now) {
+    const before = account && account.id;
     account = s.user;
+    accounts = s.accounts || [s.user];
+    showWho();
+    // Someone else listens now (switched here or from a phone): their library, not the last one's.
+    if (before && before !== account.id) {
+      if (currentTab === 'settings') render(); else go(currentTab || 'music');
+    }
     shownCode = null;
     // What plays goes on (mpv has the stream); only browsing needs the server.
     $('offline').hidden = s.server_reachable !== false;
@@ -285,6 +292,34 @@ function renderSession(s) {
 }
 
 let account = null;
+// Everyone signed in on the box; `account` is the one listening.
+let accounts = [];
+
+const personName = (a) => a.display_name || a.email.split('@')[0];
+
+// The top bar's round button with the listener's initial, once there is someone to switch to.
+function showWho() {
+  const b = $('who');
+  b.hidden = accounts.length < 2;
+  if (b.hidden) return;
+  b.textContent = [...personName(account)][0].toUpperCase();
+  b.title = personName(account);
+}
+
+async function switchTo(a) {
+  if (account && a.id === account.id) return;
+  try {
+    renderSession(await post('/api/accounts/switch', { user_id: a.id }));
+    toast(t('Now listening: {n}', { n: personName(a) }));
+  } catch (e) {
+    toast(t(e.message));
+  }
+}
+
+$('who').addEventListener('click', () => sheet(t('Who is listening?'), [
+  ...accounts.map((a) => [a.id === account.id ? `✓ ${personName(a)}` : personName(a), () => switchTo(a)]),
+  ...(REMOTE ? [] : [[t('Add a person'), () => { go('settings'); push(addPersonView()); }]]),
+]));
 
 /** The sign-in address: shown short on the box's screen; a link to tap on a phone that is
  * the screen of a box without one (it cannot scan itself). */
@@ -1001,11 +1036,20 @@ function playlistsView() {
 function playlistView(p) {
   return {
     async render(box) {
-      const tracks = await get(`/api/library/playlists/${encodeURIComponent(p.id)}`);
+      const [tracks, place] = await Promise.all([
+        get(`/api/library/playlists/${encodeURIComponent(p.id)}`),
+        get(`/api/player/place/${encodeURIComponent(p.id)}`).catch(() => null),
+      ]);
+      // Where this person left the playlist: its track, wherever it is in the list now.
+      const at = place ? tracks.findIndex((x) => x.id === place.track_id) : -1;
       box.append(el('div', { class: 'toolbar' },
         el('h2', { class: 'ellipsis', text: p.name }),
         el('div', { class: 'spacer' }),
-        tracks.length ? act('play', t('Play'), 'primary', () => play({ playlist_id: p.id, start: 0 })) : null,
+        tracks.length && at >= 0
+          ? act('play', t('Continue · {t}', { t: `${at + 1}/${tracks.length}` }), 'primary', () => play({ playlist_id: p.id, resume: true }))
+          : null,
+        tracks.length && at >= 0 ? el('button', { class: 'secondary', text: t('Start over'), onclick: () => play({ playlist_id: p.id, start: 0 }) }) : null,
+        tracks.length && at < 0 ? act('play', t('Play'), 'primary', () => play({ playlist_id: p.id, start: 0 })) : null,
         p.mine ? deletePlaylistButton(p) : null));
       if (p.mine && tracks.length) box.append(el('p', { class: 'muted small', text: t('Hold a track to take it out of the playlist.') }));
       const remove = (track, i) => [t('Remove from playlist'), async () => {
@@ -2872,6 +2916,106 @@ function phoneSettings() {
   return group;
 }
 
+// Everyone in the household signs in with their own account and switches on the box.
+function peopleSettings() {
+  const group = el('div', { class: 'settings-group' }, el('div', { class: 'section-title', text: t('People') }));
+  const list = el('div', { class: 'rows' });
+  // Signing someone out takes two taps, so a stray touch can't do it.
+  const twoTaps = (run) => {
+    let armed = null;
+    const b = el('button', { class: 'secondary', text: t('Sign out'), onclick: (e) => {
+      e.stopPropagation();
+      if (!armed) {
+        b.textContent = t('Tap again to sign out');
+        armed = setTimeout(() => { armed = null; b.textContent = t('Sign out'); }, 3000);
+        return;
+      }
+      clearTimeout(armed);
+      run();
+    } });
+    return b;
+  };
+  const draw = async () => {
+    const s = await get('/api/session').catch(() => null);
+    if (!s || s.state !== 'signed_in') return;
+    list.replaceChildren(...s.accounts.map((a) => {
+      const me = a.id === s.user.id;
+      return el('div', { class: me ? 'row current' : 'row', onclick: me ? null : async () => { await switchTo(a); draw(); } },
+        el('div', { class: 'main' },
+          el('div', { class: 'ellipsis', text: personName(a) }),
+          el('div', { class: 'sub muted ellipsis', text: me ? t('Listening now') : a.email })),
+        REMOTE ? null : twoTaps(async () => {
+          const after = await post('/api/accounts/forget', { user_id: a.id }).catch(() => null);
+          if (after) renderSession(after);
+          draw();
+        }));
+    }));
+  };
+  draw();
+  group.append(
+    el('p', { class: 'muted small', text: t('Everyone in the household can sign in with their own account. Each keeps their own queue and their place in books and playlists. Tap a name to switch.') }),
+    list,
+    REMOTE ? '' : el('div', { class: 'buttons' }, el('button', { class: 'secondary', text: t('Add a person'), onclick: () => push(addPersonView()) })));
+  return group;
+}
+
+// Another person signs in as the box did: their phone scans the code. Once they are in,
+// the box switches to them.
+function addPersonView() {
+  return {
+    async render(box) {
+      const view = stack[stack.length - 1];
+      const known = new Set(accounts.map((a) => a.id));
+      const qr = el('img', { class: 'wiz-qr', alt: '', width: 220, height: 220, hidden: true });
+      const link = el('p', { class: 'link' });
+      const code = el('p', { class: 'code' });
+      const left = el('p', { class: 'muted' });
+      const msg = el('p', { class: 'bad', role: 'alert' });
+      const fresh = async () => {
+        msg.textContent = '';
+        await post('/api/sign-in').catch((e) => { msg.textContent = t(e.message); });
+      };
+      box.append(
+        el('h2', { text: t('Add a person') }),
+        el('p', { class: 'wiz-intro', text: t('Scan the code with the phone of the person you are adding. It has to be signed in to own.audio.') }),
+        el('div', { class: 'wiz-signin' }, qr,
+          el('div', { class: 'wiz-code' }, link, code, left,
+            el('button', { class: 'secondary', text: t('New code'), onclick: fresh }))),
+        msg);
+      await fresh();
+      let shown = null;
+      const poll = async () => {
+        // Gone from the screen: nobody is going to scan the code any more.
+        if (stack[stack.length - 1] !== view) { post('/api/sign-in/cancel').catch(() => null); return; }
+        const s = await get('/api/session').catch(() => null);
+        if (s && s.state === 'signed_in' && s.adding) {
+          if (shown !== s.adding.user_code) {
+            shown = s.adding.user_code;
+            qr.src = `/api/sign-in/qr.svg?c=${encodeURIComponent(shown)}`;
+          }
+          qr.hidden = !s.adding.link || HEADLESS;
+          showLink(link, s.adding.link);
+          code.textContent = s.adding.user_code;
+          left.textContent = t('Valid for {t}', { t: clock(s.adding.expires_in) });
+        } else if (s && s.state === 'signed_in' && shown) {
+          const added = s.accounts.find((a) => !known.has(a.id));
+          if (s.error) {
+            msg.textContent = t(s.error);
+            shown = null;
+          } else {
+            // In, or someone already here signed in again.
+            if (added) await switchTo(added);
+            back();
+            return;
+          }
+        }
+        setTimeout(poll, 1500);
+      };
+      poll();
+    },
+  };
+}
+
 function pairView() {
   return {
     async render(box) {
@@ -2933,12 +3077,16 @@ function settingsPages() {
   const langName = { cs: 'Čeština', sk: 'Slovenčina', hu: 'Magyar', en: 'English' };
   const host = (url) => { try { return new URL(url).host; } catch { return url; } };
 
+  const peoplePage = { title: 'People', hint: 'Who is listening, adding someone', parts: async () => [peopleSettings()],
+    summary: async () => (accounts.length > 1 ? [account, ...accounts.filter((a) => a.id !== account.id)].map(personName).join(', ') : null) };
+
   if (REMOTE) {
     // From a phone: how it sounds and looks; the box's own settings stay on its screen.
     return [
       { title: 'Sound', hint: 'Equalizer', parts: async () => [eqRow()],
         summary: async () => eqSummary(await get('/api/eq').catch(() => null)) },
       { title: 'Appearance', hint: 'Theme, buttons', parts: async () => [appearanceSettings()] },
+      peoplePage,
       { title: 'About the box', hint: 'Version, player, power', parts: async () => [about()] },
     ];
   }
@@ -2988,6 +3136,7 @@ function settingsPages() {
         const one = (key, name) => (st[key] && st[key].installed ? `${name} ${st[key].enabled ? t('on') : t('off')}` : null);
         return join(one('airplay', 'AirPlay'), one('music_assistant', 'Music Assistant'));
       } },
+    peoplePage,
     { title: 'Library', hint: 'Server, account, start over', parts: async () => [serverSettings(), signOutRow()],
       summary: async () => {
         const st = await get('/api/setup').catch(() => null);
