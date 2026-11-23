@@ -30,7 +30,7 @@ pub struct Config {
     pub screen_brightness: u8,
     /// Seconds without a touch before the backlight goes off; 0 keeps it on.
     pub screen_off_after_secs: u64,
-    /// The screen's language until one is chosen in Settings: `cs` or `en`.
+    /// The screen's language until one is chosen in Settings: one of `LANGUAGES`.
     pub language: String,
     /// The device-tree overlay of an I²S audio HAT without an EEPROM (`hifiberry-dacplus`,
     /// `allo-boss-dac-pcm512x-audio`…). The deploy writes it into `config.txt`; empty for USB
@@ -108,8 +108,8 @@ pub fn load() -> anyhow::Result<Config> {
     toml::from_str(&text).with_context(|| format!("parsing {}", path.display()))
 }
 
-/// The screen's languages: Czech, Slovak, Hungarian, English.
-pub const LANGUAGES: [&str; 4] = ["cs", "sk", "hu", "en"];
+/// The screen's languages: Czech, Slovak, Hungarian, German, French, Spanish, Italian, English.
+pub const LANGUAGES: [&str; 8] = ["cs", "sk", "hu", "de", "fr", "es", "it", "en"];
 
 /// The country a language is mostly spoken in: radio's first list and the time zone.
 pub fn home_country(language: &str) -> Option<&'static str> {
@@ -117,6 +117,10 @@ pub fn home_country(language: &str) -> Option<&'static str> {
         "cs" => Some("CZ"),
         "sk" => Some("SK"),
         "hu" => Some("HU"),
+        "de" => Some("DE"),
+        "fr" => Some("FR"),
+        "es" => Some("ES"),
+        "it" => Some("IT"),
         _ => None,
     }
 }

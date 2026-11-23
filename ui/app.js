@@ -301,10 +301,24 @@ const personName = (a) => a.display_name || a.email.split('@')[0];
 function showWho() {
   const b = $('who');
   b.hidden = accounts.length < 2;
-  if (b.hidden) return;
-  b.textContent = [...personName(account)][0].toUpperCase();
-  b.title = personName(account);
+  if (!b.hidden) {
+    b.textContent = [...personName(account)][0].toUpperCase();
+    b.title = personName(account);
+  }
+  fitTabs();
 }
+
+// The tab names at full length, measured without letting them shrink: when they do not fit
+// beside Back, the initial and Settings, their icons go first (style.css, `.tight`).
+function fitTabs() {
+  const bar = $('topbar');
+  bar.classList.remove('tight');
+  bar.classList.add('measuring');
+  const over = $('tabs').scrollWidth > $('tabs').clientWidth + 1;
+  bar.classList.remove('measuring');
+  bar.classList.toggle('tight', over);
+}
+window.addEventListener('resize', fitTabs);
 
 async function switchTo(a) {
   if (account && a.id === account.id) return;
@@ -437,7 +451,7 @@ function musicHome() {
       if (favourites.length) {
         const rows = el('div', { class: 'rows' },
           favourites.slice(0, 5).map((t, i) => trackRow(t, i + 1, () => play({ tracks: favourites, start: i }), artistAndAlbum(t))));
-        box.append(shelf(t('Favourites'), () => push(favouritesView()), rows));
+        box.append(shelf(t('Favorites'), () => push(favouritesView()), rows));
       }
     },
   };
@@ -456,13 +470,13 @@ function favouritesView() {
     async render(box) {
       const tracks = await get('/api/library/favourites');
       box.append(el('div', { class: 'toolbar' },
-        el('h2', { text: t('Favourites') }),
+        el('h2', { text: t('Favorites') }),
         el('div', { class: 'spacer' }),
         tracks.length ? act('play', t('Play'), 'primary', () => play({ tracks, start: 0 })) : null));
       const rows = el('div', { class: 'rows' });
       tracks.forEach((t, i) => rows.append(trackRow(t, i + 1, () => play({ tracks, start: i }), artistAndAlbum(t))));
       box.append(rows);
-      if (!tracks.length) box.append(el('div', { class: 'message', text: t('No favourites yet. Mark songs with a heart in the own.audio app.') }));
+      if (!tracks.length) box.append(el('div', { class: 'message', text: t('No favorites yet. Mark songs with a heart in the own.audio app.') }));
     },
   };
 }
@@ -494,6 +508,7 @@ async function render() {
   document.body.dataset.section = currentTab === 'books' || currentTab === 'podcasts' ? currentTab : 'music';
   const view = stack[stack.length - 1];
   $('back').hidden = stack.length < 2;
+  fitTabs();
   document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === currentTab));
   const box = $('view');
   hideScrub();
@@ -606,7 +621,7 @@ function stationRow(st, favourites, redraw) {
   const fav = favourites.some((f) => f.id === st.id);
   const heart = el('button', {
     class: `icon heart${fav ? ' on' : ''}`,
-    'aria-label': fav ? t('Remove from favourites') : t('Add to favourites'),
+    'aria-label': fav ? t('Remove from favorites') : t('Add to favorites'),
     onclick: async (ev) => {
       ev.stopPropagation();
       const list = await post('/api/radio/favourite', { id: st.id, on: !fav }).catch(() => null);
@@ -649,7 +664,7 @@ function radioView() {
           const tile = stationTile(st);
           if (radioState.editing) {
             tile.classList.add('editing');
-            tile.append(el('button', { class: 'tile-remove', 'aria-label': t('Remove from favourites'), text: '✕', onclick: async (ev) => {
+            tile.append(el('button', { class: 'tile-remove', 'aria-label': t('Remove from favorites'), text: '✕', onclick: async (ev) => {
               ev.stopPropagation();
               const list = await post('/api/radio/favourite', { id: st.id, on: false }).catch(() => null);
               if (list) { favourites.splice(0, favourites.length, ...list); redraw(); }
@@ -660,7 +675,7 @@ function radioView() {
         favBox.replaceChildren(el('div', {},
           recentShelf(),
           el('div', { class: 'shelf-head' },
-            el('h3', { text: t('Favourite radios') }),
+            el('h3', { text: t('Favorite radios') }),
             el('button', { class: radioState.editing ? 'on' : 'secondary', text: radioState.editing ? t('Done') : t('Edit'),
               onclick: () => { radioState.editing = !radioState.editing; drawFavourites(); } })),
           el('div', { class: 'hscroll' }, tiles)));
@@ -1093,7 +1108,7 @@ function smartPlaylistView(p) {
 // The presets' names and what each picks, as the web app shows them; the server's own
 // (English) name for one it adds later.
 const PRESETS = {
-  'forgotten-favourites': ['Forgotten favourites', "Songs you starred but haven't played for a year."],
+  'forgotten-favourites': ['Forgotten favorites', "Songs you starred but haven't played for a year."],
   'new-in-the-library': ['New in the library', 'Added in the last 30 days.'],
   'back-in-rotation': ['Back in rotation', 'Rated four stars or more, not heard for two months.'],
   'what-the-family-plays': ['What the family plays', "What others in the family play and you haven't yet."],
@@ -1894,7 +1909,8 @@ function languageSettings() {
   });
   return el('div', { class: 'settings-group' },
     el('div', { class: 'setting' }, el('span', { text: t('Language') }),
-      el('div', { class: 'buttons' }, choice('cs', 'Čeština'), choice('sk', 'Slovenčina'), choice('hu', 'Magyar'), choice('en', 'English'))));
+      el('div', { class: 'buttons wrap' }, choice('cs', 'Čeština'), choice('sk', 'Slovenčina'), choice('hu', 'Magyar'), choice('de', 'Deutsch'),
+        choice('fr', 'Français'), choice('es', 'Español'), choice('it', 'Italiano'), choice('en', 'English'))));
 }
 
 // --- network ----------------------------------------------------------------------
@@ -2106,11 +2122,15 @@ function wizLanguage() {
       wizStep(box, {
         step: 1,
         greeting: true,
-        title: 'Jazyk · Nyelv · Language',
-        content: el('div', { class: 'wiz-choices' },
+        title: 'Jazyk · Nyelv · Sprache · Langue · Idioma · Lingua · Language',
+        content: el('div', { class: 'wiz-choices langs' },
           wizChoice('globe', 'Čeština', 'Česky', () => choose('cs')),
           wizChoice('globe', 'Slovenčina', 'Po slovensky', () => choose('sk')),
           wizChoice('globe', 'Magyar', 'Magyarul', () => choose('hu')),
+          wizChoice('globe', 'Deutsch', 'Auf Deutsch', () => choose('de')),
+          wizChoice('globe', 'Français', 'En français', () => choose('fr')),
+          wizChoice('globe', 'Español', 'En español', () => choose('es')),
+          wizChoice('globe', 'Italiano', 'In italiano', () => choose('it')),
           wizChoice('globe', 'English', 'In English', () => choose('en'))),
       });
     },
@@ -3074,7 +3094,7 @@ function settingsPages() {
 
   const join = (...parts) => parts.filter(Boolean).join(' · ');
   const eqSummary = (e) => (!e || !e.eq ? null : e.eq.enabled ? t('Equalizer: {p}', { p: e.eq.preset_name ? t(e.eq.preset_name) : t('own') }) : t('Equalizer off'));
-  const langName = { cs: 'Čeština', sk: 'Slovenčina', hu: 'Magyar', en: 'English' };
+  const langName = { cs: 'Čeština', sk: 'Slovenčina', hu: 'Magyar', de: 'Deutsch', fr: 'Français', es: 'Español', it: 'Italiano', en: 'English' };
   const host = (url) => { try { return new URL(url).host; } catch { return url; } };
 
   const peoplePage = { title: 'People', hint: 'Who is listening, adding someone', parts: async () => [peopleSettings()],
@@ -3764,7 +3784,7 @@ async function setupWifiPage() {
       el('div', { class: 'ob-progress', role: 'progressbar', 'aria-valuemin': 1, 'aria-valuemax': STEPS.length, 'aria-valuenow': i + 1 },
         ...STEPS.map((_, j) => el('span', { class: j <= i ? 'on' : '' }))),
       el('div', { class: 'ob-lang' },
-        ...[['cs', 'CZ'], ['sk', 'SK'], ['hu', 'HU'], ['en', 'EN']].map(([code, label]) => el('button', {
+        ...[['cs', 'CZ'], ['sk', 'SK'], ['hu', 'HU'], ['de', 'DE'], ['fr', 'FR'], ['es', 'ES'], ['it', 'IT'], ['en', 'EN']].map(([code, label]) => el('button', {
           class: LANG === code ? 'on' : '', text: label, 'aria-pressed': String(LANG === code),
           onclick: () => { LANG = code; draw(); },
         }))));

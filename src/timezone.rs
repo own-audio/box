@@ -41,6 +41,10 @@ pub fn suggested(language: &str) -> Option<&'static str> {
         "CZ" => Some("Europe/Prague"),
         "SK" => Some("Europe/Bratislava"),
         "HU" => Some("Europe/Budapest"),
+        "DE" => Some("Europe/Berlin"),
+        "FR" => Some("Europe/Paris"),
+        "ES" => Some("Europe/Madrid"),
+        "IT" => Some("Europe/Rome"),
         _ => None,
     }
 }
@@ -62,6 +66,8 @@ mod tests {
         assert_eq!(super::suggested("cs"), Some("Europe/Prague"));
         assert_eq!(super::suggested("sk"), Some("Europe/Bratislava"));
         assert_eq!(super::suggested("hu"), Some("Europe/Budapest"));
+        assert_eq!(super::suggested("de"), Some("Europe/Berlin"));
+        assert_eq!(super::suggested("it"), Some("Europe/Rome"));
         assert_eq!(super::suggested("en"), None);
     }
 }

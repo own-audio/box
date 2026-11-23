@@ -21,7 +21,7 @@ pub struct Prefs {
     /// the server keeps no such history, and the home page shows the latest first.
     #[serde(default)]
     pub playlists_played: HashMap<String, i64>,
-    /// The screen's language, `cs` or `en`.
+    /// The screen's language, one of `config::LANGUAGES`.
     pub language: Option<String>,
     /// `dark` (missing), `light`, or `auto` (each device follows its own system setting).
     pub theme: Option<String>,

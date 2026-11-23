@@ -7,6 +7,30 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+
+- The screen's Slovak queue is "poradie" (never "front"), the Hungarian one "lejátszási sor", and French and Italian use the typographic apostrophe, as the apps do.
+
+### Added
+
+- German, French, Spanish and Italian on the screen and on a phone: in the setup wizard, in
+  Settings → Language and in the phone setup page's language switch. All four are machine
+  translations nobody has checked yet (each table in `ui/i18n.js` says so); wording follows the
+  own.audio glossary, with du in German, vous in French, tú in Spanish (Spain) and tu in Italian.
+  A box set to one of them takes Germany, France, Spain or Italy for its radio list and, while
+  still on the default zone, Berlin, Paris, Madrid or Rome for its time zone.
+  The wizard's eight language tiles stand in two rows that fit the 480-pixel-high screen.
+
+### Fixed
+
+- Slovak: the queue is "Poradie", not the Czech "Front"; "Tap again to restart / switch off /
+  go back" read "Ďalším ťuknutím reštartujete / vypnete / sa vrátite", like the box's other
+  confirmations.
+- Hungarian calls the device "box" everywhere; some lines said "doboz".
+- English says "Favorites" (American English, as in the own.audio apps), not "Favourites".
+- With two people signed in, long tab names (Hungarian, French) beside the listener's initial
+  pushed Settings off the landscape screen. The tabs' icons now give way first, then the names.
+
 ## [1.0.0-beta.19] — 2026-11-23
 
 ### Added
