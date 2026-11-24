@@ -7,6 +7,8 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0-beta.21] — 2026-11-24
+
 ### Fixed
 
 - With its speaker unplugged (a USB speaker like the Jabra), the box ran through the whole
