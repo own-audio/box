@@ -595,7 +595,7 @@ button.icon.skip { font-size: 20px; font-weight: 600; color: var(--fg); width: 6
 .keyboard button:disabled { opacity: 0.35; }
 
 /* The server is out of reach: a strip under the top bar, never in the way of the player. */
-#offline { flex: none; padding: 8px 16px; background: var(--offline-bg); color: var(--warn); font-size: 16px; }
+#offline, #fault { flex: none; padding: 8px 16px; background: var(--offline-bg); color: var(--warn); font-size: 16px; }
 
 /* --- first-run wizard ------------------------------------------------------------------ */
 

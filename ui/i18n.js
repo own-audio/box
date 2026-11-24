@@ -23,6 +23,9 @@ const ROOMS = {
 };
 
 const CS = {
+  // no sound output
+  "The speaker is not connected. Connect it and press play.": "Reproduktor není připojený. Připojte ho a stiskněte přehrát.",
+  "The box cannot open its sound output. Press play to try again.": "Box nemůže otevřít zvukový výstup. Stiskněte přehrát a zkuste to znovu.",
   // people on the box
   "People": "Lidé",
   "Who is listening, adding someone": "Kdo poslouchá, přidání dalšího",
@@ -556,6 +559,9 @@ const CS = {
 };
 
 const SK = {
+  // no sound output
+  "The speaker is not connected. Connect it and press play.": "Reproduktor nie je pripojený. Pripojte ho a stlačte prehrať.",
+  "The box cannot open its sound output. Press play to try again.": "Box nemôže otvoriť zvukový výstup. Stlačte prehrať a skúste to znova.",
   // people on the box
   "People": "Ľudia",
   "Who is listening, adding someone": "Kto počúva, pridanie ďalšieho",
@@ -1029,6 +1035,9 @@ const SK = {
 const COUNTS_SK = {"tracks": ["{n} skladba", "{n} skladby", "{n} skladieb"], "unplayed": ["{n} nevypočutá", "{n} nevypočuté", "{n} nevypočutých"]};
 
 const HU = {
+  // no sound output
+  "The speaker is not connected. Connect it and press play.": "A hangszóró nincs csatlakoztatva. Csatlakoztassa, majd nyomja meg a lejátszást.",
+  "The box cannot open its sound output. Press play to try again.": "A box nem tudja megnyitni a hangkimenetét. Nyomja meg a lejátszást az újrapróbáláshoz.",
   // people on the box
   "People": "Személyek",
   "Who is listening, adding someone": "Ki hallgat, új személy hozzáadása",
@@ -1503,6 +1512,9 @@ const COUNTS_HU = {"tracks": ["{n} szám", "{n} szám"], "unplayed": ["{n} lejá
 
 // German: machine-made on 2026-11-22, not yet reviewed by a native speaker.
 const DE = {
+  // no sound output
+  "The speaker is not connected. Connect it and press play.": "Der Lautsprecher ist nicht angeschlossen. Schließe ihn an und drücke auf Wiedergabe.",
+  "The box cannot open its sound output. Press play to try again.": "Die Box kann ihre Tonausgabe nicht öffnen. Drücke auf Wiedergabe, um es erneut zu versuchen.",
   // people on the box
   "People": "Personen",
   "Who is listening, adding someone": "Wer hört zu, jemanden hinzufügen",
@@ -1977,6 +1989,9 @@ const COUNTS_DE = {"tracks":["{n} Titel", "{n} Titel"], "unplayed":["{n} ungespi
 
 // French: machine-made on 2026-11-22, not yet reviewed by a native speaker.
 const FR = {
+  // no sound output
+  "The speaker is not connected. Connect it and press play.": "L’enceinte n’est pas branchée. Branchez-la et appuyez sur lecture.",
+  "The box cannot open its sound output. Press play to try again.": "La box ne parvient pas à ouvrir sa sortie audio. Appuyez sur lecture pour réessayer.",
   // people on the box
   "People": "Personnes",
   "Who is listening, adding someone": "Qui écoute, ajouter quelqu’un",
@@ -2451,6 +2466,9 @@ const COUNTS_FR = {"tracks":["{n} morceau", "{n} morceaux"], "unplayed":["{n} no
 
 // Spanish (Spain): machine-made on 2026-11-22, not yet reviewed by a native speaker.
 const ES = {
+  // no sound output
+  "The speaker is not connected. Connect it and press play.": "El altavoz no está conectado. Conéctalo y pulsa reproducir.",
+  "The box cannot open its sound output. Press play to try again.": "El box no puede abrir su salida de sonido. Pulsa reproducir para volver a intentarlo.",
   // people on the box
   "People": "Personas",
   "Who is listening, adding someone": "Quién escucha, añadir a alguien",
@@ -2925,6 +2943,9 @@ const COUNTS_ES = {"tracks":["{n} canción", "{n} canciones"], "unplayed":["{n} 
 
 // Italian: machine-made on 2026-11-22, not yet reviewed by a native speaker.
 const IT = {
+  // no sound output
+  "The speaker is not connected. Connect it and press play.": "L’altoparlante non è collegato. Collegalo e premi riproduci.",
+  "The box cannot open its sound output. Press play to try again.": "Il box non riesce ad aprire l’uscita audio. Premi riproduci per riprovare.",
   // people on the box
   "People": "Persone",
   "Who is listening, adding someone": "Chi ascolta, aggiungere qualcuno",

@@ -7,6 +7,14 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- With its speaker unplugged (a USB speaker like the Jabra), the box ran through the whole
+  queue in seconds: mpv could not open the card, so every track "ended" at once. The queue
+  now waits, paused, at the track it reached, and the screen says the speaker is not
+  connected (or that the sound output would not open, when the card is there but busy).
+  Play tries again.
+
 ## [1.0.0-beta.20] — 2026-11-23
 
 ### Changed

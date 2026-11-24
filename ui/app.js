@@ -3406,7 +3406,20 @@ function renderOutside(o) {
   $('np-add').hidden = true;
 }
 
+// Playing stopped by itself because the box has no sound output: said until play is
+// pressed again (which clears it on the box, or sets it again if still nothing plays).
+const FAULTS = {
+  speaker_missing: 'The speaker is not connected. Connect it and press play.',
+  output_failed: 'The box cannot open its sound output. Press play to try again.',
+};
+function showFault(n) {
+  const text = n && n.fault ? FAULTS[n.fault] : null;
+  $('fault').hidden = !text;
+  if (text) $('fault').textContent = t(text);
+}
+
 function renderNow(n, o) {
+  showFault(n);
   if (o) {
     now = n;
     return renderOutside(o);

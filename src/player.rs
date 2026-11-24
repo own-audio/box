@@ -79,6 +79,11 @@ struct Queue {
     owner: Option<String>,
     /// The playlist the queue was started from, whose place is kept as it plays.
     source: Option<String>,
+    /// Where in its file the entry playing began (0, or the place a book resumed at): an
+    /// entry that ends without getting past it never played.
+    entry_start: f64,
+    /// Why the queue stopped by itself, for the screen: the sound output could not be opened.
+    fault: Option<&'static str>,
     /// The owner's place in each playlist they have left unfinished.
     places: HashMap<String, Place>,
     /// When the owner last played each playlist here, unix seconds: the server keeps no
@@ -151,6 +156,9 @@ pub struct NowPlaying {
     pub sleep_in_secs: Option<f64>,
     /// The sleep timer waits for the end of the file playing.
     pub sleep_end_of_part: bool,
+    /// Why playing stopped by itself: `speaker_missing` (its card is unplugged) or
+    /// `output_failed` (the card would not open).
+    pub fault: Option<&'static str>,
 }
 
 #[derive(Debug, Serialize)]
@@ -470,6 +478,8 @@ impl Player {
         q.restored = None;
         q.mpv_generation = self.mpv.generation();
         q.last_position = start_secs;
+        q.entry_start = start_secs;
+        q.fault = None;
         self.start_listening(q);
         self.save_position(q, start_secs, false);
         self.persist(q, start_secs);
@@ -764,7 +774,16 @@ impl Player {
             },
             sleep_end_of_part: matches!(q.sleep, Some(Sleep::EndOfPart)),
             stream_title,
+            fault: q.fault,
         }
+    }
+
+    /// Whether mpv's sound card is missing from the system (unplugged), as opposed to there
+    /// but not opening (busy).
+    async fn output_unplugged(&self) -> bool {
+        let Some(device) = self.property("audio-device").await.and_then(|v| v.as_str().map(str::to_owned)) else { return false };
+        let found = crate::hardware::outputs();
+        device.starts_with("alsa/") && !found.is_empty() && !found.iter().any(|o| o.device == device)
     }
 
     async fn property(&self, name: &str) -> Option<Value> {
@@ -829,6 +848,24 @@ impl Player {
         if let Some(position) = self.property_f64("time-pos").await {
             q.last_position = position;
         }
+        let ended = pos >= 1 || (idle && pos < 0);
+        if ended && reached < q.entry_start + 1.0 && self.property("current-ao").await.is_none() {
+            // mpv could not open the sound output (the USB speaker unplugged, the card taken
+            // by another program): each file then "ends" at once, and the queue would run
+            // through to its end in seconds. It waits at this entry instead, for play.
+            let fault = if self.output_unplugged().await { "speaker_missing" } else { "output_failed" };
+            tracing::warn!(fault, index = q.index, "no sound output; the queue waits");
+            self.mpv.command(json!(["stop"])).await?;
+            self.end_listening(&mut q, "stopped").await;
+            let at = q.entry_start;
+            q.active = false;
+            q.paused = true;
+            q.restored = Some(at);
+            q.last_position = at;
+            q.fault = Some(fault);
+            self.persist(&mut q, at);
+            return Ok(false);
+        }
         let spoken = q.tracks.get(q.index).is_some_and(|t| t.book_id.is_some() || t.podcast_id.is_some());
         let cut_short = q.tracks.get(q.index).is_some_and(|t| ended_early(t.duration_secs, reached));
         if (pos >= 1 || (idle && pos < 0)) && spoken && cut_short {
@@ -861,6 +898,8 @@ impl Player {
             }
             self.end_listening(&mut q, "completed").await;
             q.index += 1;
+            q.entry_start = 0.0;
+            q.last_position = 0.0;
             self.mpv.command(json!(["playlist-remove", 0])).await?;
             q.next_missing = q.index + 1 < q.tracks.len();
             fetch_next = q.next_missing;
