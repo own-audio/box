@@ -1,10 +1,11 @@
 # Hardware
 
 The box as it is being bought (2026-11-14), why each part, and what changes from the
-Raspberry Pi 3 B+ bench setup. Prices from rpishop.cz that day.
+Raspberry Pi 3 B+ bench setup. Prices from rpishop.cz that day, with
+euros at 25 Kč to the euro.
 
-A Raspberry Pi 5 build (4 063 Kč without a card) was priced first; the Pi 4 saves about
-700 Kč, needs no Active Cooler or raised header, and is fast enough (the whole box runs
+A Raspberry Pi 5 build (4 063 Kč, €163, without a card) was priced first; the Pi 4 saves about
+700 Kč (€28), needs no Active Cooler or raised header, and is fast enough (the whole box runs
 on a Pi 3 capped at 800 MHz). What the Pi 5 would have added: 2–3× the speed and an
 on-board power button.
 
@@ -12,16 +13,16 @@ on-board power button.
 
 | Part | Price | Why |
 |---|---|---|
-| Raspberry Pi 4 Model B, 1 GB RAM | 929 Kč | Measured on the Pi 3: the whole box (kiosk + player) uses about 420 MB, so 1 GB leaves room. Ethernet is not on USB as on the Pi 3, so network and audio don't share a bus. |
-| Raspberry Pi USB-C power supply, 5.1 V / 3 A, EU | 247 Kč | Peak draw estimated at 9–10 W (Pi 4 up to ~6.4 W, display ~2–2.5 W, DAC+ ~0.3 W), about 2 A of the 3 A. 5.1 V and a short thick cable: the Pi 3's under-voltage came from a 2 A charger on a 1 m cable plus the backlight. |
-| Raspberry Pi Touch Display 2, 7", 720 × 1280, capacitive, DSI (OFI148) | 1 569 Kč | In the box: display, power cable, a standard and a standard-to-mini flat cable (the Pi 4 uses the standard DSI connector), 8 × M2.5 screws. Powered from the GPIO header. The 5" version (same 720 × 1280, ~500 Kč less) was turned down: at finger size its UI would be about 580 × 330 points, too tight for browsing and search. |
-| Raspberry Pi DAC+ (IQA001) | 539 Kč | PCM5122, 112 dB SNR, line out on RCA plus a headphone jack. Pass-through 40-pin header, so the display's power wires still reach 5 V and GND. Over I²S, off USB. |
-| Mounting kit, four 12 mm M2.5 metal standoffs (ABE011) | 99 Kč | Holds the DAC+ over the Pi at the standard HAT height. |
+| Raspberry Pi 4 Model B, 1 GB RAM | 929 Kč (€37) | Measured on the Pi 3: the whole box (kiosk + player) uses about 420 MB, so 1 GB leaves room. Ethernet is not on USB as on the Pi 3, so network and audio don't share a bus. |
+| Raspberry Pi USB-C power supply, 5.1 V / 3 A, EU | 247 Kč (€10) | Peak draw estimated at 9–10 W (Pi 4 up to ~6.4 W, display ~2–2.5 W, DAC+ ~0.3 W), about 2 A of the 3 A. 5.1 V and a short thick cable: the Pi 3's under-voltage came from a 2 A charger on a 1 m cable plus the backlight. |
+| Raspberry Pi Touch Display 2, 7", 720 × 1280, capacitive, DSI (OFI148) | 1 569 Kč (€63) | In the box: display, power cable, a standard and a standard-to-mini flat cable (the Pi 4 uses the standard DSI connector), 8 × M2.5 screws. Powered from the GPIO header. The 5" version (same 720 × 1280, ~500 Kč, €20, less) was turned down: at finger size its UI would be about 580 × 330 points, too tight for browsing and search. |
+| Raspberry Pi DAC+ (IQA001) | 539 Kč (€22) | PCM5122, 112 dB SNR, line out on RCA plus a headphone jack. Pass-through 40-pin header, so the display's power wires still reach 5 V and GND. Over I²S, off USB. |
+| Mounting kit, four 12 mm M2.5 metal standoffs (ABE011) | 99 Kč (€4) | Holds the DAC+ over the Pi at the standard HAT height. |
 | microSD, 16–32 GB, A1/A2, a known brand, ideally "endurance" | bought elsewhere | The system takes about 4.3 GB; nothing is downloaded, only cached. Endurance matters more than size (logs, cache, session and settings are written). The 32 GB card already flashed with 64-bit Raspberry Pi OS also works. |
 | 3.5 mm jack to jack cable | already at home | From the DAC+'s headphone jack into the speaker's AUX input. The RCA line out is a touch cleaner (the jack goes through the TPA6133A headphone amplifier), not audible through a small speaker. The headphone amp is switched on and its level set in ALSA, low enough not to overdrive the AUX input. |
-| A powered speaker with a 3.5 mm input | e.g. Logitech Z313, 1 299 Kč | Any active speaker or speaker set with an AUX input. The Z313 is a 2.1 set, 25 W. |
+| A powered speaker with a 3.5 mm input | e.g. Logitech Z313, 1 299 Kč (€52) | Any active speaker or speaker set with an AUX input. The Z313 is a 2.1 set, 25 W. |
 
-**Total from rpishop: 3 383 Kč** without the card and the speaker.
+**Total from rpishop: 3 383 Kč (€135)** without the card and the speaker.
 
 Not bought: a cooler. The load is light (mpv took ~11 % of a Pi 3), the screen goes dark
 when idle, and the Pi throttles itself rather than overheat. The CPU is capped instead
