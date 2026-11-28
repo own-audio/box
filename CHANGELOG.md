@@ -7,6 +7,10 @@ that version's section below as a GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+
+- HARDWARE.md gives every price in euros too, at 25 Kč to the euro.
+
 ## [1.0.0-beta.21] — 2026-11-24
 
 ### Fixed
