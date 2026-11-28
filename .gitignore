@@ -1,3 +1,8 @@
 /target
 # Notes kept off GitHub: the development plan and log, drafts.
 /private/
+# Photos straight from a phone: full size and with their metadata (place, device). Only
+# cropped copies without metadata go in, under docs/readme/.
+/docs/photo/
+*.heic
+*.HEIC

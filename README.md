@@ -15,6 +15,40 @@
 </p>
 
 <p align="center">
+  <img src="docs/readme/boxes.jpg" alt="Three own.audio boxes on a desk: a Raspberry Pi 4 with an upright touch screen among Logitech speakers, a Raspberry Pi 3 with a landscape touch screen and a Jabra speakerphone, and a Pirate Radio without a screen" width="800">
+</p>
+
+A small player that stays in the room. It plays your own music, audiobooks and podcasts,
+and internet radio, from an [own.audio](https://www.own.audio) server: the
+[open-source server](https://github.com/own-audio/server) on your own hardware (a spare
+Raspberry Pi will do) or the hosted service. Anyone in the house can use its touch
+screen, everyone in the family signs in with their own account, and an audiobook stopped
+in the kitchen continues on the phone at the same second. No streaming subscription, no
+voice assistant, no account with Amazon or Google.
+
+It is built from Raspberry Pi parts and installs from an SD card image. The software is
+`ownbox`, one Rust program that drives mpv and serves the touch UI, shown full screen by
+Chromium in a kiosk (cage). It is also an AirPlay 2 receiver and a Music Assistant
+player. In beta: it runs every day on the three boxes below.
+
+## Three boxes, one player
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/readme/box-pi3.jpg" alt="A Raspberry Pi 3 with the original 7-inch touch display in landscape, playing a radio station"></td>
+    <td width="33%"><img src="docs/readme/box-pi4.jpg" alt="A Raspberry Pi 4 with the Touch Display 2 upright, between a Logitech subwoofer and speaker"></td>
+    <td width="33%"><img src="docs/readme/box-radio.jpg" alt="A Pimoroni Pirate Radio: a blue speaker box with five buttons and no screen"></td>
+  </tr>
+  <tr>
+    <td valign="top"><b>A screen on its side.</b> Raspberry Pi 3 B+ from 2018, the original 7" touch display, a Jabra SPEAK 410 speakerphone over USB.</td>
+    <td valign="top"><b>A screen upright.</b> Raspberry Pi 4, Touch Display 2, a Raspberry Pi DAC+ into powered speakers. About €135 in parts without the speakers: <a href="docs/HARDWARE.md">docs/HARDWARE.md</a>.</td>
+    <td valign="top"><b>No screen at all.</b> Raspberry Pi Zero 2 W in a Pimoroni Pirate Radio. Five buttons; set up and controlled from a phone's browser.</td>
+  </tr>
+</table>
+
+## On the screen
+
+<p align="center">
   <img src="docs/readme/screen-home.jpg" alt="Music home on the 7-inch screen" width="400">
   <img src="docs/readme/screen-player.jpg" alt="Now playing on the 7-inch screen" width="400">
 </p>
@@ -26,25 +60,12 @@
   <img src="docs/readme/screen-radio.jpg" alt="Internet radio, favourite stations" width="400">
 </p>
 <p align="center">
-  <img src="docs/readme/portrait-books.jpg" alt="Audiobooks on the upright Touch Display 2" width="200">
-  <img src="docs/readme/portrait-podcasts.jpg" alt="Podcasts on the upright Touch Display 2" width="200">
+  <img src="docs/readme/portrait-three.webp" alt="Music, audiobooks and podcasts on the upright Touch Display 2" width="600">
 </p>
 <p align="center">
   <img src="docs/readme/phone-player.jpg" alt="The box controlled from a phone" width="200">
   <img src="docs/readme/phone-playlists-light.jpg" alt="Playlists and smart playlists, light mode, on a phone" width="200">
 </p>
-
-A Raspberry Pi with a touch screen and a sound output, feeding a speaker. It signs in to
-an [own.audio](https://www.own.audio) server — the [open-source
-server](https://github.com/own-audio/server) at home or the hosted service — with a QR
-code on its screen, and plays music, audiobooks and podcasts from it, keeping listening
-positions in step with the phone apps. It also runs without a screen, on a small Pi
-with a DAC HAT and buttons, controlled from a phone. And it is an AirPlay 2 receiver
-and a Music Assistant player.
-
-The software is `ownbox`, one Rust program that drives mpv and serves the touch UI,
-shown full screen by Chromium in a kiosk (cage). In beta: it runs every day on the two
-boxes below, and installs from an SD card image.
 
 ## What it does today
 
@@ -85,36 +106,19 @@ boxes below, and installs from an SD card image.
   choose so), with an automatic way back; Debian's security updates once a week on such a
   night.
 
-## Tested on
+## What you need
 
-| | The box with a screen | The radio, no screen |
-|---|---|---|
-| Board | Raspberry Pi 3 Model B+ (1 GB) | Raspberry Pi Zero 2 W (512 MB) |
-| Screen | Official 7" touch display, 800 × 480 | none; a phone is the screen |
-| Sound | Jabra SPEAK 410 (USB) | Pimoroni pHAT BEAT (I²S DAC), its five buttons as media keys — sold together with the Zero as the Pimoroni Pirate Radio |
-| System | Raspberry Pi OS Lite 64-bit (Debian 13 Trixie), mpv 0.40, Chromium 156 in cage | the same Lite image, no browser |
-| Also played to it | AirPlay 2 from an iPhone (shairport-sync 4.3.7), also to both boxes at once | AirPlay 2, and Music Assistant through Squeezelite |
+- A 64-bit Raspberry Pi: Zero 2 W, 3, 4 or 5.
+- A microSD card, 8 GB or more.
+- A sound output into a powered speaker: a DAC HAT, a USB speaker, HDMI or the headphone
+  jack.
+- A screen, if you want one: the official 7" touch display or the Touch Display 2 (7").
+  Without one, a phone is the screen.
+- An own.audio server: the [open-source one](https://github.com/own-audio/server), or the
+  hosted service at [own.audio](https://www.own.audio).
 
-Known: Music Assistant playing to the boxes over AirPlay arrives garbled (its AirPlay 2
-and shairport-sync disagree); use its Squeezelite players, or set the player to AirPlay 1
-(RAOP) in Music Assistant.
-
-Phones: Safari on iPhone, as the remote control. Servers: the open-source own.audio
-server (1.0) and the hosted service. The Pi 3 runs the kiosk and the player in about
-420 MB with the CPU capped at 800 MHz.
-
-The real box, tested since 1.0.0-beta.7 (2026-11-18), written from the SD image and
-updated through Settings since:
-
-| | |
-|---|---|
-| Board | Raspberry Pi 4 Model B (Rev 1.5) — parts and assembly in [docs/HARDWARE.md](docs/HARDWARE.md) |
-| Screen | Touch Display 2, 7" (720 × 1280), used upright: the page zoomed 1.55 times |
-| Sound | Raspberry Pi DAC+ |
-
-Meant to work, not yet tested: the 5" Touch Display 2, the display turned to landscape,
-and I²S HATs other than those above (through their overlay, `audio_hat` in
-`config.toml`).
+The parts of the upright box, with prices and why each, are in
+[docs/HARDWARE.md](docs/HARDWARE.md).
 
 **64-bit only.** The box runs on 64-bit Raspberry Pi OS (arm64) and is built for it
 alone: Raspberry Pi Zero 2 W, 3, 4 and 5. Boards that can only run 32-bit — the first
@@ -174,6 +178,37 @@ opens in the browser.
 
 The box comes as `ownbox.local` until it is named; then the name is its address ("own.audio
 kitchen" → `kitchen.local`). Updates arrive in Settings → Updates.
+
+## Tested on
+
+| | The box with a screen | The radio, no screen |
+|---|---|---|
+| Board | Raspberry Pi 3 Model B+ (1 GB) | Raspberry Pi Zero 2 W (512 MB) |
+| Screen | Official 7" touch display, 800 × 480 | none; a phone is the screen |
+| Sound | Jabra SPEAK 410 (USB) | Pimoroni pHAT BEAT (I²S DAC), its five buttons as media keys — sold together with the Zero as the Pimoroni Pirate Radio |
+| System | Raspberry Pi OS Lite 64-bit (Debian 13 Trixie), mpv 0.40, Chromium 156 in cage | the same Lite image, no browser |
+| Also played to it | AirPlay 2 from an iPhone (shairport-sync 4.3.7), also to both boxes at once | AirPlay 2, and Music Assistant through Squeezelite |
+
+Known: Music Assistant playing to the boxes over AirPlay arrives garbled (its AirPlay 2
+and shairport-sync disagree); use its Squeezelite players, or set the player to AirPlay 1
+(RAOP) in Music Assistant.
+
+Phones: Safari on iPhone, as the remote control. Servers: the open-source own.audio
+server (1.0) and the hosted service. The Pi 3 runs the kiosk and the player in about
+420 MB with the CPU capped at 800 MHz.
+
+The real box, tested since 1.0.0-beta.7 (2026-11-18), written from the SD image and
+updated through Settings since:
+
+| | |
+|---|---|
+| Board | Raspberry Pi 4 Model B (Rev 1.5) — parts and assembly in [docs/HARDWARE.md](docs/HARDWARE.md) |
+| Screen | Touch Display 2, 7" (720 × 1280), used upright: the page zoomed 1.55 times |
+| Sound | Raspberry Pi DAC+ |
+
+Meant to work, not yet tested: the 5" Touch Display 2, the display turned to landscape,
+and I²S HATs other than those above (through their overlay, `audio_hat` in
+`config.toml`).
 
 ## Serial console (beta images)
 

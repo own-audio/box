@@ -10,6 +10,9 @@ that version's section below as a GitHub Release.
 ### Changed
 
 - HARDWARE.md gives every price in euros too, at 25 Kč to the euro.
+- The README opens with a photo of the three boxes and one of each, says what a box is
+  for and what it needs, and comes to the install sooner. The photos are cropped copies
+  without their metadata; phone originals (`docs/photo/`, HEIC) are kept out of git.
 
 ## [1.0.0-beta.21] — 2026-11-24
 
